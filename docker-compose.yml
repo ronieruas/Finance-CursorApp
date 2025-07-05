@@ -27,6 +27,7 @@ services:
       DB_PORT: 5432
       DB_USER: finance
       DB_PASSWORD: finance123
+      DB_PASS: finance123
       DB_NAME: finance
       # Adicione outras variáveis conforme necessário
     ports:
