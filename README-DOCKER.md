@@ -35,6 +35,30 @@
 - Altere as senhas padrão do banco em produção.
 - Use variáveis de ambiente para segredos sensíveis.
 
+## Corrigindo colunas de timestamps no banco de dados
+
+Se após atualizar o backend aparecerem erros de coluna `updated_at` não encontrada em alguma tabela, rode o script SQL disponível em `backend/scripts/add_updated_at_columns.sql` para corrigir rapidamente.
+
+### Como rodar o script:
+
+1. Entre no container do banco de dados:
+
+   ```bash
+   docker exec -it finance-db psql -U finance -d finance
+   ```
+
+2. No prompt do psql, execute:
+
+   ```sql
+   \i /app/scripts/add_updated_at_columns.sql
+   ```
+
+   (O caminho `/app/scripts/` corresponde ao diretório dentro do container Docker.)
+
+3. Pronto! As colunas serão criadas automaticamente se não existirem.
+
+Se precisar rodar para outros bancos ou tabelas, adapte o script conforme necessário.
+
 ---
 
 **Qualquer dúvida, só chamar!** 
