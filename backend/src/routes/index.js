@@ -13,6 +13,7 @@ router.use('/incomes', require('./incomes'));
 router.use('/expenses', require('./expenses'));
 router.use('/credit-cards', require('./creditCards'));
 router.use('/budgets', require('./budgets'));
+router.use('/transfers', require('./transfers'));
 
 router.get('/', (req, res) => {
   res.json({ status: 'API online' });

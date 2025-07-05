@@ -6,16 +6,34 @@ import Input from '../components/Input';
 import Toast from '../components/Toast';
 
 const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/expenses`; // ajuste conforme backend
+const ACCOUNTS_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/accounts`;
+const CARDS_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/creditCards`;
 
 function Expenses({ token }) {
   const [expenses, setExpenses] = useState([]);
-  const [form, setForm] = useState({ account_id: '', description: '', value: '', due_date: '', category: '', status: 'pendente', is_recurring: false, auto_debit: false, paid_at: '' });
+  const [accounts, setAccounts] = useState([]);
+  const [cards, setCards] = useState([]);
+  const [form, setForm] = useState({
+    type: '', // 'conta' ou 'cartao'
+    account_id: '',
+    credit_card_id: '',
+    description: '',
+    value: '',
+    due_date: '',
+    category: '',
+    status: 'pendente',
+    is_recurring: false,
+    auto_debit: false,
+    paid_at: '',
+    installment_type: 'avista', // 'avista' ou 'parcelado'
+    installment_total: 1
+  });
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
-  useEffect(() => { fetchExpenses(); }, []);
+  useEffect(() => { fetchExpenses(); fetchAccounts(); fetchCards(); }, []);
 
   const fetchExpenses = async () => {
     setLoading(true);
@@ -23,6 +41,26 @@ function Expenses({ token }) {
     const data = await res.json();
     setExpenses(data);
     setLoading(false);
+  };
+
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch(ACCOUNTS_URL, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      setAccounts(data);
+    } catch {
+      setAccounts([]);
+    }
+  };
+
+  const fetchCards = async () => {
+    try {
+      const res = await fetch(CARDS_URL, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      setCards(data);
+    } catch {
+      setCards([]);
+    }
   };
 
   const handleChange = e => {
@@ -41,7 +79,7 @@ function Expenses({ token }) {
       });
       if (res.ok) {
         setToast({ show: true, message: 'Despesa adicionada com sucesso!', type: 'success' });
-        setForm({ account_id: '', description: '', value: '', due_date: '', category: '', status: 'pendente', is_recurring: false, auto_debit: false, paid_at: '' });
+        setForm({ type: '', account_id: '', credit_card_id: '', description: '', value: '', due_date: '', category: '', status: 'pendente', is_recurring: false, auto_debit: false, paid_at: '', installment_type: 'avista', installment_total: 1 });
         fetchExpenses();
       } else {
         setToast({ show: true, message: 'Erro ao adicionar despesa.', type: 'error' });
@@ -106,7 +144,51 @@ function Expenses({ token }) {
       <h2 style={{ marginBottom: 24, fontWeight: 700 }}>Despesas</h2>
       <motion.div className="glass-card fade-in" style={{ padding: 24, marginBottom: 32 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 0 }}>
-          <Input name="account_id" label="ID da Conta" value={form.account_id} onChange={handleChange} required />
+          <div style={{ minWidth: 120 }}>
+            <label style={{ fontWeight: 500 }}>Tipo</label>
+            <select name="type" value={form.type} onChange={handleChange} className="input-glass" required>
+              <option value="">Selecione</option>
+              <option value="conta">Conta</option>
+              <option value="cartao">Cartão de Crédito</option>
+            </select>
+          </div>
+          {form.type === 'conta' && (
+            <div style={{ minWidth: 180 }}>
+              <label style={{ fontWeight: 500 }}>Conta</label>
+              <select name="account_id" value={form.account_id} onChange={handleChange} className="input-glass" required>
+                <option value="">Selecione</option>
+                {accounts.map(acc => (
+                  <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {form.type === 'cartao' && (
+            <>
+              <div style={{ minWidth: 180 }}>
+                <label style={{ fontWeight: 500 }}>Cartão</label>
+                <select name="credit_card_id" value={form.credit_card_id} onChange={handleChange} className="input-glass" required>
+                  <option value="">Selecione</option>
+                  {cards.map(card => (
+                    <option key={card.id} value={card.id}>{card.name} ({card.bank})</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ minWidth: 120 }}>
+                <label style={{ fontWeight: 500 }}>Tipo de Lançamento</label>
+                <select name="installment_type" value={form.installment_type} onChange={handleChange} className="input-glass" required>
+                  <option value="avista">À vista</option>
+                  <option value="parcelado">Parcelado</option>
+                </select>
+              </div>
+              {form.installment_type === 'parcelado' && (
+                <div style={{ minWidth: 100 }}>
+                  <label style={{ fontWeight: 500 }}>Parcelas</label>
+                  <Input name="installment_total" type="number" min={1} max={36} value={form.installment_total} onChange={handleChange} required />
+                </div>
+              )}
+            </>
+          )}
           <Input name="description" label="Descrição" value={form.description} onChange={handleChange} required />
           <Input name="value" label="Valor" type="number" value={form.value} onChange={handleChange} required />
           <Input name="due_date" label="Vencimento" type="date" value={form.due_date} onChange={handleChange} required />
@@ -134,7 +216,7 @@ function Expenses({ token }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
             <thead>
               <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
-                <th style={{ padding: 8 }}>Conta</th>
+                <th style={{ padding: 8 }}>Conta/Cartão</th>
                 <th style={{ padding: 8 }}>Descrição</th>
                 <th style={{ padding: 8 }}>Valor</th>
                 <th style={{ padding: 8 }}>Vencimento</th>
@@ -142,6 +224,7 @@ function Expenses({ token }) {
                 <th style={{ padding: 8 }}>Status</th>
                 <th style={{ padding: 8 }}>Recorrente</th>
                 <th style={{ padding: 8 }}>Débito automático</th>
+                <th style={{ padding: 8 }}>Parcela</th>
                 <th style={{ padding: 8 }}>Pago em</th>
                 <th style={{ padding: 8 }}>Ações</th>
               </tr>
@@ -165,6 +248,7 @@ function Expenses({ token }) {
                       </td>
                       <td><input name="is_recurring" type="checkbox" checked={!!editForm.is_recurring} onChange={e => setEditForm({ ...editForm, is_recurring: e.target.checked })} /></td>
                       <td><input name="auto_debit" type="checkbox" checked={!!editForm.auto_debit} onChange={e => setEditForm({ ...editForm, auto_debit: e.target.checked })} /></td>
+                      <td>{editForm.installment_total > 1 ? `${editForm.installment_number}/${editForm.installment_total}` : '-'}</td>
                       <td><Input name="paid_at" value={editForm.paid_at || ''} onChange={handleEditChange} /></td>
                       <td>
                         <Button variant="primary" onClick={handleEditSubmit} loading={loading}>Salvar</Button>
@@ -173,7 +257,10 @@ function Expenses({ token }) {
                     </>
                   ) : (
                     <>
-                      <td>{exp.account_id}</td>
+                      <td>
+                        {exp.account_id ? (accounts.find(a => a.id === exp.account_id)?.name || exp.account_id) : ''}
+                        {exp.credit_card_id ? (cards.find(c => c.id === exp.credit_card_id)?.name ? `Cartão: ${cards.find(c => c.id === exp.credit_card_id)?.name}` : `Cartão ID: ${exp.credit_card_id}`) : ''}
+                      </td>
                       <td>{exp.description}</td>
                       <td style={{ color: 'var(--color-despesa)', fontWeight: 600 }}>R$ {Number(exp.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                       <td>{exp.due_date}</td>
@@ -181,6 +268,7 @@ function Expenses({ token }) {
                       <td>{exp.status}</td>
                       <td>{exp.is_recurring ? 'Sim' : 'Não'}</td>
                       <td>{exp.auto_debit ? 'Sim' : 'Não'}</td>
+                      <td>{exp.installment_total > 1 ? `${exp.installment_number}/${exp.installment_total}` : '-'}</td>
                       <td>{exp.paid_at || '-'}</td>
                       <td>
                         <Button variant="secondary" onClick={() => handleEdit(exp)}>Editar</Button>

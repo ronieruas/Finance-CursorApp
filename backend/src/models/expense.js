@@ -7,7 +7,10 @@ Expense.init(
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     user_id: { type: DataTypes.INTEGER, allowNull: false },
-    account_id: { type: DataTypes.INTEGER, allowNull: false },
+    account_id: { type: DataTypes.INTEGER },
+    credit_card_id: { type: DataTypes.INTEGER },
+    installment_number: { type: DataTypes.INTEGER, defaultValue: 1 },
+    installment_total: { type: DataTypes.INTEGER, defaultValue: 1 },
     description: { type: DataTypes.STRING, allowNull: false },
     value: { type: DataTypes.DECIMAL(14,2), allowNull: false },
     due_date: { type: DataTypes.DATEONLY, allowNull: false },

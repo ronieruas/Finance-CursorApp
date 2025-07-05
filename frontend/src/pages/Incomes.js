@@ -6,16 +6,28 @@ import Input from '../components/Input';
 import Toast from '../components/Toast';
 
 const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/incomes`; // ajuste conforme backend
+const ACCOUNTS_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/accounts`;
 
 function Incomes({ token }) {
   const [incomes, setIncomes] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [form, setForm] = useState({ account_id: '', description: '', value: '', date: '', category: '', is_recurring: false });
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
-  useEffect(() => { fetchIncomes(); }, []);
+  useEffect(() => { fetchIncomes(); fetchAccounts(); }, []);
+
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch(ACCOUNTS_URL, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      setAccounts(data);
+    } catch {
+      setAccounts([]);
+    }
+  };
 
   const fetchIncomes = async () => {
     setLoading(true);
@@ -106,7 +118,15 @@ function Incomes({ token }) {
       <h2 style={{ marginBottom: 24, fontWeight: 700 }}>Receitas</h2>
       <motion.div className="glass-card fade-in" style={{ padding: 24, marginBottom: 32 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 0 }}>
-          <Input name="account_id" label="ID da Conta" value={form.account_id} onChange={handleChange} required />
+          <label style={{ minWidth: 120 }}>
+            Conta:
+            <select name="account_id" value={form.account_id} onChange={handleChange} required style={{ width: '100%' }}>
+              <option value="">Selecione</option>
+              {accounts.map(acc => (
+                <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
+              ))}
+            </select>
+          </label>
           <Input name="description" label="Descrição" value={form.description} onChange={handleChange} required />
           <Input name="value" label="Valor" type="number" value={form.value} onChange={handleChange} required />
           <Input name="date" label="Data" type="date" value={form.date} onChange={handleChange} required />
@@ -136,7 +156,14 @@ function Incomes({ token }) {
                 <tr key={inc.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                   {editingId === inc.id ? (
                     <>
-                      <td><Input name="account_id" value={editForm.account_id} onChange={handleEditChange} /></td>
+                      <td>
+                        <select name="account_id" value={editForm.account_id} onChange={handleEditChange} required>
+                          <option value="">Selecione</option>
+                          {accounts.map(acc => (
+                            <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
+                          ))}
+                        </select>
+                      </td>
                       <td><Input name="description" value={editForm.description} onChange={handleEditChange} /></td>
                       <td><Input name="value" value={editForm.value} onChange={handleEditChange} /></td>
                       <td><Input name="date" value={editForm.date} onChange={handleEditChange} /></td>
@@ -149,7 +176,7 @@ function Incomes({ token }) {
                     </>
                   ) : (
                     <>
-                      <td>{inc.account_id}</td>
+                      <td>{accounts.find(a => a.id === inc.account_id)?.name || inc.account_id}</td>
                       <td>{inc.description}</td>
                       <td style={{ color: 'var(--color-receita)', fontWeight: 600 }}>R$ {Number(inc.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                       <td>{inc.date}</td>
