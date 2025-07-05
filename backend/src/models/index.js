@@ -6,6 +6,7 @@ const Expense = require('./expense');
 const CreditCard = require('./creditCard');
 const CreditCardTransaction = require('./creditCardTransaction');
 const Budget = require('./budget');
+const Transfer = require('./transfer');
 
 const syncDb = async () => {
   await sequelize.sync();
@@ -20,5 +21,6 @@ module.exports = {
   CreditCard,
   CreditCardTransaction,
   Budget,
+  Transfer,
   syncDb,
 }; 

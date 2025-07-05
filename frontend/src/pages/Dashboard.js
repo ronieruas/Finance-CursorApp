@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import '../styles/global.css';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import Input from '../components/Input';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
@@ -30,31 +31,54 @@ function Dashboard({ token }) {
     { id: 1, tipo: 'vencimento', descricao: 'Conta de luz vence em 2 dias', cor: 'orange' },
     { id: 2, tipo: 'atraso', descricao: 'Cartão Visa em atraso!', cor: 'red' },
   ]);
+  const [gastosPorCartao, setGastosPorCartao] = useState([]);
+  const [budgets, setBudgets] = useState([]);
+  const [period, setPeriod] = useState({ start: '', end: '' });
+  const [periodInput, setPeriodInput] = useState({ start: '', end: '' });
 
   // Estrutura pronta para integração futura com backend
   useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/dashboard`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        setKpis({
-          saldoTotal: data.saldoTotal,
-          receitasMes: data.receitasMes,
-          despesasMes: data.despesasMes,
-          cartaoMes: data.cartaoMes,
-          saldoMensal: data.saldoMensal,
-        });
-        setBreakdown(data.breakdown);
-        setRecentes(data.recentes);
-        setAlertas(data.alertas);
-      } catch (err) {
-        // fallback para mock se erro
-      }
-    };
     fetchDashboard();
+    // eslint-disable-next-line
   }, [token]);
+
+  const fetchDashboard = async (start, end) => {
+    let url = `${API_URL}/api/dashboard`;
+    if (start && end) url += `?start=${start}&end=${end}`;
+    try {
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setKpis({
+        saldoTotal: data.saldoTotal,
+        receitasMes: data.receitasMes,
+        despesasMes: data.despesasMes,
+        cartaoMes: data.cartaoMes,
+        saldoMensal: data.saldoMensal,
+      });
+      setBreakdown(data.breakdown);
+      setRecentes(data.recentes);
+      setAlertas(data.alertas);
+      setGastosPorCartao(data.gastosPorCartao || []);
+      setBudgets(data.budgets || []);
+      setPeriod(data.periodo || {});
+      setPeriodInput({ start: data.periodo?.start?.slice(0,10) || '', end: data.periodo?.end?.slice(0,10) || '' });
+    } catch (err) {
+      // fallback para mock se erro
+    }
+  };
+
+  const handlePeriodChange = e => {
+    const { name, value } = e.target;
+    setPeriodInput({ ...periodInput, [name]: value });
+  };
+  const handlePeriodSubmit = e => {
+    e.preventDefault();
+    if (periodInput.start && periodInput.end) {
+      fetchDashboard(periodInput.start, periodInput.end);
+    }
+  };
 
   const pieData = [
     { name: 'Receitas', value: breakdown.receitas, color: '#22c55e' },
@@ -74,6 +98,14 @@ function Dashboard({ token }) {
   return (
     <div style={{ marginLeft: 240, padding: 32 }}>
       <h2 style={{ marginBottom: 24, fontWeight: 700, letterSpacing: '-0.01em' }}>Dashboard</h2>
+      <form onSubmit={handlePeriodSubmit} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 24 }}>
+        <label>Período:</label>
+        <Input name="start" type="date" value={periodInput.start} onChange={handlePeriodChange} required />
+        <span>a</span>
+        <Input name="end" type="date" value={periodInput.end} onChange={handlePeriodChange} required />
+        <button type="submit" style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 500 }}>Filtrar</button>
+        <span style={{ color: '#888', fontSize: 13, marginLeft: 8 }}>(padrão: mês atual)</span>
+      </form>
       <div className="dashboard-flex" style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>
         <KpiCard label="Saldo Total" value={kpis.saldoTotal} prefix="R$" color="var(--color-primary)" glass fadeIn />
         <KpiCard label="Receitas do Mês" value={kpis.receitasMes} prefix="R$" color="var(--color-receita)" glass fadeIn />
@@ -120,8 +152,54 @@ function Dashboard({ token }) {
             ))}
           </ul>
         </motion.div>
+        <motion.div className="glass-card fade-in" style={{ flex: 1, padding: 24 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+          <h3 style={{ marginBottom: 16 }}>Gastos por Cartão</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
+            <thead>
+              <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
+                <th style={{ padding: 8 }}>Cartão</th>
+                <th style={{ padding: 8 }}>Banco</th>
+                <th style={{ padding: 8 }}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {gastosPorCartao.length === 0 && <tr><td colSpan={3} style={{ color: '#888' }}>Nenhum gasto no período.</td></tr>}
+              {gastosPorCartao.map(c => (
+                <tr key={c.card_id}>
+                  <td>{c.card_name}</td>
+                  <td>{c.card_bank}</td>
+                  <td style={{ color: 'var(--color-cartao)', fontWeight: 600 }}>R$ {Number(c.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </motion.div>
+        <motion.div className="glass-card fade-in" style={{ flex: 1, padding: 24 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+          <h3 style={{ marginBottom: 16 }}>Quadro de Orçamento</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
+            <thead>
+              <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
+                <th style={{ padding: 8 }}>Nome</th>
+                <th style={{ padding: 8 }}>Tipo</th>
+                <th style={{ padding: 8 }}>Período</th>
+                <th style={{ padding: 8 }}>Planejado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {budgets.length === 0 && <tr><td colSpan={4} style={{ color: '#888' }}>Nenhum orçamento para o período.</td></tr>}
+              {budgets.map(b => (
+                <tr key={b.id}>
+                  <td>{b.name}</td>
+                  <td>{b.type === 'geral' ? 'Geral' : 'Cartão'}</td>
+                  <td>{b.period_start} a {b.period_end}</td>
+                  <td style={{ color: 'var(--color-primary)', fontWeight: 600 }}>R$ {Number(b.planned_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </motion.div>
       </div>
-      <motion.div className="glass-card fade-in" style={{ padding: 24 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+      <motion.div className="glass-card fade-in" style={{ padding: 24 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
         <h3 style={{ marginBottom: 16 }}>Transações Recentes</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
           <thead>

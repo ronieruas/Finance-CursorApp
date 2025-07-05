@@ -4,15 +4,17 @@ const { Op } = require('sequelize');
 exports.getDashboard = async (req, res) => {
   try {
     const userId = req.user.id;
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    // Filtro de período
+    let { start, end } = req.query;
+    let today = new Date();
+    let firstDay = start ? new Date(start) : new Date(today.getFullYear(), today.getMonth(), 1);
+    let lastDay = end ? new Date(end) : new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
     // Saldo total (todas as contas ativas)
     const accounts = await Account.findAll({ where: { user_id: userId, status: 'ativa' } });
     const saldoTotal = accounts.reduce((sum, acc) => sum + parseFloat(acc.balance), 0);
 
-    // Receitas do mês
+    // Receitas do período
     const receitasMes = await Income.sum('value', {
       where: {
         user_id: userId,
@@ -20,7 +22,7 @@ exports.getDashboard = async (req, res) => {
       },
     });
 
-    // Despesas do mês
+    // Despesas do período
     const despesasMes = await Expense.sum('value', {
       where: {
         user_id: userId,
@@ -28,10 +30,11 @@ exports.getDashboard = async (req, res) => {
       },
     });
 
-    // Gastos em cartão do mês
+    // Gastos em cartão do período (detalhado por cartão)
     const creditCards = await CreditCard.findAll({ where: { user_id: userId, status: 'ativa' } });
     const cardIds = creditCards.map(c => c.id);
     let cartaoMes = 0;
+    let gastosPorCartao = [];
     if (cardIds.length > 0) {
       cartaoMes = await CreditCardTransaction.sum('value', {
         where: {
@@ -40,6 +43,22 @@ exports.getDashboard = async (req, res) => {
           date: { [Op.between]: [firstDay, lastDay] },
         },
       });
+      // Detalhamento por cartão
+      for (const card of creditCards) {
+        const total = await CreditCardTransaction.sum('value', {
+          where: {
+            user_id: userId,
+            card_id: card.id,
+            date: { [Op.between]: [firstDay, lastDay] },
+          },
+        });
+        gastosPorCartao.push({
+          card_id: card.id,
+          card_name: card.name,
+          card_bank: card.bank,
+          total: total || 0
+        });
+      }
     }
 
     // Saldo mensal
@@ -51,6 +70,15 @@ exports.getDashboard = async (req, res) => {
       despesas: despesasMes || 0,
       cartao: cartaoMes || 0,
     };
+
+    // Orçamentos do período
+    const budgets = await require('../models').Budget.findAll({
+      where: {
+        user_id: userId,
+        period_start: { [Op.lte]: lastDay },
+        period_end: { [Op.gte]: firstDay },
+      },
+    });
 
     // Transações recentes (últimas 5 de receitas e despesas)
     const recentesReceitas = await Income.findAll({
@@ -97,8 +125,11 @@ exports.getDashboard = async (req, res) => {
       cartaoMes: cartaoMes || 0,
       saldoMensal,
       breakdown,
+      gastosPorCartao,
+      budgets,
       recentes,
       alertas,
+      periodo: { start: firstDay, end: lastDay }
     });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao buscar dados do dashboard', details: err.message });

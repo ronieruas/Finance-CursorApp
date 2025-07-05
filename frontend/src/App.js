@@ -10,6 +10,7 @@ import Budgets from './pages/Budgets';
 import Login from './pages/Login';
 import ChangePassword from './pages/ChangePassword';
 import ManageUsers from './pages/ManageUsers';
+import Transfers from './pages/Transfers';
 import { AnimatePresence, motion } from 'framer-motion';
 import { jwtDecode } from 'jwt-decode';
 
@@ -77,6 +78,11 @@ function AnimatedRoutes({ token, setToken }) {
         <Route path="/admin/users" element={
           <PrivateRoute token={token}>
             <ManageUsers token={token} />
+          </PrivateRoute>
+        } />
+        <Route path="/transfers" element={
+          <PrivateRoute token={token}>
+            <Transfers token={token} />
           </PrivateRoute>
         } />
         <Route path="/login" element={<Login setToken={setToken} />} />
