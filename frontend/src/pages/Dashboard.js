@@ -81,9 +81,9 @@ function Dashboard({ token }) {
   };
 
   const pieData = [
-    { name: 'Receitas', value: breakdown.receitas, color: '#22c55e' },
-    { name: 'Despesas', value: breakdown.despesas, color: '#ef4444' },
-    { name: 'Cartão', value: breakdown.cartao, color: '#8b5cf6' },
+    { name: 'Receitas', value: breakdown?.receitas || 0, color: '#22c55e' },
+    { name: 'Despesas', value: breakdown?.despesas || 0, color: '#ef4444' },
+    { name: 'Cartão', value: breakdown?.cartao || 0, color: '#8b5cf6' },
   ];
   // Mock para evolução do saldo mensal (substituir por dados reais se disponível)
   const saldoEvolucao = [
