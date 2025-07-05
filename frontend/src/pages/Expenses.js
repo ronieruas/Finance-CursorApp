@@ -5,7 +5,7 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import Toast from '../components/Toast';
 
-const API_URL = 'http://localhost:3001/api/expenses'; // ajuste conforme backend
+const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/expenses`; // ajuste conforme backend
 
 function Expenses({ token }) {
   const [expenses, setExpenses] = useState([]);

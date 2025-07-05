@@ -3,6 +3,8 @@ import '../styles/global.css';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+
 function Dashboard({ token }) {
   // Mock de dados para exibição inicial
   const [kpis, setKpis] = useState({
@@ -33,7 +35,7 @@ function Dashboard({ token }) {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const res = await fetch('http://localhost:3001/api/dashboard', {
+        const res = await fetch(`${API_URL}/api/dashboard`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
