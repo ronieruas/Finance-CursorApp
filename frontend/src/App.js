@@ -11,7 +11,7 @@ import Login from './pages/Login';
 import ChangePassword from './pages/ChangePassword';
 import ManageUsers from './pages/ManageUsers';
 import { AnimatePresence, motion } from 'framer-motion';
-import jwt_decode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 
 function AnimatedRoutes({ token, setToken }) {
   const location = useLocation();
@@ -38,7 +38,7 @@ function App() {
   let user = null;
   if (token) {
     try {
-      user = jwt_decode(token);
+      user = jwtDecode(token);
     } catch (e) {
       user = null;
     }
