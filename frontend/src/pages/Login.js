@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/auth/login`; // ajuste conforme backend
 
-function Login({ onLogin }) {
+function Login({ setToken }) {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -24,7 +26,8 @@ function Login({ onLogin }) {
       const data = await res.json();
       if (res.ok && data.token) {
         localStorage.setItem('token', data.token);
-        onLogin && onLogin();
+        setToken(data.token);
+        navigate('/');
       } else {
         setError(data.error || 'Falha no login');
       }

@@ -7,7 +7,7 @@ const dashboardController = require('../controllers/dashboardController');
 // Importar rotas de módulos
 router.use('/auth', require('./auth'));
 router.use('/accounts', require('./accounts'));
-// router.use('/users', require('./users'));
+router.use('/users', require('./users'));
 // router.use('/transactions', require('./transactions'));
 router.use('/incomes', require('./incomes'));
 router.use('/expenses', require('./expenses'));
