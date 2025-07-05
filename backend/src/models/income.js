@@ -19,6 +19,7 @@ Income.init(
     sequelize,
     modelName: 'Income',
     tableName: 'incomes',
+    underscored: true,
   }
 );
 

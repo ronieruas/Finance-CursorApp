@@ -51,6 +51,7 @@ Account.init(
     sequelize,
     modelName: 'Account',
     tableName: 'accounts',
+    underscored: true,
   }
 );
 
