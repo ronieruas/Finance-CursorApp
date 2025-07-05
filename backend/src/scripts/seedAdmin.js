@@ -11,8 +11,8 @@ async function seedAdmin() {
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@admin.com';
     const adminPass = process.env.ADMIN_PASS || 'admin123';
     let admin = await User.findOne({ where: { email: adminEmail } });
+    const hash = await bcrypt.hash(adminPass, 10);
     if (!admin) {
-      const hash = await bcrypt.hash(adminPass, 10);
       admin = await User.create({
         name: 'Administrador',
         email: adminEmail,
@@ -21,7 +21,9 @@ async function seedAdmin() {
       });
       console.log('Usuário admin criado:', adminEmail);
     } else {
-      console.log('Usuário admin já existe:', adminEmail);
+      admin.password = hash;
+      await admin.save();
+      console.log('Senha do admin atualizada:', adminEmail);
     }
     process.exit(0);
   } catch (err) {
