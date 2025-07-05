@@ -20,6 +20,7 @@ CreditCard.init(
     sequelize,
     modelName: 'CreditCard',
     tableName: 'credit_cards',
+    underscored: true,
   }
 );
 

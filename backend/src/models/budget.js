@@ -18,6 +18,7 @@ Budget.init(
     sequelize,
     modelName: 'Budget',
     tableName: 'budgets',
+    underscored: true,
   }
 );
 
