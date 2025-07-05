@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import ThemeToggle from './ThemeToggle';
 import '../styles/global.css';
 
-const Sidebar = () => {
+const Sidebar = ({ setToken, user }) => {
   const [open, setOpen] = useState(window.innerWidth > 700);
+  const navigate = useNavigate();
   React.useEffect(() => {
     const onResize = () => setOpen(window.innerWidth > 700);
     window.addEventListener('resize', onResize);
@@ -18,7 +19,8 @@ const Sidebar = () => {
   }, [open]);
   const handleLogout = () => {
     localStorage.removeItem('token');
-    window.location.reload();
+    setToken(null);
+    navigate('/login');
   };
   return (
     <>
@@ -39,6 +41,13 @@ const Sidebar = () => {
               <li><Link to="/expenses">Despesas</Link></li>
               <li><Link to="/credit-cards">Cartões</Link></li>
               <li><Link to="/budgets">Orçamentos</Link></li>
+              {user && user.role === 'admin' && (
+                <>
+                  <li style={{ marginTop: 24, fontWeight: 600, color: '#2563eb' }}>Administração</li>
+                  <li><Link to="/admin/change-password">Trocar Senha</Link></li>
+                  <li><Link to="/admin/users">Gerenciar Usuários</Link></li>
+                </>
+              )}
             </ul>
           </nav>
           <button onClick={handleLogout} aria-label="Sair do sistema" style={{ marginTop: 32, width: '100%' }}>Sair</button>
