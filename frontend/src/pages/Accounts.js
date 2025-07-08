@@ -189,7 +189,10 @@ function Accounts({ token }) {
                       <td>{acc.name}</td>
                       <td>{acc.bank}</td>
                       <td>{acc.type}</td>
-                      <td style={{ color: 'var(--color-primary)', fontWeight: 600 }}>R$ {Number(acc.balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                      <td style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+                        {acc.currency === 'BRL' ? 'R$' : acc.currency === 'USD' ? 'US$' : acc.currency === 'EUR' ? '€' : acc.currency + ' '}
+                        {Number(acc.balance).toLocaleString(acc.currency === 'BRL' ? 'pt-BR' : acc.currency === 'USD' ? 'en-US' : acc.currency === 'EUR' ? 'de-DE' : undefined, { minimumFractionDigits: 2 })}
+                      </td>
                       <td>{acc.currency}</td>
                       <td>{acc.status}</td>
                       <td>

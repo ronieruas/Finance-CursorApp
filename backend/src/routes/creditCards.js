@@ -7,5 +7,6 @@ router.get('/', authMiddleware, creditCardController.list);
 router.post('/', authMiddleware, creditCardController.create);
 router.put('/:id', authMiddleware, creditCardController.update);
 router.delete('/:id', authMiddleware, creditCardController.remove);
+router.get('/limits', authMiddleware, creditCardController.limits);
 
 module.exports = router; 

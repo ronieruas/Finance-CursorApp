@@ -12,7 +12,6 @@ Budget.init(
     period_start: { type: DataTypes.DATEONLY, allowNull: false },
     period_end: { type: DataTypes.DATEONLY, allowNull: false },
     planned_value: { type: DataTypes.DECIMAL(14,2), allowNull: false },
-    createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },
   {
     sequelize,

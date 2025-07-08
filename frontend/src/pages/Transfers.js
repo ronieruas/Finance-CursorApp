@@ -9,6 +9,20 @@ function Transfers({ token }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [filters, setFilters] = useState(() => {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0,10);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0,10);
+    return {
+      start: firstDay,
+      end: lastDay,
+      from_account_id: '',
+      to_account_id: '',
+      description: ''
+    };
+  });
 
   useEffect(() => {
     fetchAccounts();
@@ -25,9 +39,15 @@ function Transfers({ token }) {
     }
   };
 
-  const fetchTransfers = async () => {
+  const fetchTransfers = async (customFilters) => {
     try {
-      const res = await fetch(`${API_URL}/transfers`, { headers: { Authorization: `Bearer ${token}` } });
+      const f = customFilters || filters;
+      const params = new URLSearchParams();
+      if (f.start && f.end) { params.append('start', f.start); params.append('end', f.end); }
+      if (f.from_account_id) params.append('from_account_id', f.from_account_id);
+      if (f.to_account_id) params.append('to_account_id', f.to_account_id);
+      if (f.description) params.append('description', f.description);
+      const res = await fetch(`${API_URL}/transfers?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setTransfers(data);
     } catch (err) {
@@ -76,9 +96,107 @@ function Transfers({ token }) {
     setLoading(false);
   };
 
+  const handleEdit = t => { setEditingId(t.id); setEditForm({ ...t, isThirdParty: !t.to_account_id }); };
+
+  const handleEditChange = e => {
+    const { name, value, type, checked } = e.target;
+    setEditForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
+    if (name === 'isThirdParty' && !checked) {
+      setEditForm(f => ({ ...f, to_account_id: '' }));
+    }
+  };
+
+  const handleEditSubmit = async e => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage('');
+    setError('');
+    try {
+      const body = {
+        from_account_id: editForm.from_account_id,
+        to_account_id: editForm.isThirdParty ? null : editForm.to_account_id,
+        value: editForm.value,
+        date: editForm.date,
+        description: editForm.description,
+      };
+      const res = await fetch(`${API_URL}/transfers/${editingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage('Transferência editada com sucesso!');
+        setEditingId(null); setEditForm({});
+        fetchTransfers(); fetchAccounts();
+      } else {
+        setError(data.error || 'Erro ao editar transferência.');
+      }
+    } catch (err) {
+      setError('Erro ao editar transferência.');
+    }
+    setLoading(false);
+  };
+
+  const handleDelete = async id => {
+    if (!window.confirm('Deseja realmente excluir esta transferência?')) return;
+    setLoading(true);
+    setMessage('');
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/transfers/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setMessage('Transferência excluída com sucesso!');
+        fetchTransfers(); fetchAccounts();
+      } else {
+        setError('Erro ao excluir transferência.');
+      }
+    } catch {
+      setError('Erro ao excluir transferência.');
+    }
+    setLoading(false);
+  };
+
+  const handleFilterChange = e => {
+    const { name, value } = e.target;
+    setFilters(f => ({ ...f, [name]: value }));
+  };
+
+  const handleFilterSubmit = e => {
+    e.preventDefault();
+    fetchTransfers();
+  };
+
   return (
     <div style={{ maxWidth: 600, margin: '40px auto', padding: 32, border: '1px solid #eee', borderRadius: 8 }}>
       <h2>Transferências</h2>
+      {/* Filtros de visualização */}
+      <form onSubmit={handleFilterSubmit} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 24 }}>
+        <label>Período:</label>
+        <input name="start" type="date" value={filters.start} onChange={handleFilterChange} required />
+        <span>a</span>
+        <input name="end" type="date" value={filters.end} onChange={handleFilterChange} required />
+        <label>Origem:</label>
+        <select name="from_account_id" value={filters.from_account_id} onChange={handleFilterChange} style={{ minWidth: 120 }}>
+          <option value="">Todas</option>
+          {accounts.map(acc => (
+            <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
+          ))}
+        </select>
+        <label>Destino:</label>
+        <select name="to_account_id" value={filters.to_account_id} onChange={handleFilterChange} style={{ minWidth: 120 }}>
+          <option value="">Todos</option>
+          {accounts.map(acc => (
+            <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
+          ))}
+        </select>
+        <label>Descrição:</label>
+        <input name="description" value={filters.description} onChange={handleFilterChange} style={{ minWidth: 120 }} placeholder="Descrição" />
+        <button type="submit" style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 500 }}>Filtrar</button>
+      </form>
       <form onSubmit={handleSubmit} style={{ marginBottom: 24 }}>
         <label>Conta de origem:</label>
         <select name="from_account_id" value={form.from_account_id} onChange={handleChange} required style={{ width: '100%', marginBottom: 12 }}>
@@ -118,16 +236,56 @@ function Transfers({ token }) {
             <th style={{ padding: 8 }}>Destino</th>
             <th style={{ padding: 8 }}>Valor</th>
             <th style={{ padding: 8 }}>Descrição</th>
+            <th style={{ padding: 8 }}>Ações</th>
           </tr>
         </thead>
         <tbody>
           {transfers.map(t => (
             <tr key={t.id} style={{ borderBottom: '1px solid #eee' }}>
-              <td style={{ padding: 8 }}>{t.date}</td>
-              <td style={{ padding: 8 }}>{accounts.find(a => a.id === t.from_account_id)?.name || t.from_account_id}</td>
-              <td style={{ padding: 8 }}>{t.to_account_id ? (accounts.find(a => a.id === t.to_account_id)?.name || t.to_account_id) : 'Terceiro'}</td>
-              <td style={{ padding: 8 }}>R$ {Number(t.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-              <td style={{ padding: 8 }}>{t.description}</td>
+              {editingId === t.id ? (
+                <>
+                  <td><input name="date" type="date" value={editForm.date} onChange={handleEditChange} style={{ width: '100%' }} /></td>
+                  <td>
+                    <select name="from_account_id" value={editForm.from_account_id} onChange={handleEditChange} style={{ width: '100%' }}>
+                      <option value="">Selecione</option>
+                      {accounts.map(acc => (
+                        <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <label style={{ fontSize: 12 }}>
+                      <input type="checkbox" name="isThirdParty" checked={editForm.isThirdParty} onChange={handleEditChange} /> Terceiro
+                    </label>
+                    {!editForm.isThirdParty && (
+                      <select name="to_account_id" value={editForm.to_account_id} onChange={handleEditChange} style={{ width: '100%' }}>
+                        <option value="">Selecione</option>
+                        {accounts.filter(acc => acc.id !== Number(editForm.from_account_id)).map(acc => (
+                          <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
+                        ))}
+                      </select>
+                    )}
+                  </td>
+                  <td><input name="value" type="number" step="0.01" value={editForm.value} onChange={handleEditChange} style={{ width: '100%' }} /></td>
+                  <td><input name="description" type="text" value={editForm.description} onChange={handleEditChange} style={{ width: '100%' }} /></td>
+                  <td>
+                    <button onClick={handleEditSubmit} style={{ marginRight: 8 }}>Salvar</button>
+                    <button onClick={() => { setEditingId(null); setEditForm({}); }}>Cancelar</button>
+                  </td>
+                </>
+              ) : (
+                <>
+                  <td style={{ padding: 8 }}>{t.date}</td>
+                  <td style={{ padding: 8 }}>{accounts.find(a => a.id === t.from_account_id)?.name || t.from_account_id}</td>
+                  <td style={{ padding: 8 }}>{t.to_account_id ? (accounts.find(a => a.id === t.to_account_id)?.name || t.to_account_id) : 'Terceiro'}</td>
+                  <td style={{ padding: 8 }}>R$ {Number(t.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td style={{ padding: 8 }}>{t.description}</td>
+                  <td>
+                    <button onClick={() => handleEdit(t)} style={{ marginRight: 8 }}>Editar</button>
+                    <button onClick={() => handleDelete(t.id)}>Excluir</button>
+                  </td>
+                </>
+              )}
             </tr>
           ))}
         </tbody>

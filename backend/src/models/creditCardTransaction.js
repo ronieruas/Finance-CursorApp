@@ -15,12 +15,12 @@ CreditCardTransaction.init(
     installment_number: { type: DataTypes.INTEGER, defaultValue: 1 },
     installment_total: { type: DataTypes.INTEGER, defaultValue: 1 },
     family_member: { type: DataTypes.STRING },
-    createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },
   {
     sequelize,
     modelName: 'CreditCardTransaction',
     tableName: 'credit_card_transactions',
+    underscored: true,
   }
 );
 

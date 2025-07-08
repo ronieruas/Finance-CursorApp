@@ -7,5 +7,6 @@ router.get('/', authMiddleware, expenseController.list);
 router.post('/', authMiddleware, expenseController.create);
 router.put('/:id', authMiddleware, expenseController.update);
 router.delete('/:id', authMiddleware, expenseController.remove);
+router.get('/categories', authMiddleware, expenseController.categories);
 
 module.exports = router; 
