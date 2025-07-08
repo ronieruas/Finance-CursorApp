@@ -39,7 +39,7 @@ const Sidebar = ({ setToken, user }) => {
               <li><Link to="/accounts">Contas</Link></li>
               <li><Link to="/incomes">Receitas</Link></li>
               <li><Link to="/expenses">Despesas</Link></li>
-              <li><Link to="/credit-cards">Cartões</Link></li>
+              <li><Link to="/creditCards">Cartões</Link></li>
               <li><Link to="/budgets">Orçamentos</Link></li>
               <li><Link to="/transfers">Transferências</Link></li>
               {user && user.role === 'admin' && (

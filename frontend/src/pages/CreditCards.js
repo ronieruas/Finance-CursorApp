@@ -5,7 +5,7 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import Toast from '../components/Toast';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/credit-cards`; // ajuste conforme backend
+const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/creditCards`; // ajuste conforme backend
 
 function CreditCards({ token }) {
   const [cards, setCards] = useState([]);
@@ -14,8 +14,9 @@ function CreditCards({ token }) {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const [limits, setLimits] = useState({});
 
-  useEffect(() => { fetchCards(); }, []);
+  useEffect(() => { fetchCards(); fetchLimits(); }, []);
 
   const fetchCards = async () => {
     setLoading(true);
@@ -23,6 +24,18 @@ function CreditCards({ token }) {
     const data = await res.json();
     setCards(data);
     setLoading(false);
+  };
+
+  const fetchLimits = async () => {
+    try {
+      const res = await fetch(`${API_URL}/limits`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      const map = {};
+      data.forEach(l => { map[l.card_id] = l.utilizado; });
+      setLimits(map);
+    } catch {
+      setLimits({});
+    }
   };
 
   const handleChange = e => {
@@ -159,7 +172,11 @@ function CreditCards({ token }) {
                     <>
                       <td>{card.bank}</td>
                       <td>{card.brand}</td>
-                      <td style={{ color: 'var(--color-cartao)', fontWeight: 600 }}>R$ {Number(card.limit_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                      <td style={{ color: 'var(--color-cartao)', fontWeight: 600 }}>R$ {Number(card.limit_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        <div style={{ fontSize: 13, color: '#888', fontWeight: 400 }}>
+                          Limite utilizado: R$ {Number(limits[card.id] || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </div>
+                      </td>
                       <td>{card.due_day}</td>
                       <td>{card.closing_day}</td>
                       <td>{card.name}</td>

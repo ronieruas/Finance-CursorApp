@@ -1,8 +1,33 @@
-const { Budget } = require('../models');
+const { Budget, Expense } = require('../models');
+const { Op } = require('sequelize');
 
 exports.list = async (req, res) => {
   const budgets = await Budget.findAll({ where: { user_id: req.user.id } });
-  res.json(budgets);
+  // Calcular valor utilizado para cada orçamento
+  const budgetsWithUtilizado = await Promise.all(budgets.map(async (budget) => {
+    let utilizado = 0;
+    if (budget.type === 'geral') {
+      utilizado = await Expense.sum('value', {
+        where: {
+          user_id: req.user.id,
+          due_date: { [Op.between]: [budget.period_start, budget.period_end] },
+        },
+      });
+    } else if (budget.type === 'cartao') {
+      utilizado = await Expense.sum('value', {
+        where: {
+          user_id: req.user.id,
+          due_date: { [Op.between]: [budget.period_start, budget.period_end] },
+          credit_card_id: { [Op.ne]: null },
+        },
+      });
+    }
+    return {
+      ...budget.toJSON(),
+      utilizado: utilizado || 0
+    };
+  }));
+  res.json(budgetsWithUtilizado);
 };
 
 exports.create = async (req, res) => {

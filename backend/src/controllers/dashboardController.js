@@ -1,55 +1,74 @@
 const { Account, Income, Expense, CreditCard, CreditCardTransaction } = require('../models');
 const { Op } = require('sequelize');
+const sequelize = require('sequelize');
 
 exports.getDashboard = async (req, res) => {
   try {
+    console.log('Dashboard: início da requisição');
     const userId = req.user.id;
     // Filtro de período
     let { start, end } = req.query;
     let today = new Date();
     let firstDay = start ? new Date(start) : new Date(today.getFullYear(), today.getMonth(), 1);
     let lastDay = end ? new Date(end) : new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    console.log('Dashboard: período', { firstDay, lastDay });
 
-    // Saldo total (todas as contas ativas)
-    const accounts = await Account.findAll({ where: { user_id: userId, status: 'ativa' } });
-    const saldoTotal = accounts.reduce((sum, acc) => sum + parseFloat(acc.balance), 0);
+    // Saldo total (apenas contas em reais)
+    const accountsReais = await Account.findAll({ where: { user_id: userId, status: 'ativa', currency: { [Op.or]: [null, 'BRL', 'R$', ''] } } });
+    const saldoTotalReais = accountsReais.reduce((sum, acc) => sum + parseFloat(acc.balance), 0);
 
-    // Receitas do período
-    const receitasMes = await Income.sum('value', {
+    // Receitas do período (por conta)
+    const receitasPorConta = await Income.findAll({
       where: {
         user_id: userId,
         date: { [Op.between]: [firstDay, lastDay] },
       },
+      attributes: ['account_id', [sequelize.fn('sum', sequelize.col('value')), 'total']],
+      group: ['account_id'],
     });
 
-    // Despesas do período
-    const despesasMes = await Expense.sum('value', {
+    // Despesas de conta (não associadas a cartão)
+    const despesasConta = await Expense.sum('value', {
       where: {
         user_id: userId,
         due_date: { [Op.between]: [firstDay, lastDay] },
+        account_id: { [Op.ne]: null },
+        credit_card_id: null,
       },
     });
 
-    // Gastos em cartão do período (detalhado por cartão)
+    // Despesas de cartão (apenas associadas a cartão)
+    const despesasCartao = await Expense.sum('value', {
+      where: {
+        user_id: userId,
+        due_date: { [Op.between]: [firstDay, lastDay] },
+        credit_card_id: { [Op.ne]: null },
+      },
+    });
+
+    // Soma total de despesas do mês (conta + cartão, sem duplicidade)
+    const despesasMesTotal = (despesasConta || 0) + (despesasCartao || 0);
+
+    // Valor da fatura do cartão do mês (parcelas com due_date no mês)
     const creditCards = await CreditCard.findAll({ where: { user_id: userId, status: 'ativa' } });
     const cardIds = creditCards.map(c => c.id);
-    let cartaoMes = 0;
+    let faturaCartaoMes = 0;
     let gastosPorCartao = [];
     if (cardIds.length > 0) {
-      cartaoMes = await CreditCardTransaction.sum('value', {
+      faturaCartaoMes = await Expense.sum('value', {
         where: {
           user_id: userId,
-          card_id: { [Op.in]: cardIds },
-          date: { [Op.between]: [firstDay, lastDay] },
+          due_date: { [Op.between]: [firstDay, lastDay] },
+          credit_card_id: { [Op.in]: cardIds },
         },
       });
       // Detalhamento por cartão
       for (const card of creditCards) {
-        const total = await CreditCardTransaction.sum('value', {
+        const total = await Expense.sum('value', {
           where: {
             user_id: userId,
-            card_id: card.id,
-            date: { [Op.between]: [firstDay, lastDay] },
+            due_date: { [Op.between]: [firstDay, lastDay] },
+            credit_card_id: card.id,
           },
         });
         gastosPorCartao.push({
@@ -61,17 +80,7 @@ exports.getDashboard = async (req, res) => {
       }
     }
 
-    // Saldo mensal
-    const saldoMensal = (receitasMes || 0) - (despesasMes || 0) - (cartaoMes || 0);
-
-    // Breakdown
-    const breakdown = {
-      receitas: receitasMes || 0,
-      despesas: despesasMes || 0,
-      cartao: cartaoMes || 0,
-    };
-
-    // Orçamentos do período
+    // Orçamentos do período: valor planejado e valor gasto até a data
     const budgets = await require('../models').Budget.findAll({
       where: {
         user_id: userId,
@@ -79,59 +88,215 @@ exports.getDashboard = async (req, res) => {
         period_end: { [Op.gte]: firstDay },
       },
     });
+    const budgetsWithSpent = await Promise.all(budgets.map(async (budget) => {
+      let utilizado = 0;
+      if (budget.type === 'geral') {
+        // Soma todas as despesas do período
+        utilizado = await Expense.sum('value', {
+          where: {
+            user_id: userId,
+            due_date: { [Op.between]: [budget.period_start, budget.period_end] },
+          },
+        });
+      } else if (budget.type === 'cartao') {
+        // Soma apenas despesas de cartão de crédito do período
+        utilizado = await Expense.sum('value', {
+          where: {
+            user_id: userId,
+            due_date: { [Op.between]: [budget.period_start, budget.period_end] },
+            credit_card_id: { [Op.ne]: null },
+          },
+        });
+      }
+      return {
+        ...budget.toJSON(),
+        utilizado: utilizado || 0
+      };
+    }));
 
-    // Transações recentes (últimas 5 de receitas e despesas)
-    const recentesReceitas = await Income.findAll({
-      where: { user_id: userId },
+    // Breakdown do período
+    const receitasPeriodo = await Income.sum('value', {
+      where: {
+        user_id: userId,
+        date: { [Op.between]: [firstDay, lastDay] },
+      },
+    }) || 0;
+    const despesasPeriodo = await Expense.sum('value', {
+      where: {
+        user_id: userId,
+        due_date: { [Op.between]: [firstDay, lastDay] },
+      },
+    }) || 0;
+    const cartaoPeriodo = await Expense.sum('value', {
+      where: {
+        user_id: userId,
+        due_date: { [Op.between]: [firstDay, lastDay] },
+        credit_card_id: { [Op.ne]: null },
+      },
+    }) || 0;
+    const breakdown = {
+      receitas: receitasPeriodo,
+      despesas: despesasPeriodo,
+      cartao: cartaoPeriodo,
+    };
+
+    // Transações recentes (10 últimas do período)
+    const receitasRecentes = await Income.findAll({
+      where: {
+        user_id: userId,
+        date: { [Op.between]: [firstDay, lastDay] },
+      },
       order: [['date', 'DESC']],
-      limit: 3,
+      limit: 10,
     });
-    const recentesDespesas = await Expense.findAll({
-      where: { user_id: userId },
+    const despesasRecentes = await Expense.findAll({
+      where: {
+        user_id: userId,
+        due_date: { [Op.between]: [firstDay, lastDay] },
+      },
       order: [['due_date', 'DESC']],
-      limit: 2,
+      limit: 10,
     });
-    const recentes = [
-      ...recentesReceitas.map(r => ({ tipo: 'receita', descricao: r.description, valor: r.value, data: r.date, conta: r.account_id })),
-      ...recentesDespesas.map(d => ({ tipo: 'despesa', descricao: d.description, valor: d.value, data: d.due_date, conta: d.account_id })),
-    ].sort((a, b) => new Date(b.data) - new Date(a.data)).slice(0, 5);
+    // Unir, normalizar e pegar as 10 mais recentes
+    // Buscar contas e cartões para mapear nomes
+    const contasMap = {};
+    const contas = await Account.findAll({ where: { user_id: userId } });
+    contas.forEach(c => { contasMap[c.id] = c.name; });
+    const cartoesMap = {};
+    const cartoes = await CreditCard.findAll({ where: { user_id: userId } });
+    cartoes.forEach(c => { cartoesMap[c.id] = c.name; });
+    const recentesRaw = [
+      ...receitasRecentes.map(r => ({
+        tipo: 'receita',
+        descricao: r.description || r.name || 'Receita',
+        valor: r.value,
+        data: r.date,
+        conta: r.account_id,
+        conta_nome: contasMap[r.account_id] || '',
+      })),
+      ...despesasRecentes.map(d => ({
+        tipo: d.credit_card_id ? 'cartao' : 'despesa',
+        descricao: d.description || d.name || 'Despesa',
+        valor: d.value,
+        data: d.due_date,
+        conta: d.account_id || d.credit_card_id,
+        conta_nome: d.credit_card_id ? (cartoesMap[d.credit_card_id] || '') : (contasMap[d.account_id] || ''),
+      })),
+    ];
+    const recentes = recentesRaw
+      .sort((a, b) => new Date(b.data) - new Date(a.data))
+      .slice(0, 10);
 
-    // Alertas: despesas vencendo nos próximos 7 dias e atrasadas
+    // Alertas automáticos
+    const alertas = [];
+    // 1. Saldo baixo
+    contas.forEach(c => {
+      if (parseFloat(c.balance) < 100) {
+        alertas.push({
+          id: `saldo_baixo_${c.id}`,
+          descricao: `Saldo baixo na conta ${c.name}: R$ ${Number(c.balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          cor: '#ef4444',
+        });
+      }
+    });
+    // 2. Orçamento estourado
+    budgetsWithSpent.forEach(b => {
+      if (parseFloat(b.utilizado) > parseFloat(b.planned_value)) {
+        alertas.push({
+          id: `orcamento_estourado_${b.id}`,
+          descricao: `Orçamento estourado: ${b.name} (Utilizado: R$ ${Number(b.utilizado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} / Planejado: R$ ${Number(b.planned_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`,
+          cor: '#ef4444',
+        });
+      }
+    });
+    // 3. Fatura alta
+    for (const card of creditCards) {
+      const totalFatura = await Expense.sum('value', {
+        where: {
+          user_id: userId,
+          due_date: { [Op.between]: [firstDay, lastDay] },
+          credit_card_id: card.id,
+        },
+      }) || 0;
+      if (parseFloat(totalFatura) > 0.8 * parseFloat(card.limit_value)) {
+        alertas.push({
+          id: `fatura_alta_${card.id}`,
+          descricao: `Fatura alta no cartão ${card.name}: R$ ${Number(totalFatura).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (Limite: R$ ${Number(card.limit_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`,
+          cor: '#f59e42',
+        });
+      }
+    }
+    // 4. Próximos vencimentos
     const hoje = new Date();
     const daqui7 = new Date();
     daqui7.setDate(hoje.getDate() + 7);
-    const vencendo = await Expense.findAll({
+    const proximosVencimentos = await Expense.findAll({
       where: {
         user_id: userId,
-        status: 'pendente',
         due_date: { [Op.between]: [hoje, daqui7] },
+        status: { [Op.in]: ['pendente', 'atrasada'] },
       },
+      order: [['due_date', 'ASC']],
+      limit: 10,
     });
-    const atrasadas = await Expense.findAll({
-      where: {
-        user_id: userId,
-        status: 'atrasada',
-      },
+    proximosVencimentos.forEach(e => {
+      alertas.push({
+        id: `vencimento_${e.id}`,
+        descricao: `Vencimento em breve: ${e.description} (R$ ${Number(e.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) em ${new Date(e.due_date).toLocaleDateString('pt-BR')}`,
+        cor: '#2563eb',
+      });
     });
-    const alertas = [
-      ...vencendo.map(e => ({ tipo: 'vencimento', descricao: `${e.description} vence em ${Math.ceil((new Date(e.due_date) - hoje) / (1000*60*60*24))} dias`, cor: 'orange' })),
-      ...atrasadas.map(e => ({ tipo: 'atraso', descricao: `${e.description} em atraso!`, cor: 'red' })),
-    ];
+
+    // Evolução diária do saldo
+    let saldoEvolucao = [];
+    let saldoAnterior = 0;
+    // Buscar todas as contas em reais
+    const contasReais = await Account.findAll({ where: { user_id: userId, status: 'ativa', currency: { [Op.or]: [null, 'BRL', 'R$', ''] } } });
+    // Buscar todas as receitas e despesas do período
+    const receitas = await Income.findAll({ where: { user_id: userId, date: { [Op.between]: [firstDay, lastDay] } } });
+    const despesas = await Expense.findAll({ where: { user_id: userId, due_date: { [Op.between]: [firstDay, lastDay] } } });
+    // Saldo inicial (antes do período)
+    const saldoInicial = contasReais.reduce((sum, acc) => sum + parseFloat(acc.balance), 0);
+    // Montar mapa de receitas/despesas por dia
+    const receitasPorDia = {};
+    receitas.forEach(r => {
+      let d = r.date;
+      if (d instanceof Date) d = d.toISOString().slice(0,10);
+      if (typeof d === 'string' && d.length > 10) d = d.slice(0,10);
+      receitasPorDia[d] = (receitasPorDia[d] || 0) + parseFloat(r.value);
+    });
+    const despesasPorDia = {};
+    despesas.forEach(d => {
+      let dt = d.due_date;
+      if (dt instanceof Date) dt = dt.toISOString().slice(0,10);
+      if (typeof dt === 'string' && dt.length > 10) dt = dt.slice(0,10);
+      despesasPorDia[dt] = (despesasPorDia[dt] || 0) + parseFloat(d.value);
+    });
+    // Calcular saldo dia a dia
+    let saldo = saldoInicial;
+    for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
+      const dataStr = d.toISOString().slice(0,10);
+      saldo += (receitasPorDia[dataStr] || 0) - (despesasPorDia[dataStr] || 0);
+      saldoEvolucao.push({ data: dataStr, saldo: saldo });
+    }
 
     res.json({
-      saldoTotal,
-      receitasMes: receitasMes || 0,
-      despesasMes: despesasMes || 0,
-      cartaoMes: cartaoMes || 0,
-      saldoMensal,
-      breakdown,
+      saldoTotalReais,
+      receitasPorConta,
+      despesasConta: despesasConta || 0,
+      despesasCartao: despesasCartao || 0,
+      despesasMesTotal,
+      faturaCartaoMes: faturaCartaoMes || 0,
       gastosPorCartao,
-      budgets,
+      budgets: budgetsWithSpent,
+      periodo: { start: firstDay, end: lastDay },
+      breakdown,
+      saldoEvolucao,
       recentes,
-      alertas,
-      periodo: { start: firstDay, end: lastDay }
+      alertas
     });
   } catch (err) {
+    console.error('Erro no dashboard:', err);
     res.status(500).json({ error: 'Erro ao buscar dados do dashboard', details: err.message });
   }
 }; 

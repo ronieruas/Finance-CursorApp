@@ -126,6 +126,7 @@ function Budgets({ token }) {
                 <th style={{ padding: 8 }}>Início</th>
                 <th style={{ padding: 8 }}>Fim</th>
                 <th style={{ padding: 8 }}>Valor Planejado</th>
+                <th style={{ padding: 8 }}>Utilizado</th>
                 <th style={{ padding: 8 }}>Ações</th>
               </tr>
             </thead>
@@ -144,6 +145,7 @@ function Budgets({ token }) {
                       <td><Input name="period_start" value={editForm.period_start} onChange={handleEditChange} /></td>
                       <td><Input name="period_end" value={editForm.period_end} onChange={handleEditChange} /></td>
                       <td><Input name="planned_value" value={editForm.planned_value} onChange={handleEditChange} /></td>
+                      <td style={{ color: 'var(--color-despesa)', fontWeight: 600 }}>R$ {Number(budget.utilizado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                       <td>
                         <Button variant="primary" onClick={handleEditSubmit} loading={loading}>Salvar</Button>
                         <Button variant="secondary" onClick={() => setEditingId(null)}>Cancelar</Button>
@@ -153,9 +155,10 @@ function Budgets({ token }) {
                     <>
                       <td>{budget.name}</td>
                       <td>{budget.type}</td>
-                      <td>{budget.period_start}</td>
-                      <td>{budget.period_end}</td>
+                      <td>{budget.period_start ? new Date(budget.period_start).toLocaleDateString('pt-BR') : ''}</td>
+                      <td>{budget.period_end ? new Date(budget.period_end).toLocaleDateString('pt-BR') : ''}</td>
                       <td style={{ color: 'var(--color-primary)', fontWeight: 600 }}>R$ {Number(budget.planned_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                      <td style={{ color: 'var(--color-despesa)', fontWeight: 600 }}>R$ {Number(budget.utilizado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                       <td>
                         <Button variant="secondary" onClick={() => handleEdit(budget)}>Editar</Button>
                         <Button variant="danger" onClick={() => handleDelete(budget.id)}>Excluir</Button>

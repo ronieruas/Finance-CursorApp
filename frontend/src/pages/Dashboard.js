@@ -9,32 +9,25 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 function Dashboard({ token }) {
   // Mock de dados para exibição inicial
   const [kpis, setKpis] = useState({
-    saldoTotal: 12500.50,
-    receitasMes: 4200.00,
-    despesasMes: 3100.00,
-    cartaoMes: 800.00,
-    saldoMensal: 300.00,
+    saldoTotalReais: 0,
+    despesasConta: 0,
+    despesasCartao: 0,
+    despesasMesTotal: 0,
+    faturaCartaoMes: 0,
   });
+  const [receitasPorConta, setReceitasPorConta] = useState([]);
   const [breakdown, setBreakdown] = useState({
-    receitas: 4200.00,
-    despesas: 3100.00,
-    cartao: 800.00,
+    receitas: 0,
+    despesas: 0,
+    cartao: 0,
   });
-  const [recentes, setRecentes] = useState([
-    { id: 1, tipo: 'receita', descricao: 'Salário', valor: 3000, data: '2024-06-01', conta: 'Corrente' },
-    { id: 2, tipo: 'despesa', descricao: 'Aluguel', valor: 1200, data: '2024-06-02', conta: 'Corrente' },
-    { id: 3, tipo: 'cartao', descricao: 'Supermercado', valor: 400, data: '2024-06-03', conta: 'Cartão Visa' },
-    { id: 4, tipo: 'receita', descricao: 'Freelance', valor: 1200, data: '2024-06-04', conta: 'Poupança' },
-    { id: 5, tipo: 'despesa', descricao: 'Internet', valor: 100, data: '2024-06-05', conta: 'Corrente' },
-  ]);
-  const [alertas, setAlertas] = useState([
-    { id: 1, tipo: 'vencimento', descricao: 'Conta de luz vence em 2 dias', cor: 'orange' },
-    { id: 2, tipo: 'atraso', descricao: 'Cartão Visa em atraso!', cor: 'red' },
-  ]);
+  const [recentes, setRecentes] = useState([]);
+  const [alertas, setAlertas] = useState([]);
   const [gastosPorCartao, setGastosPorCartao] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [period, setPeriod] = useState({ start: '', end: '' });
   const [periodInput, setPeriodInput] = useState({ start: '', end: '' });
+  const [saldoEvolucao, setSaldoEvolucao] = useState([]);
 
   // Estrutura pronta para integração futura com backend
   useEffect(() => {
@@ -51,21 +44,27 @@ function Dashboard({ token }) {
       });
       const data = await res.json();
       setKpis({
-        saldoTotal: data.saldoTotal,
-        receitasMes: data.receitasMes,
-        despesasMes: data.despesasMes,
-        cartaoMes: data.cartaoMes,
-        saldoMensal: data.saldoMensal,
+        saldoTotalReais: data.saldoTotalReais,
+        despesasConta: data.despesasConta,
+        despesasCartao: data.despesasCartao,
+        despesasMesTotal: data.despesasMesTotal,
+        faturaCartaoMes: data.faturaCartaoMes,
       });
-      setBreakdown(data.breakdown);
-      setRecentes(data.recentes);
-      setAlertas(data.alertas);
+      setReceitasPorConta(data.receitasPorConta || []);
       setGastosPorCartao(data.gastosPorCartao || []);
       setBudgets(data.budgets || []);
       setPeriod(data.periodo || {});
-      setPeriodInput({ start: data.periodo?.start?.slice(0,10) || '', end: data.periodo?.end?.slice(0,10) || '' });
+      setPeriodInput({
+        start: data.periodo?.start ? new Date(data.periodo.start).toISOString().slice(0,10) : '',
+        end: data.periodo?.end ? new Date(data.periodo.end).toISOString().slice(0,10) : ''
+      });
+      setBreakdown(data.breakdown || { receitas: 0, despesas: 0, cartao: 0 });
+      setRecentes(data.recentes || []);
+      setAlertas(data.alertas || []);
+      setSaldoEvolucao(data.saldoEvolucao || []);
     } catch (err) {
-      // fallback para mock se erro
+      // Exibir erro, não usar mock
+      alert('Erro ao carregar dashboard. Verifique sua conexão ou tente novamente.');
     }
   };
 
@@ -85,15 +84,6 @@ function Dashboard({ token }) {
     { name: 'Despesas', value: breakdown?.despesas || 0, color: '#ef4444' },
     { name: 'Cartão', value: breakdown?.cartao || 0, color: '#8b5cf6' },
   ];
-  // Mock para evolução do saldo mensal (substituir por dados reais se disponível)
-  const saldoEvolucao = [
-    { mes: 'Jan', saldo: 2000 },
-    { mes: 'Fev', saldo: 2500 },
-    { mes: 'Mar', saldo: 3000 },
-    { mes: 'Abr', saldo: 3500 },
-    { mes: 'Mai', saldo: 4000 },
-    { mes: 'Jun', saldo: kpis.saldoTotal },
-  ];
 
   return (
     <div style={{ marginLeft: 240, padding: 32 }}>
@@ -107,11 +97,11 @@ function Dashboard({ token }) {
         <span style={{ color: '#888', fontSize: 13, marginLeft: 8 }}>(padrão: mês atual)</span>
       </form>
       <div className="dashboard-flex" style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>
-        <KpiCard label="Saldo Total" value={kpis.saldoTotal} prefix="R$" color="var(--color-primary)" glass fadeIn />
-        <KpiCard label="Receitas do Mês" value={kpis.receitasMes} prefix="R$" color="var(--color-receita)" glass fadeIn />
-        <KpiCard label="Despesas do Mês" value={kpis.despesasMes} prefix="R$" color="var(--color-despesa)" glass fadeIn />
-        <KpiCard label="Cartão de Crédito" value={kpis.cartaoMes} prefix="R$" color="var(--color-cartao)" glass fadeIn />
-        <KpiCard label="Saldo Mensal" value={kpis.saldoMensal} prefix="R$" color={kpis.saldoMensal >= 0 ? 'var(--color-success)' : 'var(--color-danger)'} glass fadeIn />
+        <KpiCard label="Saldo Total (R$)" value={kpis?.saldoTotalReais || 0} prefix="R$" color="var(--color-primary)" glass fadeIn />
+        <KpiCard label="Despesas Conta" value={kpis?.despesasConta || 0} prefix="R$" color="var(--color-despesa)" glass fadeIn />
+        <KpiCard label="Despesas Cartão" value={kpis?.despesasCartao || 0} prefix="R$" color="var(--color-cartao)" glass fadeIn />
+        <KpiCard label="Total Despesas (Mês)" value={kpis?.despesasMesTotal || 0} prefix="R$" color="var(--color-danger)" glass fadeIn />
+        <KpiCard label="Fatura Cartão (Mês)" value={kpis?.faturaCartaoMes || 0} prefix="R$" color="var(--color-cartao)" glass fadeIn />
       </div>
       <div className="dashboard-flex" style={{ display: 'flex', gap: 32, marginBottom: 32 }}>
         <motion.div className="glass-card fade-in" style={{ flex: 1, padding: 24 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
@@ -125,9 +115,9 @@ function Dashboard({ token }) {
               </PieChart>
             </ResponsiveContainer>
             <div>
-              <div style={{ fontSize: 14, marginBottom: 4 }}><span style={{ color: '#22c55e' }}>●</span> Receitas: R$ {breakdown.receitas.toFixed(2)}</div>
-              <div style={{ fontSize: 14, marginBottom: 4 }}><span style={{ color: '#ef4444' }}>●</span> Despesas: R$ {breakdown.despesas.toFixed(2)}</div>
-              <div style={{ fontSize: 14 }}><span style={{ color: '#8b5cf6' }}>●</span> Cartão: R$ {breakdown.cartao.toFixed(2)}</div>
+              <div style={{ fontSize: 14, marginBottom: 4 }}><span style={{ color: '#22c55e' }}>●</span> Receitas: R$ {(breakdown?.receitas || 0).toFixed(2)}</div>
+              <div style={{ fontSize: 14, marginBottom: 4 }}><span style={{ color: '#ef4444' }}>●</span> Despesas: R$ {(breakdown?.despesas || 0).toFixed(2)}</div>
+              <div style={{ fontSize: 14 }}><span style={{ color: '#8b5cf6' }}>●</span> Cartão: R$ {(breakdown?.cartao || 0).toFixed(2)}</div>
             </div>
           </div>
         </motion.div>
@@ -136,18 +126,20 @@ function Dashboard({ token }) {
           <ResponsiveContainer width="100%" height={120}>
             <LineChart data={saldoEvolucao} margin={{ left: -20, right: 10, top: 10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="mes" stroke="#888" fontSize={12} />
+              <XAxis dataKey="data" stroke="#888" fontSize={12} />
               <YAxis stroke="#888" fontSize={12} />
               <Tooltip formatter={v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
-              <Line type="monotone" dataKey="saldo" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="saldo" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} label={({ x, y, value }) => (
+                <text x={x} y={y - 8} textAnchor="middle" fontSize={10} fill="#2563eb">{Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</text>
+              )} />
             </LineChart>
           </ResponsiveContainer>
         </motion.div>
         <motion.div className="glass-card fade-in" style={{ flex: 1, padding: 24 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <h3 style={{ marginBottom: 16 }}>Alertas</h3>
           <ul style={{ padding: 0, listStyle: 'none' }}>
-            {alertas.length === 0 && <li style={{ color: '#888' }}>Nenhum alerta no momento.</li>}
-            {alertas.map(a => (
+            {alertas?.length === 0 && <li style={{ color: '#888' }}>Nenhum alerta no momento.</li>}
+            {alertas?.map?.(a => (
               <li key={a.id} style={{ color: a.cor, marginBottom: 8, fontWeight: 500 }}>{a.descricao}</li>
             ))}
           </ul>
@@ -163,8 +155,8 @@ function Dashboard({ token }) {
               </tr>
             </thead>
             <tbody>
-              {gastosPorCartao.length === 0 && <tr><td colSpan={3} style={{ color: '#888' }}>Nenhum gasto no período.</td></tr>}
-              {gastosPorCartao.map(c => (
+              {gastosPorCartao?.length === 0 && <tr><td colSpan={3} style={{ color: '#888' }}>Nenhum gasto no período.</td></tr>}
+              {gastosPorCartao?.map?.(c => (
                 <tr key={c.card_id}>
                   <td>{c.card_name}</td>
                   <td>{c.card_bank}</td>
@@ -183,16 +175,18 @@ function Dashboard({ token }) {
                 <th style={{ padding: 8 }}>Tipo</th>
                 <th style={{ padding: 8 }}>Período</th>
                 <th style={{ padding: 8 }}>Planejado</th>
+                <th style={{ padding: 8 }}>Utilizado</th>
               </tr>
             </thead>
             <tbody>
-              {budgets.length === 0 && <tr><td colSpan={4} style={{ color: '#888' }}>Nenhum orçamento para o período.</td></tr>}
-              {budgets.map(b => (
+              {budgets?.length === 0 && <tr><td colSpan={5} style={{ color: '#888' }}>Nenhum orçamento para o período.</td></tr>}
+              {budgets?.map?.(b => (
                 <tr key={b.id}>
                   <td>{b.name}</td>
                   <td>{b.type === 'geral' ? 'Geral' : 'Cartão'}</td>
-                  <td>{b.period_start} a {b.period_end}</td>
+                  <td>{b.period_start ? new Date(b.period_start).toLocaleDateString('pt-BR') : ''} a {b.period_end ? new Date(b.period_end).toLocaleDateString('pt-BR') : ''}</td>
                   <td style={{ color: 'var(--color-primary)', fontWeight: 600 }}>R$ {Number(b.planned_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td style={{ color: 'var(--color-despesa)', fontWeight: 600 }}>R$ {Number(b.utilizado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                 </tr>
               ))}
             </tbody>
@@ -212,14 +206,14 @@ function Dashboard({ token }) {
             </tr>
           </thead>
           <tbody>
-            {recentes.map((t, i) => (
+            {recentes?.map?.((t, i) => (
               <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
                 <td style={{ padding: 8 }}>{t.data}</td>
                 <td style={{ padding: 8 }}>{t.descricao}</td>
                 <td style={{ padding: 8, color: t.tipo === 'receita' ? 'var(--color-receita)' : t.tipo === 'despesa' ? 'var(--color-despesa)' : 'var(--color-cartao)', fontWeight: 600 }}>
                   {t.tipo === 'despesa' ? '-' : ''}R$ {Number(t.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </td>
-                <td style={{ padding: 8 }}>{t.conta}</td>
+                <td style={{ padding: 8 }}>{t.conta_nome}</td>
                 <td style={{ padding: 8 }}>
                   {t.tipo === 'receita' && <span style={{ color: 'var(--color-receita)', fontWeight: 500 }}>Receita</span>}
                   {t.tipo === 'despesa' && <span style={{ color: 'var(--color-despesa)', fontWeight: 500 }}>Despesa</span>}
