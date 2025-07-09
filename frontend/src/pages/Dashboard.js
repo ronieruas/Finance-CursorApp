@@ -86,7 +86,7 @@ function Dashboard({ token }) {
   ];
 
   return (
-    <div style={{ marginLeft: 240, padding: 32 }}>
+    <div style={{ marginLeft: 180, padding: 32 }}>
       <h2 style={{ marginBottom: 24, fontWeight: 700, letterSpacing: '-0.01em' }}>Dashboard</h2>
       <form onSubmit={handlePeriodSubmit} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 24 }}>
         <label>Período:</label>
@@ -96,62 +96,62 @@ function Dashboard({ token }) {
         <button type="submit" style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 500 }}>Filtrar</button>
         <span style={{ color: '#888', fontSize: 13, marginLeft: 8 }}>(padrão: mês atual)</span>
       </form>
-      <div className="dashboard-flex" style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>
-        <KpiCard label="Saldo Total (R$)" value={kpis?.saldoTotalReais || 0} prefix="R$" color="var(--color-primary)" glass fadeIn />
-        <KpiCard label="Despesas Conta" value={kpis?.despesasConta || 0} prefix="R$" color="var(--color-despesa)" glass fadeIn />
-        <KpiCard label="Despesas Cartão" value={kpis?.despesasCartao || 0} prefix="R$" color="var(--color-cartao)" glass fadeIn />
-        <KpiCard label="Total Despesas (Mês)" value={kpis?.despesasMesTotal || 0} prefix="R$" color="var(--color-danger)" glass fadeIn />
-        <KpiCard label="Fatura Cartão (Mês)" value={kpis?.faturaCartaoMes || 0} prefix="R$" color="var(--color-cartao)" glass fadeIn />
-      </div>
-      <div className="dashboard-flex" style={{ display: 'flex', gap: 32, marginBottom: 32 }}>
-        <motion.div className="glass-card fade-in" style={{ flex: 1, padding: 24 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <h3 style={{ marginBottom: 16 }}>Resumo Mensal</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <ResponsiveContainer width={120} height={120}>
+      {/* Primeira linha: Resumo Mensal e Evolução do Saldo */}
+      <div style={{ display: 'flex', gap: 24, marginBottom: 24, flexWrap: 'wrap' }}>
+        <motion.div className="glass-card fade-in" style={{ flex: 1, minWidth: 320, maxWidth: '50%', padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          {/* Resumo Mensal */}
+          <h3 style={{ marginBottom: 16, alignSelf: 'flex-start' }}>Resumo Mensal</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 32, justifyContent: 'center', width: '100%' }}>
+            <ResponsiveContainer width={180} height={180}>
               <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={50} label>
+                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75}>
                   {pieData.map((entry, idx) => <Cell key={entry.name} fill={entry.color} />)}
                 </Pie>
+                <Tooltip formatter={(v, name, props) => `${props.payload.name}: R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
               </PieChart>
             </ResponsiveContainer>
             <div>
-              <div style={{ fontSize: 14, marginBottom: 4 }}><span style={{ color: '#22c55e' }}>●</span> Receitas: R$ {(breakdown?.receitas || 0).toFixed(2)}</div>
-              <div style={{ fontSize: 14, marginBottom: 4 }}><span style={{ color: '#ef4444' }}>●</span> Despesas: R$ {(breakdown?.despesas || 0).toFixed(2)}</div>
-              <div style={{ fontSize: 14 }}><span style={{ color: '#8b5cf6' }}>●</span> Cartão: R$ {(breakdown?.cartao || 0).toFixed(2)}</div>
+              <div style={{ fontSize: 15, marginBottom: 4 }}><span style={{ color: '#22c55e' }}>●</span> Receitas: R$ {(breakdown?.receitas || 0).toFixed(2)}</div>
+              <div style={{ fontSize: 15, marginBottom: 4 }}><span style={{ color: '#ef4444' }}>●</span> Despesas: R$ {(breakdown?.despesas || 0).toFixed(2)}</div>
+              <div style={{ fontSize: 15 }}><span style={{ color: '#8b5cf6' }}>●</span> Cartão: R$ {(breakdown?.cartao || 0).toFixed(2)}</div>
             </div>
           </div>
         </motion.div>
-        <motion.div className="glass-card fade-in" style={{ flex: 1, padding: 24 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <h3 style={{ marginBottom: 16 }}>Evolução do Saldo</h3>
-          <ResponsiveContainer width="100%" height={120}>
+        <motion.div className="glass-card fade-in" style={{ flex: 1, minWidth: 320, maxWidth: '50%', padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          {/* Evolução do Saldo */}
+          <h3 style={{ marginBottom: 16, alignSelf: 'flex-start' }}>Evolução do Saldo</h3>
+          <ResponsiveContainer width="100%" height={180}>
             <LineChart data={saldoEvolucao} margin={{ left: -20, right: 10, top: 10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis dataKey="data" stroke="#888" fontSize={12} />
               <YAxis stroke="#888" fontSize={12} />
               <Tooltip formatter={v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
-              <Line type="monotone" dataKey="saldo" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} label={({ x, y, value }) => (
-                <text x={x} y={y - 8} textAnchor="middle" fontSize={10} fill="#2563eb">{Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</text>
-              )} />
+              <Line type="monotone" dataKey="saldo" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         </motion.div>
-        <motion.div className="glass-card fade-in" style={{ flex: 1, padding: 24 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+      </div>
+      {/* Segunda linha: Alertas e Gastos por Cartão */}
+      <div style={{ display: 'flex', gap: 24, marginBottom: 24, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
+        <motion.div className="glass-card fade-in" style={{ flex: 1, minWidth: 320, maxWidth: '50%', padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          {/* Alertas */}
           <h3 style={{ marginBottom: 16 }}>Alertas</h3>
-          <ul style={{ padding: 0, listStyle: 'none' }}>
+          <ul style={{ padding: 0, listStyle: 'none', maxHeight: 120, overflowY: 'auto' }}>
             {alertas?.length === 0 && <li style={{ color: '#888' }}>Nenhum alerta no momento.</li>}
-            {alertas?.map?.(a => (
+            {alertas?.slice(0, 4).map?.(a => (
               <li key={a.id} style={{ color: a.cor, marginBottom: 8, fontWeight: 500 }}>{a.descricao}</li>
             ))}
           </ul>
         </motion.div>
-        <motion.div className="glass-card fade-in" style={{ flex: 1, padding: 24 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+        <motion.div className="glass-card fade-in" style={{ flex: 1, minWidth: 320, maxWidth: '50%', padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+          {/* Gastos por Cartão */}
           <h3 style={{ marginBottom: 16 }}>Gastos por Cartão</h3>
           <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
             <thead>
               <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
-                <th style={{ padding: 8 }}>Cartão</th>
-                <th style={{ padding: 8 }}>Banco</th>
-                <th style={{ padding: 8 }}>Total</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Cartão</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Banco</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Total</th>
               </tr>
             </thead>
             <tbody>
@@ -166,16 +166,20 @@ function Dashboard({ token }) {
             </tbody>
           </table>
         </motion.div>
-        <motion.div className="glass-card fade-in" style={{ flex: 1, padding: 24 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+      </div>
+      {/* Terceira linha: Quadro de Orçamento ocupando 100% */}
+      <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <motion.div className="glass-card fade-in" style={{ width: '100%', minWidth: 320, maxWidth: 900, padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+          {/* Quadro de Orçamento */}
           <h3 style={{ marginBottom: 16 }}>Quadro de Orçamento</h3>
           <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
             <thead>
               <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
-                <th style={{ padding: 8 }}>Nome</th>
-                <th style={{ padding: 8 }}>Tipo</th>
-                <th style={{ padding: 8 }}>Período</th>
-                <th style={{ padding: 8 }}>Planejado</th>
-                <th style={{ padding: 8 }}>Utilizado</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Nome</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Tipo</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Período</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Planejado</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Utilizado</th>
               </tr>
             </thead>
             <tbody>
@@ -193,28 +197,29 @@ function Dashboard({ token }) {
           </table>
         </motion.div>
       </div>
-      <motion.div className="glass-card fade-in" style={{ padding: 24 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+      {/* Transações Recentes permanece abaixo */}
+      <motion.div className="glass-card fade-in" style={{ padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', marginBottom: 32 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
         <h3 style={{ marginBottom: 16 }}>Transações Recentes</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
           <thead>
             <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
-              <th style={{ padding: 8, borderRadius: 6 }}>Data</th>
-              <th style={{ padding: 8, borderRadius: 6 }}>Descrição</th>
-              <th style={{ padding: 8, borderRadius: 6 }}>Valor</th>
-              <th style={{ padding: 8, borderRadius: 6 }}>Conta</th>
-              <th style={{ padding: 8, borderRadius: 6 }}>Tipo</th>
+              <th style={{ padding: 8, textAlign: 'left' }}>Data</th>
+              <th style={{ padding: 8, textAlign: 'left' }}>Descrição</th>
+              <th style={{ padding: 8, textAlign: 'left' }}>Valor</th>
+              <th style={{ padding: 8, textAlign: 'left' }}>Conta</th>
+              <th style={{ padding: 8, textAlign: 'left' }}>Tipo</th>
             </tr>
           </thead>
           <tbody>
             {recentes?.map?.((t, i) => (
               <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <td style={{ padding: 8 }}>{t.data}</td>
-                <td style={{ padding: 8 }}>{t.descricao}</td>
-                <td style={{ padding: 8, color: t.tipo === 'receita' ? 'var(--color-receita)' : t.tipo === 'despesa' ? 'var(--color-despesa)' : 'var(--color-cartao)', fontWeight: 600 }}>
+                <td style={{ padding: 8, textAlign: 'left' }}>{t.data}</td>
+                <td style={{ padding: 8, textAlign: 'left' }}>{t.descricao}</td>
+                <td style={{ padding: 8, textAlign: 'left', color: t.tipo === 'receita' ? 'var(--color-receita)' : t.tipo === 'despesa' ? 'var(--color-despesa)' : 'var(--color-cartao)', fontWeight: 600 }}>
                   {t.tipo === 'despesa' ? '-' : ''}R$ {Number(t.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </td>
-                <td style={{ padding: 8 }}>{t.conta_nome}</td>
-                <td style={{ padding: 8 }}>
+                <td style={{ padding: 8, textAlign: 'left' }}>{t.conta_nome}</td>
+                <td style={{ padding: 8, textAlign: 'left' }}>
                   {t.tipo === 'receita' && <span style={{ color: 'var(--color-receita)', fontWeight: 500 }}>Receita</span>}
                   {t.tipo === 'despesa' && <span style={{ color: 'var(--color-despesa)', fontWeight: 500 }}>Despesa</span>}
                   {t.tipo === 'cartao' && <span style={{ color: 'var(--color-cartao)', fontWeight: 500 }}>Cartão</span>}

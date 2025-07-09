@@ -28,13 +28,13 @@ const Sidebar = ({ setToken, user }) => {
         ☰
       </button>
       {open && (
-        <aside style={{ width: window.innerWidth > 700 ? 220 : '100vw', background: '#f5f7fa', height: window.innerWidth > 700 ? '100vh' : 'auto', padding: 24, boxSizing: 'border-box', position: window.innerWidth > 700 ? 'fixed' : 'static', left: 0, top: 0, zIndex: 1000, borderRadius: window.innerWidth > 700 ? 18 : 0, boxShadow: window.innerWidth > 700 ? '0 2px 16px #0001' : 'none' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
-            <h2 style={{ marginBottom: 0 }}>Financeiro</h2>
+        <aside style={{ width: window.innerWidth > 700 ? 160 : '100vw', background: '#f5f7fa', height: window.innerWidth > 700 ? '100vh' : 'auto', padding: 16, boxSizing: 'border-box', position: window.innerWidth > 700 ? 'fixed' : 'static', left: 0, top: 0, zIndex: 1000, borderRadius: window.innerWidth > 700 ? 18 : 0, boxShadow: window.innerWidth > 700 ? '0 2px 16px #0001' : 'none' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+            <h2 style={{ marginBottom: 0, fontSize: 18 }}>Financeiro</h2>
             <ThemeToggle />
           </div>
           <nav role="navigation" aria-label="Menu principal">
-            <ul style={{ listStyle: 'none', padding: 0 }}>
+            <ul style={{ listStyle: 'none', padding: 0, fontSize: 15 }}>
               <li><Link to="/">Dashboard</Link></li>
               <li><Link to="/accounts">Contas</Link></li>
               <li><Link to="/incomes">Receitas</Link></li>

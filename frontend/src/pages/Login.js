@@ -8,6 +8,7 @@ function Login({ setToken }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -42,7 +43,26 @@ function Login({ setToken }) {
       <h2>Login</h2>
       <form onSubmit={handleSubmit}>
         <input name="email" type="email" placeholder="E-mail" value={form.email} onChange={handleChange} required style={{ width: '100%', marginBottom: 12 }} />
-        <input name="password" type="password" placeholder="Senha" value={form.password} onChange={handleChange} required style={{ width: '100%', marginBottom: 12 }} />
+        <div style={{ position: 'relative', width: '100%', marginBottom: 12 }}>
+          <input
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Senha"
+            value={form.password}
+            onChange={handleChange}
+            required
+            style={{ width: '100%', paddingRight: 36 }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(s => !s)}
+            style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18 }}
+            aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+            tabIndex={-1}
+          >
+            {showPassword ? '🙈' : '👁️'}
+          </button>
+        </div>
         <button type="submit" style={{ width: '100%' }} disabled={loading}>{loading ? 'Entrando...' : 'Entrar'}</button>
       </form>
       {error && <p style={{ color: 'red', marginTop: 12 }}>{error}</p>}

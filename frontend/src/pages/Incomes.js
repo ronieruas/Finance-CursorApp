@@ -142,13 +142,13 @@ function Incomes({ token }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
             <thead>
               <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
-                <th style={{ padding: 8 }}>Conta</th>
-                <th style={{ padding: 8 }}>Descrição</th>
-                <th style={{ padding: 8 }}>Valor</th>
-                <th style={{ padding: 8 }}>Data</th>
-                <th style={{ padding: 8 }}>Categoria</th>
-                <th style={{ padding: 8 }}>Recorrente</th>
-                <th style={{ padding: 8 }}>Ações</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Conta</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Descrição</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Valor</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Data</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Categoria</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Recorrente</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -156,7 +156,7 @@ function Incomes({ token }) {
                 <tr key={inc.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                   {editingId === inc.id ? (
                     <>
-                      <td>
+                      <td style={{ textAlign: 'left' }}>
                         <select name="account_id" value={editForm.account_id} onChange={handleEditChange} required>
                           <option value="">Selecione</option>
                           {accounts.map(acc => (
@@ -164,25 +164,25 @@ function Incomes({ token }) {
                           ))}
                         </select>
                       </td>
-                      <td><Input name="description" value={editForm.description} onChange={handleEditChange} /></td>
-                      <td><Input name="value" value={editForm.value} onChange={handleEditChange} /></td>
-                      <td><Input name="date" value={editForm.date} onChange={handleEditChange} /></td>
-                      <td><Input name="category" value={editForm.category} onChange={handleEditChange} /></td>
-                      <td><input name="is_recurring" type="checkbox" checked={!!editForm.is_recurring} onChange={e => setEditForm({ ...editForm, is_recurring: e.target.checked })} /></td>
-                      <td>
+                      <td style={{ textAlign: 'left' }}><Input name="description" value={editForm.description} onChange={handleEditChange} /></td>
+                      <td style={{ textAlign: 'left' }}><Input name="value" value={editForm.value} onChange={handleEditChange} /></td>
+                      <td style={{ textAlign: 'left' }}><Input name="date" value={editForm.date} onChange={handleEditChange} /></td>
+                      <td style={{ textAlign: 'left' }}><Input name="category" value={editForm.category} onChange={handleEditChange} /></td>
+                      <td style={{ textAlign: 'left' }}><input name="is_recurring" type="checkbox" checked={!!editForm.is_recurring} onChange={e => setEditForm({ ...editForm, is_recurring: e.target.checked })} /></td>
+                      <td style={{ textAlign: 'left' }}>
                         <Button variant="primary" onClick={handleEditSubmit} loading={loading}>Salvar</Button>
                         <Button variant="secondary" onClick={() => setEditingId(null)}>Cancelar</Button>
                       </td>
                     </>
                   ) : (
                     <>
-                      <td>{accounts.find(a => a.id === inc.account_id)?.name || inc.account_id}</td>
-                      <td>{inc.description}</td>
-                      <td style={{ color: 'var(--color-receita)', fontWeight: 600 }}>R$ {Number(inc.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                      <td>{inc.date}</td>
-                      <td>{inc.category}</td>
-                      <td>{inc.is_recurring ? 'Sim' : 'Não'}</td>
-                      <td>
+                      <td style={{ textAlign: 'left' }}>{accounts.find(a => a.id === inc.account_id)?.name || inc.account_id}</td>
+                      <td style={{ textAlign: 'left' }}>{inc.description}</td>
+                      <td style={{ textAlign: 'left', color: 'var(--color-receita)', fontWeight: 600 }}>R$ {Number(inc.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                      <td style={{ textAlign: 'left' }}>{inc.date}</td>
+                      <td style={{ textAlign: 'left' }}>{inc.category}</td>
+                      <td style={{ textAlign: 'left' }}>{inc.is_recurring ? 'Sim' : 'Não'}</td>
+                      <td style={{ textAlign: 'left' }}>
                         <Button variant="secondary" onClick={() => handleEdit(inc)}>Editar</Button>
                         <Button variant="danger" onClick={() => handleDelete(inc.id)}>Excluir</Button>
                       </td>

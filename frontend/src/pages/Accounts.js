@@ -144,13 +144,13 @@ function Accounts({ token }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
             <thead>
               <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
-                <th style={{ padding: 8 }}>Nome</th>
-                <th style={{ padding: 8 }}>Banco</th>
-                <th style={{ padding: 8 }}>Tipo</th>
-                <th style={{ padding: 8 }}>Saldo</th>
-                <th style={{ padding: 8 }}>Moeda</th>
-                <th style={{ padding: 8 }}>Status</th>
-                <th style={{ padding: 8 }}>Ações</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Nome</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Banco</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Tipo</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Saldo</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Moeda</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Status</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -158,44 +158,44 @@ function Accounts({ token }) {
                 <tr key={acc.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                   {editingId === acc.id ? (
                     <>
-                      <td><Input name="name" value={editForm.name} onChange={handleEditChange} /></td>
-                      <td><Input name="bank" value={editForm.bank} onChange={handleEditChange} /></td>
-                      <td>
+                      <td style={{ textAlign: 'left' }}><Input name="name" value={editForm.name} onChange={handleEditChange} /></td>
+                      <td style={{ textAlign: 'left' }}><Input name="bank" value={editForm.bank} onChange={handleEditChange} /></td>
+                      <td style={{ textAlign: 'left' }}>
                         <select name="type" value={editForm.type} onChange={handleEditChange} className="input-glass">
                           <option value="corrente">Corrente</option>
                           <option value="poupanca">Poupança</option>
                           <option value="investimento">Investimento</option>
                         </select>
                       </td>
-                      <td><Input name="balance" value={editForm.balance} onChange={handleEditChange} /></td>
-                      <td>
+                      <td style={{ textAlign: 'left' }}><Input name="balance" value={editForm.balance} onChange={handleEditChange} /></td>
+                      <td style={{ textAlign: 'left' }}>
                         <select name="currency" value={editForm.currency} onChange={handleEditChange} className="input-glass">
                           {currencyOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                         </select>
                       </td>
-                      <td>
+                      <td style={{ textAlign: 'left' }}>
                         <select name="status" value={editForm.status} onChange={handleEditChange} className="input-glass">
                           <option value="ativa">Ativa</option>
                           <option value="inativa">Inativa</option>
                         </select>
                       </td>
-                      <td>
+                      <td style={{ textAlign: 'left' }}>
                         <Button variant="primary" onClick={handleEditSubmit} loading={loading}>Salvar</Button>
                         <Button variant="secondary" onClick={() => setEditingId(null)}>Cancelar</Button>
                       </td>
                     </>
                   ) : (
                     <>
-                      <td>{acc.name}</td>
-                      <td>{acc.bank}</td>
-                      <td>{acc.type}</td>
-                      <td style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+                      <td style={{ textAlign: 'left' }}>{acc.name}</td>
+                      <td style={{ textAlign: 'left' }}>{acc.bank}</td>
+                      <td style={{ textAlign: 'left' }}>{acc.type}</td>
+                      <td style={{ textAlign: 'left', color: 'var(--color-primary)', fontWeight: 600 }}>
                         {acc.currency === 'BRL' ? 'R$' : acc.currency === 'USD' ? 'US$' : acc.currency === 'EUR' ? '€' : acc.currency + ' '}
                         {Number(acc.balance).toLocaleString(acc.currency === 'BRL' ? 'pt-BR' : acc.currency === 'USD' ? 'en-US' : acc.currency === 'EUR' ? 'de-DE' : undefined, { minimumFractionDigits: 2 })}
                       </td>
-                      <td>{acc.currency}</td>
-                      <td>{acc.status}</td>
-                      <td>
+                      <td style={{ textAlign: 'left' }}>{acc.currency}</td>
+                      <td style={{ textAlign: 'left' }}>{acc.status}</td>
+                      <td style={{ textAlign: 'left' }}>
                         <Button variant="secondary" onClick={() => handleEdit(acc)}>Editar</Button>
                         <Button variant="danger" onClick={() => handleDelete(acc.id)}>Excluir</Button>
                       </td>

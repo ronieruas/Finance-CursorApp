@@ -121,13 +121,13 @@ function Budgets({ token }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
             <thead>
               <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
-                <th style={{ padding: 8 }}>Nome</th>
-                <th style={{ padding: 8 }}>Tipo</th>
-                <th style={{ padding: 8 }}>Início</th>
-                <th style={{ padding: 8 }}>Fim</th>
-                <th style={{ padding: 8 }}>Valor Planejado</th>
-                <th style={{ padding: 8 }}>Utilizado</th>
-                <th style={{ padding: 8 }}>Ações</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Nome</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Tipo</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Início</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Fim</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Valor Planejado</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Utilizado</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -153,13 +153,13 @@ function Budgets({ token }) {
                     </>
                   ) : (
                     <>
-                      <td>{budget.name}</td>
-                      <td>{budget.type}</td>
-                      <td>{budget.period_start ? new Date(budget.period_start).toLocaleDateString('pt-BR') : ''}</td>
-                      <td>{budget.period_end ? new Date(budget.period_end).toLocaleDateString('pt-BR') : ''}</td>
-                      <td style={{ color: 'var(--color-primary)', fontWeight: 600 }}>R$ {Number(budget.planned_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                      <td style={{ color: 'var(--color-despesa)', fontWeight: 600 }}>R$ {Number(budget.utilizado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                      <td>
+                      <td style={{ textAlign: 'left' }}>{budget.name}</td>
+                      <td style={{ textAlign: 'left' }}>{budget.type}</td>
+                      <td style={{ textAlign: 'left' }}>{budget.period_start ? new Date(budget.period_start).toLocaleDateString('pt-BR') : ''}</td>
+                      <td style={{ textAlign: 'left' }}>{budget.period_end ? new Date(budget.period_end).toLocaleDateString('pt-BR') : ''}</td>
+                      <td style={{ textAlign: 'left', color: 'var(--color-primary)', fontWeight: 600 }}>R$ {Number(budget.planned_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                      <td style={{ textAlign: 'left', color: 'var(--color-despesa)', fontWeight: 600 }}>R$ {Number(budget.utilizado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                      <td style={{ textAlign: 'left' }}>
                         <Button variant="secondary" onClick={() => handleEdit(budget)}>Editar</Button>
                         <Button variant="danger" onClick={() => handleDelete(budget.id)}>Excluir</Button>
                       </td>
