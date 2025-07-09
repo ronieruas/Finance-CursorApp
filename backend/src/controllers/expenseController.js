@@ -101,7 +101,7 @@ exports.create = async (req, res) => {
   } catch (err) {
     console.error('Erro ao criar despesa:', err);
     if (err && err.message) {
-      res.status(400).json({ error: err.message });
+    res.status(400).json({ error: err.message });
     } else {
       res.status(400).json({ error: 'Erro desconhecido ao criar despesa.' });
     }

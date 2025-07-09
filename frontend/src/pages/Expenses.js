@@ -271,13 +271,13 @@ function Expenses({ token }) {
           )}
           {form.type === 'conta' && (
             <>
-              <Input name="due_date" label="Vencimento" type="date" value={form.due_date} onChange={handleChange} required />
-              <label style={{ marginBottom: 4, fontWeight: 500 }}>Status</label>
-              <select name="status" value={form.status} onChange={handleChange} className="input-glass">
-                <option value="pendente">Pendente</option>
-                <option value="paga">Paga</option>
-                <option value="atrasada">Atrasada</option>
-              </select>
+          <Input name="due_date" label="Vencimento" type="date" value={form.due_date} onChange={handleChange} required />
+            <label style={{ marginBottom: 4, fontWeight: 500 }}>Status</label>
+            <select name="status" value={form.status} onChange={handleChange} className="input-glass">
+              <option value="pendente">Pendente</option>
+              <option value="paga">Paga</option>
+              <option value="atrasada">Atrasada</option>
+            </select>
               <Input name="paid_at" label="Pago em" type="datetime-local" value={form.paid_at} onChange={handleChange} />
             </>
           )}
@@ -325,9 +325,9 @@ function Expenses({ token }) {
                   <td style={{ textAlign: 'left' }}>{exp.installment_total > 1 ? `${exp.installment_number}/${exp.installment_total}` : '-'}</td>
                   <td style={{ textAlign: 'left' }}>{exp.paid_at ? new Date(exp.paid_at).toLocaleString('pt-BR') : '-'}</td>
                   <td style={{ textAlign: 'left' }}>
-                    <Button variant="secondary" onClick={() => handleEdit(exp)}>Editar</Button>
-                    <Button variant="danger" onClick={() => handleDelete(exp.id)}>Excluir</Button>
-                  </td>
+                        <Button variant="secondary" onClick={() => handleEdit(exp)}>Editar</Button>
+                        <Button variant="danger" onClick={() => handleDelete(exp.id)}>Excluir</Button>
+                      </td>
                 </tr>
               ))}
             </tbody>

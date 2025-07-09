@@ -110,16 +110,16 @@ function ManageUsers({ token }) {
       {error && <p style={{ color: 'red', marginTop: 12 }}>{error}</p>}
       <h3>Usuários Existentes</h3>
       <motion.div className="glass-card fade-in" style={{ padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', marginBottom: 32 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
-          <thead>
-            <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
+        <thead>
+          <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
               <th style={{ padding: 8, textAlign: 'left' }}>Nome</th>
               <th style={{ padding: 8, textAlign: 'left' }}>E-mail</th>
               <th style={{ padding: 8, textAlign: 'left' }}>Perfil</th>
               <th style={{ padding: 8, textAlign: 'left' }}>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
+          </tr>
+        </thead>
+        <tbody>
             {users.map(user => (
               <tr key={user.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                 <td style={{ textAlign: 'left' }}>{user.name}</td>
@@ -128,10 +128,10 @@ function ManageUsers({ token }) {
                 <td style={{ textAlign: 'left' }}>
                   <button onClick={() => handleDelete(user.id)} style={{ color: 'red', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Excluir</button>
                 </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </tr>
+          ))}
+        </tbody>
+      </table>
       </motion.div>
     </div>
   );
