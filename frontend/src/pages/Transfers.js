@@ -231,18 +231,18 @@ function Transfers({ token }) {
       <h3>Transferências Realizadas</h3>
       <motion.div className="glass-card fade-in" style={{ padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', marginBottom: 32, width: 'fit-content', minWidth: '100%', maxWidth: 'none', boxSizing: 'border-box', overflowX: 'auto' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent', tableLayout: 'fixed' }}>
-          <thead>
-            <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
+        <thead>
+          <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
               <th style={{ padding: 8, textAlign: 'left', width: 100 }}>Data</th>
               <th style={{ padding: 8, textAlign: 'left', width: 180 }}>Origem</th>
               <th style={{ padding: 8, textAlign: 'left', width: 180 }}>Destino</th>
               <th style={{ padding: 8, textAlign: 'left', width: 100 }}>Valor</th>
               <th style={{ padding: 8, textAlign: 'left', width: 220 }}>Descrição</th>
               <th style={{ padding: 8, textAlign: 'left', width: 120 }}>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {transfers.map(t => (
+          </tr>
+        </thead>
+        <tbody>
+          {transfers.map(t => (
               <tr key={t.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                 {editingId === t.id ? (
                   <>
@@ -288,10 +288,10 @@ function Transfers({ token }) {
                     </td>
                   </>
                 )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </tr>
+          ))}
+        </tbody>
+      </table>
       </motion.div>
     </div>
   );
