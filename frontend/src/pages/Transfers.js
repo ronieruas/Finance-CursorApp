@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 
 const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api`;
 
@@ -228,68 +229,70 @@ function Transfers({ token }) {
       {message && <p style={{ color: 'green', marginTop: 12 }}>{message}</p>}
       {error && <p style={{ color: 'red', marginTop: 12 }}>{error}</p>}
       <h3>Transferências Realizadas</h3>
-      <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
-        <thead>
-          <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
-            <th style={{ padding: 8 }}>Data</th>
-            <th style={{ padding: 8 }}>Origem</th>
-            <th style={{ padding: 8 }}>Destino</th>
-            <th style={{ padding: 8 }}>Valor</th>
-            <th style={{ padding: 8 }}>Descrição</th>
-            <th style={{ padding: 8 }}>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {transfers.map(t => (
-            <tr key={t.id} style={{ borderBottom: '1px solid #eee' }}>
-              {editingId === t.id ? (
-                <>
-                  <td><input name="date" type="date" value={editForm.date} onChange={handleEditChange} style={{ width: '100%' }} /></td>
-                  <td>
-                    <select name="from_account_id" value={editForm.from_account_id} onChange={handleEditChange} style={{ width: '100%' }}>
-                      <option value="">Selecione</option>
-                      {accounts.map(acc => (
-                        <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <label style={{ fontSize: 12 }}>
-                      <input type="checkbox" name="isThirdParty" checked={editForm.isThirdParty} onChange={handleEditChange} /> Terceiro
-                    </label>
-                    {!editForm.isThirdParty && (
-                      <select name="to_account_id" value={editForm.to_account_id} onChange={handleEditChange} style={{ width: '100%' }}>
+      <motion.div className="glass-card fade-in" style={{ padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', marginBottom: 32, width: 'fit-content', minWidth: '100%', maxWidth: 'none', boxSizing: 'border-box', overflowX: 'auto' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent', tableLayout: 'fixed' }}>
+          <thead>
+            <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
+              <th style={{ padding: 8, textAlign: 'left', width: 100 }}>Data</th>
+              <th style={{ padding: 8, textAlign: 'left', width: 180 }}>Origem</th>
+              <th style={{ padding: 8, textAlign: 'left', width: 180 }}>Destino</th>
+              <th style={{ padding: 8, textAlign: 'left', width: 100 }}>Valor</th>
+              <th style={{ padding: 8, textAlign: 'left', width: 220 }}>Descrição</th>
+              <th style={{ padding: 8, textAlign: 'left', width: 120 }}>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {transfers.map(t => (
+              <tr key={t.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                {editingId === t.id ? (
+                  <>
+                    <td><input name="date" type="date" value={editForm.date} onChange={handleEditChange} style={{ width: '100%' }} /></td>
+                    <td>
+                      <select name="from_account_id" value={editForm.from_account_id} onChange={handleEditChange} style={{ width: '100%' }}>
                         <option value="">Selecione</option>
-                        {accounts.filter(acc => acc.id !== Number(editForm.from_account_id)).map(acc => (
+                        {accounts.map(acc => (
                           <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
                         ))}
                       </select>
-                    )}
-                  </td>
-                  <td><input name="value" type="number" step="0.01" value={editForm.value} onChange={handleEditChange} style={{ width: '100%' }} /></td>
-                  <td><input name="description" type="text" value={editForm.description} onChange={handleEditChange} style={{ width: '100%' }} /></td>
-                  <td>
-                    <button onClick={handleEditSubmit} style={{ marginRight: 8 }}>Salvar</button>
-                    <button onClick={() => { setEditingId(null); setEditForm({}); }}>Cancelar</button>
-                  </td>
-                </>
-              ) : (
-                <>
-                  <td style={{ padding: 8 }}>{t.date}</td>
-                  <td style={{ padding: 8 }}>{accounts.find(a => a.id === t.from_account_id)?.name || t.from_account_id}</td>
-                  <td style={{ padding: 8 }}>{t.to_account_id ? (accounts.find(a => a.id === t.to_account_id)?.name || t.to_account_id) : 'Terceiro'}</td>
-                  <td style={{ padding: 8 }}>R$ {Number(t.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                  <td style={{ padding: 8 }}>{t.description}</td>
-                  <td>
-                    <button onClick={() => handleEdit(t)} style={{ marginRight: 8 }}>Editar</button>
-                    <button onClick={() => handleDelete(t.id)}>Excluir</button>
-                  </td>
-                </>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                    </td>
+                    <td>
+                      <label style={{ fontSize: 12 }}>
+                        <input type="checkbox" name="isThirdParty" checked={editForm.isThirdParty} onChange={handleEditChange} /> Terceiro
+                      </label>
+                      {!editForm.isThirdParty && (
+                        <select name="to_account_id" value={editForm.to_account_id} onChange={handleEditChange} style={{ width: '100%' }}>
+                          <option value="">Selecione</option>
+                          {accounts.filter(acc => acc.id !== Number(editForm.from_account_id)).map(acc => (
+                            <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
+                          ))}
+                        </select>
+                      )}
+                    </td>
+                    <td><input name="value" type="number" step="0.01" value={editForm.value} onChange={handleEditChange} style={{ width: '100%' }} /></td>
+                    <td><input name="description" type="text" value={editForm.description} onChange={handleEditChange} style={{ width: '100%' }} /></td>
+                    <td>
+                      <button onClick={handleEditSubmit} style={{ marginRight: 8 }}>Salvar</button>
+                      <button onClick={() => { setEditingId(null); setEditForm({}); }}>Cancelar</button>
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td style={{ textAlign: 'left' }}>{t.date}</td>
+                    <td style={{ textAlign: 'left' }}>{accounts.find(a => a.id === t.from_account_id)?.name || t.from_account_id}</td>
+                    <td style={{ textAlign: 'left' }}>{t.to_account_id ? (accounts.find(a => a.id === t.to_account_id)?.name || t.to_account_id) : 'Terceiro'}</td>
+                    <td style={{ textAlign: 'left' }}>R$ {Number(t.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    <td style={{ textAlign: 'left' }}>{t.description}</td>
+                    <td>
+                      <button onClick={() => handleEdit(t)} style={{ marginRight: 8 }}>Editar</button>
+                      <button onClick={() => handleDelete(t.id)}>Excluir</button>
+                    </td>
+                  </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </motion.div>
     </div>
   );
 }

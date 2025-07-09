@@ -136,14 +136,14 @@ function CreditCards({ token }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
             <thead>
               <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
-                <th style={{ padding: 8 }}>Banco</th>
-                <th style={{ padding: 8 }}>Bandeira</th>
-                <th style={{ padding: 8 }}>Limite</th>
-                <th style={{ padding: 8 }}>Vencimento</th>
-                <th style={{ padding: 8 }}>Fechamento</th>
-                <th style={{ padding: 8 }}>Nome</th>
-                <th style={{ padding: 8 }}>Status</th>
-                <th style={{ padding: 8 }}>Ações</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Banco</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Bandeira</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Limite</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Vencimento</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Fechamento</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Nome</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Status</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -170,18 +170,18 @@ function CreditCards({ token }) {
                     </>
                   ) : (
                     <>
-                      <td>{card.bank}</td>
-                      <td>{card.brand}</td>
-                      <td style={{ color: 'var(--color-cartao)', fontWeight: 600 }}>R$ {Number(card.limit_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      <td style={{ textAlign: 'left' }}>{card.bank}</td>
+                      <td style={{ textAlign: 'left' }}>{card.brand}</td>
+                      <td style={{ textAlign: 'left', color: 'var(--color-cartao)', fontWeight: 600 }}>R$ {Number(card.limit_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         <div style={{ fontSize: 13, color: '#888', fontWeight: 400 }}>
                           Limite utilizado: R$ {Number(limits[card.id] || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </div>
                       </td>
-                      <td>{card.due_day}</td>
-                      <td>{card.closing_day}</td>
-                      <td>{card.name}</td>
-                      <td>{card.status}</td>
-                      <td>
+                      <td style={{ textAlign: 'left' }}>{card.due_day}</td>
+                      <td style={{ textAlign: 'left' }}>{card.closing_day}</td>
+                      <td style={{ textAlign: 'left' }}>{card.name}</td>
+                      <td style={{ textAlign: 'left' }}>{card.status}</td>
+                      <td style={{ textAlign: 'left' }}>
                         <Button variant="secondary" onClick={() => handleEdit(card)}>Editar</Button>
                         <Button variant="danger" onClick={() => handleDelete(card.id)}>Excluir</Button>
                       </td>

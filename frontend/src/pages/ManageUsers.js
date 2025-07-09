@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 
 const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/users`;
 
@@ -8,6 +9,7 @@ function ManageUsers({ token }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -78,7 +80,26 @@ function ManageUsers({ token }) {
       <form onSubmit={handleSubmit} style={{ marginBottom: 24 }}>
         <input name="name" type="text" placeholder="Nome" value={form.name} onChange={handleChange} required style={{ width: '100%', marginBottom: 12 }} />
         <input name="email" type="email" placeholder="E-mail" value={form.email} onChange={handleChange} required style={{ width: '100%', marginBottom: 12 }} />
-        <input name="password" type="password" placeholder="Senha" value={form.password} onChange={handleChange} required style={{ width: '100%', marginBottom: 12 }} />
+        <div style={{ position: 'relative', width: '100%', marginBottom: 12 }}>
+          <input
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Senha"
+            value={form.password}
+            onChange={handleChange}
+            required
+            style={{ width: '100%', paddingRight: 36 }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(s => !s)}
+            style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18 }}
+            aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+            tabIndex={-1}
+          >
+            {showPassword ? '🙈' : '👁️'}
+          </button>
+        </div>
         <select name="role" value={form.role} onChange={handleChange} style={{ width: '100%', marginBottom: 12 }}>
           <option value="user">Usuário</option>
           <option value="admin">Administrador</option>
@@ -88,26 +109,30 @@ function ManageUsers({ token }) {
       {message && <p style={{ color: 'green', marginTop: 12 }}>{message}</p>}
       {error && <p style={{ color: 'red', marginTop: 12 }}>{error}</p>}
       <h3>Usuários Existentes</h3>
-      <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
-        <thead>
-          <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
-            <th style={{ padding: 8 }}>Nome</th>
-            <th style={{ padding: 8 }}>E-mail</th>
-            <th style={{ padding: 8 }}>Tipo</th>
-            <th style={{ padding: 8 }}>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map(u => (
-            <tr key={u.id} style={{ borderBottom: '1px solid #eee' }}>
-              <td style={{ padding: 8 }}>{u.name}</td>
-              <td style={{ padding: 8 }}>{u.email}</td>
-              <td style={{ padding: 8 }}>{u.role}</td>
-              <td style={{ padding: 8 }}><button onClick={() => handleDelete(u.id)} style={{ color: 'red' }}>Excluir</button></td>
+      <motion.div className="glass-card fade-in" style={{ padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', marginBottom: 32 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
+          <thead>
+            <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
+              <th style={{ padding: 8, textAlign: 'left' }}>Nome</th>
+              <th style={{ padding: 8, textAlign: 'left' }}>E-mail</th>
+              <th style={{ padding: 8, textAlign: 'left' }}>Perfil</th>
+              <th style={{ padding: 8, textAlign: 'left' }}>Ações</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {users.map(user => (
+              <tr key={user.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                <td style={{ textAlign: 'left' }}>{user.name}</td>
+                <td style={{ textAlign: 'left' }}>{user.email}</td>
+                <td style={{ textAlign: 'left' }}>{user.role}</td>
+                <td style={{ textAlign: 'left' }}>
+                  <button onClick={() => handleDelete(user.id)} style={{ color: 'red', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Excluir</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </motion.div>
     </div>
   );
 }

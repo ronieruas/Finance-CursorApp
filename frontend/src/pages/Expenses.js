@@ -32,35 +32,13 @@ function Expenses({ token }) {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-  const [filters, setFilters] = useState(() => {
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0,10);
-    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0,10);
-    return {
-      start: firstDay,
-      end: lastDay,
-      type: '',
-      account_id: '',
-      credit_card_id: '',
-      category: '',
-      status: ''
-    };
-  });
-  const [categories, setCategories] = useState([]);
+  const [filters, setFilters] = useState({ start: '', end: '', type: '', account_id: '', credit_card_id: '', category: '', status: '' });
 
-  useEffect(() => { fetchExpenses(); fetchAccounts(); fetchCards(); fetchCategories(); }, []);
+  useEffect(() => { fetchExpenses(); fetchAccounts(); fetchCards(); }, []);
 
-  const fetchExpenses = async (customFilters) => {
+  const fetchExpenses = async () => {
     setLoading(true);
-    const f = customFilters || filters;
-    const params = new URLSearchParams();
-    if (f.start && f.end) { params.append('start', f.start); params.append('end', f.end); }
-    if (f.type) params.append('type', f.type);
-    if (f.account_id) params.append('account_id', f.account_id);
-    if (f.credit_card_id) params.append('credit_card_id', f.credit_card_id);
-    if (f.category) params.append('category', f.category);
-    if (f.status) params.append('status', f.status);
-    const res = await fetch(`${API_URL}?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(API_URL, { headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
     setExpenses(data);
     setLoading(false);
@@ -83,16 +61,6 @@ function Expenses({ token }) {
       setCards(data);
     } catch {
       setCards([]);
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const res = await fetch(`${API_URL}/categories`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      setCategories(data);
-    } catch {
-      setCategories([]);
     }
   };
 
@@ -193,139 +161,63 @@ function Expenses({ token }) {
     setLoading(false);
   };
 
-  const handleFilterChange = e => {
-    const { name, value } = e.target;
-    setFilters(f => ({ ...f, [name]: value }));
-  };
-  const handleFilterSubmit = e => {
-    e.preventDefault();
-    fetchExpenses();
+  const fetchExpensesWithFilters = async () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (filters.start) params.append('start', filters.start);
+    if (filters.end) params.append('end', filters.end);
+    if (filters.type) params.append('type', filters.type);
+    if (filters.account_id) params.append('account_id', filters.account_id);
+    if (filters.credit_card_id) params.append('credit_card_id', filters.credit_card_id);
+    if (filters.category) params.append('category', filters.category);
+    if (filters.status) params.append('status', filters.status);
+    const res = await fetch(`${API_URL}?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    setExpenses(data);
+    setLoading(false);
   };
 
   return (
     <div style={{ marginLeft: 240, padding: 32 }}>
       <h2 style={{ marginBottom: 24, fontWeight: 700 }}>Despesas</h2>
-      {/* Filtros de despesas */}
-      <form onSubmit={handleFilterSubmit} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 24 }}>
-        <label>Período:</label>
-        <Input name="start" type="date" value={filters.start} onChange={handleFilterChange} required />
-        <span>a</span>
-        <Input name="end" type="date" value={filters.end} onChange={handleFilterChange} required />
-        <label>Tipo:</label>
-        <select name="type" value={filters.type} onChange={handleFilterChange} className="input-glass" style={{ minWidth: 100 }}>
-          <option value="">Todos</option>
-          <option value="conta">Conta</option>
-          <option value="cartao">Cartão</option>
-        </select>
-        <label>Conta:</label>
-        <select name="account_id" value={filters.account_id} onChange={handleFilterChange} className="input-glass" style={{ minWidth: 120 }}>
-          <option value="">Todas</option>
-          {accounts.map(acc => (
-            <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
-          ))}
-        </select>
-        <label>Cartão:</label>
-        <select name="credit_card_id" value={filters.credit_card_id} onChange={handleFilterChange} className="input-glass" style={{ minWidth: 120 }}>
-          <option value="">Todos</option>
-          {cards.map(card => (
-            <option key={card.id} value={card.id}>{card.name} ({card.bank})</option>
-          ))}
-        </select>
-        <label>Categoria:</label>
-        <select name="category" value={filters.category} onChange={handleFilterChange} className="input-glass" style={{ minWidth: 120 }}>
-          <option value="">Todas</option>
-          {categories.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
-        <label>Status:</label>
-        <select name="status" value={filters.status} onChange={handleFilterChange} className="input-glass" style={{ minWidth: 120 }}>
-          <option value="">Todos</option>
-          <option value="pendente">Pendente</option>
-          <option value="paga">Paga</option>
-          <option value="atrasada">Atrasada</option>
-        </select>
-        <button type="submit" style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 500 }}>Filtrar</button>
-      </form>
-      {/* Formulário de edição de despesa */}
-      {editingId && (
-        <motion.div className="glass-card fade-in" style={{ padding: 24, marginBottom: 32, border: '2px solid var(--color-primary)' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
-          <form onSubmit={handleEditSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 0 }}>
-            <div style={{ minWidth: 120 }}>
-              <label style={{ fontWeight: 500 }}>Tipo</label>
-              <select name="type" value={editForm.type || ''} onChange={handleEditChange} className="input-glass" required disabled>
-                <option value="">Selecione o tipo</option>
-                <option value="conta">Conta</option>
-                <option value="cartao">Cartão de Crédito</option>
-              </select>
-            </div>
-            {editForm.type === 'conta' && (
-              <div style={{ minWidth: 180 }}>
-                <label style={{ fontWeight: 500 }}>Conta</label>
-                <select name="account_id" value={editForm.account_id || ''} onChange={handleEditChange} className="input-glass" required>
-                  <option value="">Selecione</option>
-                  {accounts.map(acc => (
-                    <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {editForm.type === 'cartao' && (
-              <>
-                <div style={{ minWidth: 180 }}>
-                  <label style={{ fontWeight: 500 }}>Cartão</label>
-                  <select name="credit_card_id" value={editForm.credit_card_id || ''} onChange={handleEditChange} className="input-glass" required>
-                    <option value="">Selecione</option>
-                    {cards.map(card => (
-                      <option key={card.id} value={card.id}>{card.name} ({card.bank})</option>
-                    ))}
-                  </select>
-                </div>
-                <div style={{ minWidth: 120 }}>
-                  <label style={{ fontWeight: 500 }}>Tipo de Lançamento</label>
-                  <select name="installment_type" value={editForm.installment_type || 'avista'} onChange={handleEditChange} className="input-glass" required>
-                    <option value="avista">À vista</option>
-                    <option value="parcelado">Parcelado</option>
-                  </select>
-                </div>
-                {editForm.installment_type === 'parcelado' && (
-                  <div style={{ minWidth: 100 }}>
-                    <label style={{ fontWeight: 500 }}>Parcelas</label>
-                    <Input name="installment_total" type="number" min={1} max={36} value={editForm.installment_total || 1} onChange={handleEditChange} required />
-                  </div>
-                )}
-              </>
-            )}
-            <Input name="description" label="Descrição" value={editForm.description || ''} onChange={handleEditChange} required />
-            <Input name="value" label="Valor" type="number" value={editForm.value || ''} onChange={handleEditChange} required />
-            {editForm.type === 'cartao' && (
-              <Input name="due_date" label="Data da compra" type="date" value={editForm.due_date ? editForm.due_date.slice(0,10) : ''} onChange={handleEditChange} required />
-            )}
-            {editForm.type === 'conta' && (
-              <>
-                <Input name="due_date" label="Vencimento" type="date" value={editForm.due_date ? editForm.due_date.slice(0,10) : ''} onChange={handleEditChange} required />
-                <label style={{ marginBottom: 4, fontWeight: 500 }}>Status</label>
-                <select name="status" value={editForm.status || 'pendente'} onChange={handleEditChange} className="input-glass">
-                  <option value="pendente">Pendente</option>
-                  <option value="paga">Paga</option>
-                  <option value="atrasada">Atrasada</option>
-                </select>
-                <Input name="paid_at" label="Pago em" type="datetime-local" value={editForm.paid_at || ''} onChange={handleEditChange} />
-              </>
-            )}
-            <Input name="category" label="Categoria" value={editForm.category || ''} onChange={handleEditChange} />
-            <label style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 120 }}>
-              <input name="is_recurring" type="checkbox" checked={!!editForm.is_recurring} onChange={handleEditChange} /> Recorrente
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 120 }}>
-              <input name="auto_debit" type="checkbox" checked={!!editForm.auto_debit} onChange={handleEditChange} /> Débito automático
-            </label>
-            <Button variant="primary" loading={loading} type="submit">Salvar Edição</Button>
-            <Button variant="secondary" type="button" onClick={() => { setEditingId(null); setEditForm({}); }}>Cancelar</Button>
-          </form>
-        </motion.div>
-      )}
       <motion.div className="glass-card fade-in" style={{ padding: 24, marginBottom: 32 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
+        {/* Filtros de visualização */}
+        <form onSubmit={e => { e.preventDefault(); fetchExpensesWithFilters(); }} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 24 }}>
+          <label>Período:</label>
+          <Input name="filterStart" type="date" value={filters?.start || ''} onChange={e => setFilters(f => ({ ...f, start: e.target.value }))} />
+          <span>a</span>
+          <Input name="filterEnd" type="date" value={filters?.end || ''} onChange={e => setFilters(f => ({ ...f, end: e.target.value }))} />
+          <label>Tipo:</label>
+          <select name="filterType" value={filters?.type || ''} onChange={e => setFilters(f => ({ ...f, type: e.target.value }))} style={{ minWidth: 100 }}>
+            <option value="">Todos</option>
+            <option value="conta">Conta</option>
+            <option value="cartao">Cartão</option>
+          </select>
+          <label>Conta:</label>
+          <select name="filterAccount" value={filters?.account_id || ''} onChange={e => setFilters(f => ({ ...f, account_id: e.target.value }))} style={{ minWidth: 120 }}>
+            <option value="">Todas</option>
+            {accounts.map(acc => (
+              <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
+            ))}
+          </select>
+          <label>Cartão:</label>
+          <select name="filterCard" value={filters?.credit_card_id || ''} onChange={e => setFilters(f => ({ ...f, credit_card_id: e.target.value }))} style={{ minWidth: 120 }}>
+            <option value="">Todos</option>
+            {cards.map(card => (
+              <option key={card.id} value={card.id}>{card.name} ({card.bank})</option>
+            ))}
+          </select>
+          <label>Categoria:</label>
+          <Input name="filterCategory" value={filters?.category || ''} onChange={e => setFilters(f => ({ ...f, category: e.target.value }))} style={{ minWidth: 120 }} />
+          <label>Status:</label>
+          <select name="filterStatus" value={filters?.status || ''} onChange={e => setFilters(f => ({ ...f, status: e.target.value }))} style={{ minWidth: 100 }}>
+            <option value="">Todos</option>
+            <option value="pendente">Pendente</option>
+            <option value="paga">Paga</option>
+            <option value="atrasada">Atrasada</option>
+          </select>
+          <Button variant="primary" type="submit">Filtrar</Button>
+        </form>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 0 }}>
           <div style={{ minWidth: 120 }}>
             <label style={{ fontWeight: 500 }}>Tipo</label>
@@ -401,39 +293,38 @@ function Expenses({ token }) {
       </motion.div>
       {loading ? <p>Carregando...</p> : (
         <motion.div className="glass-card fade-in" style={{ padding: 24 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent', tableLayout: 'fixed' }}>
             <thead>
-              <tr>
-                <th style={{ padding: 8 }}>Data</th>
-                <th style={{ padding: 8 }}>Conta/Cartão</th>
-                <th style={{ padding: 8 }}>Descrição</th>
-                <th style={{ padding: 8 }}>Valor</th>
-                <th style={{ padding: 8 }}>Vencimento</th>
-                <th style={{ padding: 8 }}>Categoria</th>
-                <th style={{ padding: 8 }}>Recorrente</th>
-                <th style={{ padding: 8 }}>Débito automático</th>
-                <th style={{ padding: 8 }}>Parcelas</th>
-                <th style={{ padding: 8 }}>Pago em</th>
-                <th style={{ padding: 8 }}></th>
+              <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
+                <th style={{ padding: 8, textAlign: 'left', width: 90 }}>Data</th>
+                <th style={{ padding: 8, textAlign: 'left', width: 140 }}>Conta/Cartão</th>
+                <th style={{ padding: 8, textAlign: 'left', width: 180 }}>Descrição</th>
+                <th style={{ padding: 8, textAlign: 'left', width: 90 }}>Valor</th>
+                <th style={{ padding: 8, textAlign: 'left', width: 90 }}>Vencimento</th>
+                <th style={{ padding: 8, textAlign: 'left', width: 110 }}>Categoria</th>
+                <th style={{ padding: 8, textAlign: 'left', width: 90 }}>Status</th>
+                <th style={{ padding: 8, textAlign: 'left', width: 90 }}>Recorrente</th>
+                <th style={{ padding: 8, textAlign: 'left', width: 90 }}>Débito automático</th>
+                <th style={{ padding: 8, textAlign: 'left', width: 80 }}>Parcelas</th>
+                <th style={{ padding: 8, textAlign: 'left', width: 110 }}>Pago em</th>
+                <th style={{ padding: 8, textAlign: 'left', width: 120 }}>Ações</th>
               </tr>
             </thead>
             <tbody>
               {expenses.map(exp => (
                 <tr key={exp.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <td>{exp.createdAt ? new Date(exp.createdAt).toLocaleDateString('pt-BR') : '-'}</td>
-                  <td>
-                    {exp.account_id ? (accounts.find(a => a.id === exp.account_id)?.name || exp.account_id) : ''}
-                    {exp.credit_card_id ? (cards.find(c => c.id === exp.credit_card_id)?.name ? `Cartão: ${cards.find(c => c.id === exp.credit_card_id)?.name}` : `Cartão ID: ${exp.credit_card_id}`) : ''}
-                  </td>
-                  <td>{exp.description}</td>
-                  <td style={{ color: 'var(--color-despesa)', fontWeight: 600 }}>R$ {Number(exp.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                  <td>{exp.due_date ? new Date(exp.due_date).toLocaleDateString('pt-BR') : '-'}</td>
-                  <td>{exp.category}</td>
-                  <td>{exp.is_recurring ? 'Sim' : 'Não'}</td>
-                  <td>{exp.auto_debit ? 'Sim' : 'Não'}</td>
-                  <td>{exp.installment_total > 1 ? `${exp.installment_number}/${exp.installment_total}` : '-'}</td>
-                  <td>{exp.paid_at ? new Date(exp.paid_at).toLocaleString('pt-BR') : '-'}</td>
-                  <td>
+                  <td style={{ textAlign: 'left' }}>{exp.createdAt ? new Date(exp.createdAt).toLocaleDateString('pt-BR') : '-'}</td>
+                  <td style={{ textAlign: 'left' }}>{exp.type === 'conta' ? (accounts.find(a => a.id === exp.account_id)?.name || exp.account_id) : (cards.find(c => c.id === exp.credit_card_id)?.name || exp.credit_card_id)}</td>
+                  <td style={{ textAlign: 'left' }}>{exp.description}</td>
+                  <td style={{ textAlign: 'left', color: 'var(--color-despesa)', fontWeight: 600 }}>R$ {Number(exp.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td style={{ textAlign: 'left' }}>{exp.due_date ? new Date(exp.due_date).toLocaleDateString('pt-BR') : '-'}</td>
+                  <td style={{ textAlign: 'left' }}>{exp.category}</td>
+                  <td style={{ textAlign: 'left' }}>{exp.status}</td>
+                  <td style={{ textAlign: 'left' }}>{exp.is_recurring ? 'Sim' : 'Não'}</td>
+                  <td style={{ textAlign: 'left' }}>{exp.auto_debit ? 'Sim' : 'Não'}</td>
+                  <td style={{ textAlign: 'left' }}>{exp.installment_total > 1 ? `${exp.installment_number}/${exp.installment_total}` : '-'}</td>
+                  <td style={{ textAlign: 'left' }}>{exp.paid_at ? new Date(exp.paid_at).toLocaleString('pt-BR') : '-'}</td>
+                  <td style={{ textAlign: 'left' }}>
                     <Button variant="secondary" onClick={() => handleEdit(exp)}>Editar</Button>
                     <Button variant="danger" onClick={() => handleDelete(exp.id)}>Excluir</Button>
                   </td>
