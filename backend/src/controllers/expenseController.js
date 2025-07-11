@@ -31,6 +31,10 @@ exports.list = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     const { type, account_id, credit_card_id, description, value, due_date, category, status, is_recurring, auto_debit, paid_at, installment_type, installment_total } = req.body;
+    // Validação de due_date
+    if (!due_date || isNaN(new Date(due_date).getTime())) {
+      return res.status(400).json({ error: 'Data de vencimento (due_date) inválida ou ausente.' });
+    }
     if (type === 'cartao') {
       // Lançamento em cartão de crédito
       const totalParcelas = installment_type === 'parcelado' ? Number(installment_total) : 1;
@@ -101,7 +105,7 @@ exports.create = async (req, res) => {
   } catch (err) {
     console.error('Erro ao criar despesa:', err);
     if (err && err.message) {
-    res.status(400).json({ error: err.message });
+      res.status(400).json({ error: err.message });
     } else {
       res.status(400).json({ error: 'Erro desconhecido ao criar despesa.' });
     }
@@ -127,6 +131,7 @@ exports.update = async (req, res) => {
     await expense.update({ description, value, due_date, category, status, is_recurring, auto_debit, paid_at });
     res.json(expense);
   } catch (err) {
+    console.error('Erro ao editar despesa:', err);
     res.status(400).json({ error: err.message });
   }
 };

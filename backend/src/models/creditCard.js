@@ -14,6 +14,8 @@ CreditCard.init(
     closing_day: { type: DataTypes.INTEGER, allowNull: false },
     name: { type: DataTypes.STRING },
     status: { type: DataTypes.ENUM('ativa', 'inativa'), defaultValue: 'ativa' },
+    debito_automatico: { type: DataTypes.BOOLEAN, defaultValue: false },
+    conta_debito_id: { type: DataTypes.INTEGER },
     createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },
   {

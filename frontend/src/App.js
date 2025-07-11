@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -93,6 +93,7 @@ function AnimatedRoutes({ token, setToken }) {
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
+  const [notifications, setNotifications] = useState([]);
   let user = null;
   if (token) {
     try {
@@ -101,9 +102,49 @@ function App() {
       user = null;
     }
   }
+  useEffect(() => {
+    if (!token) return;
+    const fetchNotifications = async () => {
+      try {
+        const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/notifications`, { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        setNotifications(data);
+      } catch {}
+    };
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000); // Atualiza a cada 1 min
+    return () => clearInterval(interval);
+  }, [token]);
+
+  const markNotificationAsRead = async (id) => {
+    try {
+      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/notifications/${id}/read`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications(n => n.map(notif => notif.id === id ? { ...notif, read: true } : notif));
+    } catch {}
+  };
+
   return (
     <Router>
       {token && <Sidebar setToken={setToken} user={user} />}
+      {token && notifications.length > 0 && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', zIndex: 2000, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+          <div style={{ background: '#fffbe6', color: '#b8860b', border: '1px solid #ffe58f', borderRadius: 8, marginTop: 12, padding: '10px 24px', fontWeight: 500, boxShadow: '0 2px 12px #0001', pointerEvents: 'auto', cursor: 'pointer' }}>
+            {notifications.filter(n => !n.read).length > 0 ? (
+              <>
+                <span style={{ marginRight: 8, fontWeight: 700 }}>🔔 {notifications.filter(n => !n.read).length} alerta(s):</span>
+                {notifications.filter(n => !n.read).map(n => (
+                  <span key={n.id} style={{ marginRight: 16, textDecoration: 'underline', cursor: 'pointer' }} onClick={() => markNotificationAsRead(n.id)}>{n.message}</span>
+                ))}
+              </>
+            ) : (
+              <span>Sem alertas de vencimento</span>
+            )}
+          </div>
+        </div>
+      )}
       <AnimatedRoutes token={token} setToken={setToken} />
     </Router>
   );
