@@ -7,4 +7,4 @@ COPY backend/. .
 # Garante que scripts do src/scripts estejam disponíveis
 COPY backend/src/scripts ./src/scripts
 EXPOSE 3001
-CMD ["npm", "start"] 
+CMD ["npm", "run", "start:migrate"] 
