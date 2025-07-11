@@ -85,9 +85,10 @@ function ManageUsers({ token }) {
             name="password"
             type={showPassword ? 'text' : 'password'}
             placeholder="Senha"
+            required
+            autoComplete="new-password"
             value={form.password}
             onChange={handleChange}
-            required
             style={{ width: '100%', paddingRight: 36 }}
           />
           <button

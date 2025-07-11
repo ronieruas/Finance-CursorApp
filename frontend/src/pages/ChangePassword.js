@@ -48,15 +48,42 @@ function ChangePassword({ token }) {
       <h2>Trocar Senha</h2>
       <form style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'flex-start' }} onSubmit={handleSubmit}>
         <div style={{ position: 'relative', width: '100%' }}>
-          <input name="currentPassword" type={show.current ? 'text' : 'password'} placeholder="Senha atual" value={form.currentPassword} onChange={handleChange} required style={{ width: '100%', paddingRight: 36 }} />
+          <input
+            name="currentPassword"
+            type={show.current ? 'text' : 'password'}
+            placeholder="Senha atual"
+            value={form.currentPassword}
+            onChange={handleChange}
+            required
+            autoComplete="current-password"
+            style={{ width: '100%', paddingRight: 36 }}
+          />
           <button type="button" onClick={() => setShow(s => ({ ...s, current: !s.current }))} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18 }} aria-label={show.current ? 'Ocultar senha' : 'Mostrar senha'} tabIndex={-1}>{show.current ? '🙈' : '👁️'}</button>
         </div>
         <div style={{ position: 'relative', width: '100%' }}>
-          <input name="newPassword" type={show.new ? 'text' : 'password'} placeholder="Nova senha" value={form.newPassword} onChange={handleChange} required style={{ width: '100%', paddingRight: 36 }} />
+          <input
+            name="newPassword"
+            type={show.new ? 'text' : 'password'}
+            placeholder="Nova senha"
+            value={form.newPassword}
+            onChange={handleChange}
+            required
+            autoComplete="new-password"
+            style={{ width: '100%', paddingRight: 36 }}
+          />
           <button type="button" onClick={() => setShow(s => ({ ...s, new: !s.new }))} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18 }} aria-label={show.new ? 'Ocultar senha' : 'Mostrar senha'} tabIndex={-1}>{show.new ? '🙈' : '👁️'}</button>
         </div>
         <div style={{ position: 'relative', width: '100%' }}>
-          <input name="confirmPassword" type={show.confirm ? 'text' : 'password'} placeholder="Confirmar nova senha" value={form.confirmPassword} onChange={handleChange} required style={{ width: '100%', paddingRight: 36 }} />
+          <input
+            name="confirmPassword"
+            type={show.confirm ? 'text' : 'password'}
+            placeholder="Confirmar nova senha"
+            value={form.confirmPassword}
+            onChange={handleChange}
+            required
+            autoComplete="new-password"
+            style={{ width: '100%', paddingRight: 36 }}
+          />
           <button type="button" onClick={() => setShow(s => ({ ...s, confirm: !s.confirm }))} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18 }} aria-label={show.confirm ? 'Ocultar senha' : 'Mostrar senha'} tabIndex={-1}>{show.confirm ? '🙈' : '👁️'}</button>
         </div>
         <button type="submit" style={{ width: '100%' }} disabled={loading}>{loading ? 'Salvando...' : 'Salvar'}</button>

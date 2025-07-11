@@ -3,6 +3,7 @@ const router = express.Router();
 
 const authMiddleware = require('../middlewares/authMiddleware');
 const dashboardController = require('../controllers/dashboardController');
+const notificationController = require('../controllers/notificationController');
 
 // Importar rotas de módulos
 router.use('/auth', require('./auth'));
@@ -25,5 +26,7 @@ router.get('/protegida', authMiddleware, (req, res) => {
 });
 
 router.get('/dashboard', authMiddleware, dashboardController.getDashboard);
+router.get('/notifications', authMiddleware, notificationController.list);
+router.patch('/notifications/:id/read', authMiddleware, notificationController.markAsRead);
 
 module.exports = router;
