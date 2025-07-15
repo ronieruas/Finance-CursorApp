@@ -2,18 +2,19 @@
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  async up (queryInterface, Sequelize) {
+  up: async (queryInterface, Sequelize) => {
     await queryInterface.createTable('notifications', {
       id: { type: Sequelize.INTEGER, autoIncrement: true, primaryKey: true },
       user_id: { type: Sequelize.INTEGER, allowNull: false },
-      type: { type: Sequelize.STRING, allowNull: false }, // ex: 'alerta_vencimento_cartao'
+      type: { type: Sequelize.STRING, allowNull: false },
       message: { type: Sequelize.STRING, allowNull: false },
       read: { type: Sequelize.BOOLEAN, defaultValue: false },
-      createdAt: { type: Sequelize.DATE, defaultValue: Sequelize.NOW },
+      created_at: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') },
+      updated_at: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') },
     });
   },
 
-  async down (queryInterface, Sequelize) {
+  down: async (queryInterface, Sequelize) => {
     await queryInterface.dropTable('notifications');
   }
 }; 
