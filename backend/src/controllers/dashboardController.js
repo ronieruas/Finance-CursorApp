@@ -55,27 +55,44 @@ exports.getDashboard = async (req, res) => {
     let faturaCartaoMes = 0;
     let gastosPorCartao = [];
     if (cardIds.length > 0) {
-      faturaCartaoMes = await Expense.sum('value', {
+      // Soma despesas do cartão
+      const despesasCartaoMes = await Expense.sum('value', {
         where: {
           user_id: userId,
           due_date: { [Op.between]: [firstDay, lastDay] },
           credit_card_id: { [Op.in]: cardIds },
         },
-      });
+      }) || 0;
+      // Soma receitas do cartão (ex: pagamento, cashback, estorno)
+      const receitasCartaoMes = await Income.sum('value', {
+        where: {
+          user_id: userId,
+          date: { [Op.between]: [firstDay, lastDay] },
+          credit_card_id: { [Op.in]: cardIds },
+        },
+      }) || 0;
+      faturaCartaoMes = despesasCartaoMes - receitasCartaoMes;
       // Detalhamento por cartão
       for (const card of creditCards) {
-        const total = await Expense.sum('value', {
+        const totalDespesas = await Expense.sum('value', {
           where: {
             user_id: userId,
             due_date: { [Op.between]: [firstDay, lastDay] },
             credit_card_id: card.id,
           },
-        });
+        }) || 0;
+        const totalReceitas = await Income.sum('value', {
+          where: {
+            user_id: userId,
+            date: { [Op.between]: [firstDay, lastDay] },
+            credit_card_id: card.id,
+          },
+        }) || 0;
         gastosPorCartao.push({
           card_id: card.id,
           card_name: card.name,
           card_bank: card.bank,
-          total: total || 0
+          total: totalDespesas - totalReceitas
         });
       }
     }
@@ -165,14 +182,29 @@ exports.getDashboard = async (req, res) => {
     const cartoesMap = {};
     const cartoes = await CreditCard.findAll({ where: { user_id: userId } });
     cartoes.forEach(c => { cartoesMap[c.id] = c.name; });
+    // Adicionar receitas de cartão separadas
+    const receitasCartaoRecentes = receitasRecentes.filter(r => r.credit_card_id);
+    const receitasContaRecentes = receitasRecentes.filter(r => !r.credit_card_id);
     const recentesRaw = [
-      ...receitasRecentes.map(r => ({
+      ...receitasContaRecentes.map(r => ({
         tipo: 'receita',
         descricao: r.description || r.name || 'Receita',
         valor: r.value,
         data: r.date,
         conta: r.account_id,
         conta_nome: contasMap[r.account_id] || '',
+        cartao_id: null,
+        cartao_nome: '',
+      })),
+      ...receitasCartaoRecentes.map(r => ({
+        tipo: 'receita_cartao',
+        descricao: r.description || r.name || 'Receita Cartão',
+        valor: r.value,
+        data: r.date,
+        conta: null,
+        conta_nome: '',
+        cartao_id: r.credit_card_id,
+        cartao_nome: cartoesMap[r.credit_card_id] || '',
       })),
       ...despesasRecentes.map(d => ({
         tipo: d.credit_card_id ? 'cartao' : 'despesa',
@@ -181,6 +213,8 @@ exports.getDashboard = async (req, res) => {
         data: d.due_date,
         conta: d.account_id || d.credit_card_id,
         conta_nome: d.credit_card_id ? (cartoesMap[d.credit_card_id] || '') : (contasMap[d.account_id] || ''),
+        cartao_id: d.credit_card_id || null,
+        cartao_nome: d.credit_card_id ? (cartoesMap[d.credit_card_id] || '') : '',
       })),
     ];
     const recentes = recentesRaw
