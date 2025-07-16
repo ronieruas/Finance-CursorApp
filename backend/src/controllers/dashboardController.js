@@ -14,7 +14,7 @@ exports.getDashboard = async (req, res) => {
     console.log('Dashboard: período', { firstDay, lastDay });
 
     // Saldo total (apenas contas em reais)
-    const accountsReais = await Account.findAll({ where: { user_id: userId, status: 'ativa', currency: { [Op.or]: [null, 'BRL', ''] } } });
+    const accountsReais = await Account.findAll({ where: { user_id: userId, status: 'ativa', currency: { [Op.or]: [null, 'BRL'] } } });
     const saldoTotalReais = accountsReais.reduce((sum, acc) => sum + parseFloat(acc.balance), 0);
 
     // Receitas do período (por conta)
@@ -251,7 +251,7 @@ exports.getDashboard = async (req, res) => {
     let saldoEvolucao = [];
     let saldoAnterior = 0;
     // Buscar todas as contas em reais
-    const contasReais = await Account.findAll({ where: { user_id: userId, status: 'ativa', currency: { [Op.or]: [null, 'BRL', ''] } } });
+    const contasReais = await Account.findAll({ where: { user_id: userId, status: 'ativa', currency: { [Op.or]: [null, 'BRL'] } } });
     // Buscar todas as receitas e despesas do período
     const receitas = await Income.findAll({ where: { user_id: userId, date: { [Op.between]: [firstDay, lastDay] } } });
     const despesas = await Expense.findAll({ where: { user_id: userId, due_date: { [Op.between]: [firstDay, lastDay] } } });
