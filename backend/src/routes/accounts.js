@@ -48,4 +48,72 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   res.json({ success: true });
 });
 
+// Novo endpoint: saldo calculado da conta
+router.get('/:id/saldo', authMiddleware, async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    const accountId = req.params.id;
+    const userId = req.user.id;
+    const { Op } = require('sequelize');
+    const Account = require('../models/account');
+    const Income = require('../models/income');
+    const Expense = require('../models/expense');
+
+    // Busca conta
+    const account = await Account.findOne({ where: { id: accountId, user_id: userId } });
+    if (!account) return res.status(404).json({ error: 'Conta não encontrada' });
+
+    // Período
+    let today = new Date();
+    let firstDay = start ? new Date(start) : new Date(today.getFullYear(), today.getMonth(), 1);
+    let lastDay = end ? new Date(end) : new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    // Saldo inicial (antes do período)
+    // Soma todas as receitas e despesas anteriores ao período
+    const receitasAntes = await Income.sum('value', {
+      where: {
+        user_id: userId,
+        account_id: accountId,
+        date: { [Op.lt]: firstDay },
+      },
+    }) || 0;
+    const despesasAntes = await Expense.sum('value', {
+      where: {
+        user_id: userId,
+        account_id: accountId,
+        due_date: { [Op.lt]: firstDay },
+      },
+    }) || 0;
+    const saldoInicial = Number(account.balance) + Number(receitasAntes) - Number(despesasAntes);
+
+    // Receitas e despesas do período
+    const receitasPeriodo = await Income.sum('value', {
+      where: {
+        user_id: userId,
+        account_id: accountId,
+        date: { [Op.between]: [firstDay, lastDay] },
+      },
+    }) || 0;
+    const despesasPeriodo = await Expense.sum('value', {
+      where: {
+        user_id: userId,
+        account_id: accountId,
+        due_date: { [Op.between]: [firstDay, lastDay] },
+      },
+    }) || 0;
+
+    // Saldo final
+    const saldo = saldoInicial + Number(receitasPeriodo) - Number(despesasPeriodo);
+
+    res.json({
+      saldo_inicial: saldoInicial,
+      receitas: Number(receitasPeriodo),
+      despesas: Number(despesasPeriodo),
+      saldo: saldo
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao calcular saldo da conta', details: err.message });
+  }
+});
+
 module.exports = router; 
