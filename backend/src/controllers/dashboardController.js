@@ -147,7 +147,7 @@ exports.getDashboard = async (req, res) => {
         date: { [Op.between]: [firstDay, lastDay] },
       },
       order: [['date', 'DESC']],
-      limit: 10,
+      limit: 20,
     });
     const despesasRecentes = await Expense.findAll({
       where: {
@@ -155,7 +155,7 @@ exports.getDashboard = async (req, res) => {
         due_date: { [Op.between]: [firstDay, lastDay] },
       },
       order: [['due_date', 'DESC']],
-      limit: 10,
+      limit: 20,
     });
     // Unir, normalizar e pegar as 10 mais recentes
     // Buscar contas e cartões para mapear nomes

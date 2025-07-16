@@ -1,4 +1,5 @@
 const { Income } = require('../models');
+const Account = require('../models/account');
 
 exports.list = async (req, res) => {
   const incomes = await Income.findAll({ where: { user_id: req.user.id } });
@@ -17,6 +18,14 @@ exports.create = async (req, res) => {
       category,
       is_recurring: !!is_recurring,
     });
+    // Atualiza saldo da conta, se account_id informado
+    if (account_id) {
+      const account = await Account.findOne({ where: { id: account_id, user_id: req.user.id } });
+      if (account) {
+        account.balance = Number(account.balance) + Number(value);
+        await account.save();
+      }
+    }
     res.status(201).json(income);
   } catch (err) {
     res.status(400).json({ error: err.message });
