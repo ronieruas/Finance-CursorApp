@@ -297,6 +297,6 @@ exports.getDashboard = async (req, res) => {
     });
   } catch (err) {
     console.error('Erro no dashboard:', err);
-    res.status(500).json({ error: 'Erro ao buscar dados do dashboard', details: err.message });
+    res.status(500).json({ error: 'Erro ao buscar dados do dashboard', details: err.message, stack: err.stack });
   }
 }; 
