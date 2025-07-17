@@ -307,6 +307,27 @@ function CreditCards({ token }) {
     return { start: start.startOf('day'), end: end.endOf('day') };
   };
 
+  // Novo: Preencher automaticamente a data da compra ao selecionar cartão ou mês
+  useEffect(() => {
+    if (expenseForm.credit_card_id && billMonth) {
+      const card = cards.find(c => String(c.id) === String(expenseForm.credit_card_id));
+      if (card) {
+        const { start, end } = getBillPeriod(card, billMonth);
+        // Só sugere/preenche se o campo estiver vazio ou se cartão/mês mudou
+        if (!expenseForm.due_date ||
+            (expenseForm._lastCard !== expenseForm.credit_card_id || expenseForm._lastMonth !== billMonth)) {
+          setExpenseForm(f => ({
+            ...f,
+            due_date: start ? start.format('YYYY-MM-DD') : '',
+            _lastCard: expenseForm.credit_card_id,
+            _lastMonth: billMonth
+          }));
+        }
+      }
+    }
+    // eslint-disable-next-line
+  }, [expenseForm.credit_card_id, billMonth, cards.length]);
+
   return (
     <div style={{ marginLeft: 240, padding: 32 }}>
       <h2 style={{ marginBottom: 24, fontWeight: 700 }}>Cartões de Crédito</h2>
