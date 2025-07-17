@@ -14,22 +14,6 @@ router.get('/', authMiddleware, async (req, res) => {
   const contasComSaldo = await Promise.all(accounts.map(async (acc) => {
     let saldo = Number(acc.balance);
     if (start && end) {
-      // Saldo inicial (antes do período)
-      const receitasAntes = await Income.sum('value', {
-        where: {
-          user_id: req.user.id,
-          account_id: acc.id,
-          date: { [Op.lt]: new Date(start) },
-        },
-      }) || 0;
-      const despesasAntes = await Expense.sum('value', {
-        where: {
-          user_id: req.user.id,
-          account_id: acc.id,
-          due_date: { [Op.lt]: new Date(start) },
-        },
-      }) || 0;
-      const saldoInicial = Number(acc.balance) + Number(receitasAntes) - Number(despesasAntes);
       // Receitas e despesas do período
       const receitasPeriodo = await Income.sum('value', {
         where: {
@@ -45,7 +29,7 @@ router.get('/', authMiddleware, async (req, res) => {
           due_date: { [Op.between]: [new Date(start), new Date(end)] },
         },
       }) || 0;
-      saldo = saldoInicial + Number(receitasPeriodo) - Number(despesasPeriodo);
+      saldo = Number(acc.balance) + Number(receitasPeriodo) - Number(despesasPeriodo);
     }
     return { ...acc.toJSON(), saldo_calculado: saldo };
   }));

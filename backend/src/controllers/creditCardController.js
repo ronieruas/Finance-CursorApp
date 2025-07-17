@@ -101,6 +101,7 @@ exports.getBill = async (req, res) => {
         user_id: req.user.id,
         credit_card_id: card.id,
         due_date: { [Op.gte]: periods.atual.start, [Op.lt]: periods.atual.end },
+        status: { [Op.ne]: 'paga' }, // Só despesas em aberto
       },
     });
     console.log('[getBill] Despesas fatura atual:', atual);
