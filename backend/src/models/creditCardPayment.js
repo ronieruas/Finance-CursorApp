@@ -13,7 +13,8 @@ CreditCardPayment.init(
     payment_date: { type: DataTypes.DATEONLY, allowNull: false },
     is_full_payment: { type: DataTypes.BOOLEAN, defaultValue: true },
     auto_debit: { type: DataTypes.BOOLEAN, defaultValue: false },
-    createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+    createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, field: 'created_at' },
+    updatedAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, field: 'updated_at' },
   },
   {
     sequelize,
