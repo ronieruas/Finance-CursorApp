@@ -101,7 +101,7 @@ function CreditCards({ token }) {
 
   const fetchCardExpenses = async (cardId) => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/expenses?type=cartao&credit_card_id=${cardId}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/expenses?type=cartao&credit_card_id=${cardId}&_=${Date.now()}`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setCardExpenses(prev => ({ ...prev, [cardId]: data }));
       console.log('Despesas retornadas para o cartão', cardId, data);
