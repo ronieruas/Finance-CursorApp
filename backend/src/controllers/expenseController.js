@@ -3,14 +3,15 @@ const { Expense, CreditCard, CreditCardTransaction, Account } = require('../mode
 exports.list = async (req, res) => {
   const { start, end, type, account_id, credit_card_id, category, status } = req.query;
   const where = { user_id: req.user.id };
+  const { Op } = require('sequelize');
   if (start && end) {
-    where.due_date = { [require('sequelize').Op.between]: [start, end] };
+    where.due_date = { [Op.between]: [start, end] };
   }
   if (type === 'conta') {
-    where.account_id = { [require('sequelize').Op.ne]: null };
+    where.account_id = { [Op.ne]: null };
     where.credit_card_id = null;
   } else if (type === 'cartao') {
-    where.credit_card_id = { [require('sequelize').Op.ne]: null };
+    where.credit_card_id = { [Op.ne]: null };
   }
   if (account_id) {
     where.account_id = account_id;
@@ -24,7 +25,8 @@ exports.list = async (req, res) => {
   if (status) {
     where.status = status;
   }
-  const expenses = await Expense.findAll({ where });
+  // Busca despesas filtradas
+  const expenses = await require('../models/expense').findAll({ where });
   res.json(expenses);
 };
 
