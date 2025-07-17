@@ -400,6 +400,8 @@ function CreditCards({ token }) {
                   const due = dayjs(exp.due_date);
                   return start && end && due.isSameOrAfter(start) && due.isSameOrBefore(end);
                 });
+                // Debug: mostrar despesas do período e seus status
+                console.log(`DEBUG - Cartão ${card.id} (${card.name}) - Fatura do período`, billMonth, faturaAtual.map(d => ({ id: d.id, desc: d.description, status: d.status, valor: d.value, due: d.due_date })));
                 const valorFatura = faturaAtual.reduce((acc, d) => acc + Number(d.value), 0);
                 // Novo: checar se todas as despesas do período estão pagas
                 const todasPagas = faturaAtual.length > 0 && faturaAtual.every(d => d.status === 'paga');
