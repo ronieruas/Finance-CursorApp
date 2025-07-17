@@ -438,8 +438,8 @@ function CreditCards({ token }) {
                           </td>
                           <td style={{ textAlign: 'left', color: valorFatura > 0 ? 'var(--color-despesa)' : '#0a0', fontWeight: 600 }}>
                             R$ {valorFatura.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            <div style={{ fontSize: 13, color: valorFatura > 0 ? '#d77' : '#0a0', fontWeight: 400 }}>
-                              {valorFatura > 0 ? (todasPagas ? 'Paga' : 'Em aberto') : 'Paga'}
+                            <div style={{ fontSize: 13, fontWeight: 700, color: todasPagas ? '#0a0' : '#d77' }}>
+                              {todasPagas ? 'Paga' : 'Em aberto'}
                             </div>
                           </td>
                           <td style={{ textAlign: 'left' }}>{card.due_day}</td>
