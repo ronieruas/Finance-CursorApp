@@ -328,6 +328,19 @@ function CreditCards({ token }) {
     // eslint-disable-next-line
   }, [expenseForm.credit_card_id, billMonth, cards.length]);
 
+  // Novo: Validar se a data da compra está dentro do período da fatura
+  const getSelectedCard = () => cards.find(c => String(c.id) === String(expenseForm.credit_card_id));
+  let periodoFatura = { start: null, end: null };
+  if (expenseForm.credit_card_id && billMonth) {
+    const card = getSelectedCard();
+    if (card) periodoFatura = getBillPeriod(card, billMonth);
+  }
+  let dataForaDoPeriodo = false;
+  if (expenseForm.due_date && periodoFatura.start && periodoFatura.end) {
+    const due = dayjs(expenseForm.due_date);
+    dataForaDoPeriodo = !due.isSameOrAfter(periodoFatura.start) || !due.isSameOrBefore(periodoFatura.end);
+  }
+
   return (
     <div style={{ marginLeft: 240, padding: 32 }}>
       <h2 style={{ marginBottom: 24, fontWeight: 700 }}>Cartões de Crédito</h2>
@@ -363,6 +376,11 @@ function CreditCards({ token }) {
           <Input name="description" label="Descrição" value={expenseForm.description} onChange={handleExpenseFormChange} required />
           <Input name="value" label="Valor" type="number" value={expenseForm.value} onChange={handleExpenseFormChange} required />
           <Input name="due_date" label="Data da compra" type="date" value={expenseForm.due_date} onChange={handleExpenseFormChange} required />
+          {dataForaDoPeriodo && (
+            <div style={{ color: '#d00', fontSize: 13, marginTop: -8, marginBottom: 8 }}>
+              Atenção: a data deve estar entre {periodoFatura.start && periodoFatura.start.format('DD/MM/YYYY')} e {periodoFatura.end && periodoFatura.end.format('DD/MM/YYYY')} para entrar na fatura do mês selecionado.
+            </div>
+          )}
           <Input name="category" label="Categoria" value={expenseForm.category} onChange={handleExpenseFormChange} />
           <div style={{ minWidth: 120 }}>
             <label style={{ fontWeight: 500 }}>Tipo de Lançamento</label>
