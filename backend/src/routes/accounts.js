@@ -5,8 +5,51 @@ const { Account } = require('../models');
 
 // Listar contas do usuário autenticado
 router.get('/', authMiddleware, async (req, res) => {
+  const { start, end } = req.query;
+  const { Op } = require('sequelize');
+  const Income = require('../models/income');
+  const Expense = require('../models/expense');
   const accounts = await Account.findAll({ where: { user_id: req.user.id } });
-  res.json(accounts);
+  // Para cada conta, calcular saldo
+  const contasComSaldo = await Promise.all(accounts.map(async (acc) => {
+    let saldo = Number(acc.balance);
+    if (start && end) {
+      // Saldo inicial (antes do período)
+      const receitasAntes = await Income.sum('value', {
+        where: {
+          user_id: req.user.id,
+          account_id: acc.id,
+          date: { [Op.lt]: new Date(start) },
+        },
+      }) || 0;
+      const despesasAntes = await Expense.sum('value', {
+        where: {
+          user_id: req.user.id,
+          account_id: acc.id,
+          due_date: { [Op.lt]: new Date(start) },
+        },
+      }) || 0;
+      const saldoInicial = Number(acc.balance) + Number(receitasAntes) - Number(despesasAntes);
+      // Receitas e despesas do período
+      const receitasPeriodo = await Income.sum('value', {
+        where: {
+          user_id: req.user.id,
+          account_id: acc.id,
+          date: { [Op.between]: [new Date(start), new Date(end)] },
+        },
+      }) || 0;
+      const despesasPeriodo = await Expense.sum('value', {
+        where: {
+          user_id: req.user.id,
+          account_id: acc.id,
+          due_date: { [Op.between]: [new Date(start), new Date(end)] },
+        },
+      }) || 0;
+      saldo = saldoInicial + Number(receitasPeriodo) - Number(despesasPeriodo);
+    }
+    return { ...acc.toJSON(), saldo_calculado: saldo };
+  }));
+  res.json(contasComSaldo);
 });
 
 // Criar nova conta
