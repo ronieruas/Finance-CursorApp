@@ -191,7 +191,7 @@ function Accounts({ token }) {
                       <td style={{ textAlign: 'left' }}>{acc.type}</td>
                       <td style={{ textAlign: 'left', color: 'var(--color-primary)', fontWeight: 600 }}>
                         {acc.currency === 'BRL' ? 'R$' : acc.currency === 'USD' ? 'US$' : acc.currency === 'EUR' ? '€' : acc.currency + ' '}
-                        {Number(acc.balance).toLocaleString(acc.currency === 'BRL' ? 'pt-BR' : acc.currency === 'USD' ? 'en-US' : acc.currency === 'EUR' ? 'de-DE' : undefined, { minimumFractionDigits: 2 })}
+                        {Number((acc.saldo_calculado !== undefined ? acc.saldo_calculado : acc.balance)).toLocaleString(acc.currency === 'BRL' ? 'pt-BR' : acc.currency === 'USD' ? 'en-US' : acc.currency === 'EUR' ? 'de-DE' : undefined, { minimumFractionDigits: 2 })}
                       </td>
                       <td style={{ textAlign: 'left' }}>{acc.currency}</td>
                       <td style={{ textAlign: 'left' }}>{acc.status}</td>

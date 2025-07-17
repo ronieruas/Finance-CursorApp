@@ -178,8 +178,19 @@ exports.pay = async (req, res) => {
       auto_debit: !!auto_debit,
     });
     // Atualiza despesas do período como pagas
-    if (is_full_payment && despesasFatura.length > 0) {
-      await Promise.all(despesasFatura.map(despesa => despesa.update({ status: 'paga', paid_at: payment_date || new Date() })));
+    if (is_full_payment) {
+      // Marca todas as despesas do período como pagas, independente do valor
+      const { closing_day } = card;
+      const periods = getBillPeriods(closing_day, card.due_day);
+      const despesasFaturaPeriodo = await Expense.findAll({
+        where: {
+          user_id: userId,
+          credit_card_id: card.id,
+          due_date: { [Op.gte]: periods.atual.start, [Op.lt]: periods.atual.end },
+          status: { [Op.ne]: 'paga' },
+        },
+      });
+      await Promise.all(despesasFaturaPeriodo.map(despesa => despesa.update({ status: 'paga', paid_at: payment_date || new Date() })));
     }
     // Atualiza débito automático do cartão se solicitado
     if (auto_debit !== undefined) {
