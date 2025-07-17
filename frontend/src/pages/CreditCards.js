@@ -401,6 +401,8 @@ function CreditCards({ token }) {
                   return start && end && due.isSameOrAfter(start) && due.isSameOrBefore(end);
                 });
                 const valorFatura = faturaAtual.reduce((acc, d) => acc + Number(d.value), 0);
+                // Novo: checar se todas as despesas do período estão pagas
+                const todasPagas = faturaAtual.length > 0 && faturaAtual.every(d => d.status === 'paga');
                 return (
                   <React.Fragment key={card.id}>
                     <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
@@ -435,7 +437,7 @@ function CreditCards({ token }) {
                           <td style={{ textAlign: 'left', color: valorFatura > 0 ? 'var(--color-despesa)' : '#0a0', fontWeight: 600 }}>
                             R$ {valorFatura.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             <div style={{ fontSize: 13, color: valorFatura > 0 ? '#d77' : '#0a0', fontWeight: 400 }}>
-                              {valorFatura > 0 ? 'Em aberto' : 'Paga'}
+                              {valorFatura > 0 ? (todasPagas ? 'Paga' : 'Em aberto') : 'Paga'}
                             </div>
                           </td>
                           <td style={{ textAlign: 'left' }}>{card.due_day}</td>
