@@ -12,7 +12,8 @@ module.exports = {
       payment_date: { type: Sequelize.DATEONLY, allowNull: false },
       is_full_payment: { type: Sequelize.BOOLEAN, defaultValue: true },
       auto_debit: { type: Sequelize.BOOLEAN, defaultValue: false },
-      createdAt: { type: Sequelize.DATE, defaultValue: Sequelize.NOW },
+      created_at: { type: Sequelize.DATE, defaultValue: Sequelize.NOW },
+      updated_at: { type: Sequelize.DATE, defaultValue: Sequelize.NOW },
     });
   },
 

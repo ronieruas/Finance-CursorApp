@@ -247,6 +247,7 @@ exports.getDashboard = async (req, res) => {
         user_id: userId,
         due_date: { [Op.between]: [hoje, daqui7] },
         status: { [Op.in]: ['pendente', 'atrasada'] },
+        credit_card_id: null, // Só contas, não cartão
       },
       order: [['due_date', 'ASC']],
       limit: 10,
