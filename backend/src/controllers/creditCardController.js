@@ -158,7 +158,7 @@ exports.pay = async (req, res) => {
           user_id: userId,
           credit_card_id: card.id,
           due_date: { [Op.gte]: periods.atual.start, [Op.lt]: periods.atual.end },
-          status: { [Op.ne]: 'paga' },
+          // Removido o filtro de status
         },
       });
       valorPagamento = despesasFatura.reduce((acc, d) => acc + Number(d.value), 0);
@@ -180,7 +180,7 @@ exports.pay = async (req, res) => {
     });
     // Atualiza despesas do período como pagas
     if (is_full_payment) {
-      // Marca todas as despesas do período como pagas, independente do valor
+      // Marca todas as despesas do período como pagas, independente do status
       const { closing_day } = card;
       const periods = getBillPeriods(closing_day, card.due_day);
       const despesasFaturaPeriodo = await Expense.findAll({
@@ -188,7 +188,7 @@ exports.pay = async (req, res) => {
           user_id: userId,
           credit_card_id: card.id,
           due_date: { [Op.gte]: periods.atual.start, [Op.lt]: periods.atual.end },
-          status: { [Op.ne]: 'paga' },
+          // Removido o filtro de status
         },
       });
       await Promise.all(despesasFaturaPeriodo.map(despesa => despesa.update({ status: 'paga', paid_at: payment_date || new Date() })));
