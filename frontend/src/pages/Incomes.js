@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Toast from '../components/Toast';
-import dayjs from 'dayjs';
 
 const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/incomes`; // ajuste conforme backend
 const ACCOUNTS_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/accounts`;
@@ -167,7 +166,7 @@ function Incomes({ token }) {
                       </td>
                       <td style={{ textAlign: 'left' }}><Input name="description" value={editForm.description} onChange={handleEditChange} /></td>
                       <td style={{ textAlign: 'left' }}><Input name="value" value={editForm.value} onChange={handleEditChange} /></td>
-                      <td style={{ textAlign: 'left' }}><Input name="date" value={editForm.date ? dayjs(editForm.date).format('DD/MM/YYYY') : ''} onChange={handleEditChange} /></td>
+                      <td style={{ textAlign: 'left' }}><Input name="date" value={editForm.date} onChange={handleEditChange} /></td>
                       <td style={{ textAlign: 'left' }}><Input name="category" value={editForm.category} onChange={handleEditChange} /></td>
                       <td style={{ textAlign: 'left' }}><input name="is_recurring" type="checkbox" checked={!!editForm.is_recurring} onChange={e => setEditForm({ ...editForm, is_recurring: e.target.checked })} /></td>
                       <td style={{ textAlign: 'left' }}>
@@ -180,7 +179,7 @@ function Incomes({ token }) {
                       <td style={{ textAlign: 'left' }}>{accounts.find(a => a.id === inc.account_id)?.name || inc.account_id}</td>
                       <td style={{ textAlign: 'left' }}>{inc.description}</td>
                       <td style={{ textAlign: 'left', color: 'var(--color-receita)', fontWeight: 600 }}>R$ {Number(inc.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                      <td style={{ textAlign: 'left' }}>{inc.date ? dayjs(inc.date).format('DD/MM/YYYY') : ''}</td>
+                      <td style={{ textAlign: 'left' }}>{inc.date}</td>
                       <td style={{ textAlign: 'left' }}>{inc.category}</td>
                       <td style={{ textAlign: 'left' }}>{inc.is_recurring ? 'Sim' : 'Não'}</td>
                       <td style={{ textAlign: 'left' }}>
