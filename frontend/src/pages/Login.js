@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/auth/login`; // ajuste conforme backend
-
+const API_URL = `${process.env.REACT_APP_API_URL}/api/auth/login`;
 function Login({ setToken }) {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
