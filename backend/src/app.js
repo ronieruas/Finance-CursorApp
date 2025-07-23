@@ -4,8 +4,19 @@ const morgan = require('morgan');
 const routes = require('./routes');
 
 const app = express();
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  next();
+});
+const allowedOrigins = [
+  'https://finance.ronieruas.com.br', // Frontend em produção
+  'http://localhost:3000'             // Para desenvolvimento local (opcional)
+];
 
-app.use(cors());
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
 app.use(express.json());
 app.use(morgan('dev'));
 
@@ -21,4 +32,4 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../../frontend/build', 'index.html'));
 });
 
-module.exports = app; 
+module.exports = app;
