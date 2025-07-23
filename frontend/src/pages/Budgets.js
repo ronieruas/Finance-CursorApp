@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Toast from '../components/Toast';
-import dayjs from 'dayjs';
 
 const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/budgets`; // ajuste conforme backend
 
@@ -143,8 +142,8 @@ function Budgets({ token }) {
                           <option value="cartao">Cartão</option>
                         </select>
                       </td>
-                      <td><Input name="period_start" value={editForm.period_start ? dayjs(editForm.period_start).format('DD/MM/YYYY') : ''} onChange={handleEditChange} /></td>
-                      <td><Input name="period_end" value={editForm.period_end ? dayjs(editForm.period_end).format('DD/MM/YYYY') : ''} onChange={handleEditChange} /></td>
+                      <td><Input name="period_start" value={editForm.period_start} onChange={handleEditChange} /></td>
+                      <td><Input name="period_end" value={editForm.period_end} onChange={handleEditChange} /></td>
                       <td><Input name="planned_value" value={editForm.planned_value} onChange={handleEditChange} /></td>
                       <td style={{ color: 'var(--color-despesa)', fontWeight: 600 }}>R$ {Number(budget.utilizado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                       <td>
@@ -156,8 +155,8 @@ function Budgets({ token }) {
                     <>
                       <td style={{ textAlign: 'left' }}>{budget.name}</td>
                       <td style={{ textAlign: 'left' }}>{budget.type}</td>
-                      <td style={{ textAlign: 'left' }}>{budget.period_start ? dayjs(budget.period_start).format('DD/MM/YYYY') : ''}</td>
-                      <td style={{ textAlign: 'left' }}>{budget.period_end ? dayjs(budget.period_end).format('DD/MM/YYYY') : ''}</td>
+                      <td style={{ textAlign: 'left' }}>{budget.period_start ? new Date(budget.period_start).toLocaleDateString('pt-BR') : ''}</td>
+                      <td style={{ textAlign: 'left' }}>{budget.period_end ? new Date(budget.period_end).toLocaleDateString('pt-BR') : ''}</td>
                       <td style={{ textAlign: 'left', color: 'var(--color-primary)', fontWeight: 600 }}>R$ {Number(budget.planned_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                       <td style={{ textAlign: 'left', color: 'var(--color-despesa)', fontWeight: 600 }}>R$ {Number(budget.utilizado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                       <td style={{ textAlign: 'left' }}>
