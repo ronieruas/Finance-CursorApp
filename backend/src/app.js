@@ -34,14 +34,6 @@ app.use(morgan('dev'));
 
 app.use('/api', routes);
 
-// Servir o build do React
-const path = require('path');
-app.use(express.static(path.join(__dirname, '../../frontend/build')));
-
-// Para qualquer rota que não seja API, retorna o index.html do React
-app.get('*', (req, res) => {
-  if (req.path.startsWith('/api')) return res.status(404).json({ error: 'API route not found' });
-  res.sendFile(path.join(__dirname, '../../frontend/build', 'index.html'));
-});
+// Removido o trecho que servia o build do React e o fallback para index.html
 
 module.exports = app;
