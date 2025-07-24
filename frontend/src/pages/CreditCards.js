@@ -289,19 +289,15 @@ function CreditCards({ token }) {
     if (!card) return { start: null, end: null };
     const closingDay = Number(card.closing_day);
     const [year, m] = month.split('-').map(Number);
-    // Se o mês for janeiro e o fechamento for, por exemplo, dia 28, o início é 28/12 do ano anterior
+    // O início é o dia do fechamento do mês anterior
     let start = dayjs(`${year}-${m}-01`).subtract(1, 'month').date(closingDay);
-    if (start.month() === m - 1) {
-      // ok
-    } else {
-      // Se o mês não tem o dia de fechamento, pega o último dia do mês anterior
+    // O fim é um dia antes do fechamento do mês atual
+    let end = dayjs(`${year}-${m}-01`).date(closingDay).subtract(1, 'day');
+    // Ajuste para meses com menos dias
+    if (start.month() !== (m === 1 ? 11 : m - 2)) {
       start = dayjs(`${year}-${m}-01`).subtract(1, 'day');
     }
-    let end = dayjs(`${year}-${m}-01`).date(closingDay).subtract(1, 'day');
-    if (end.month() === m - 1) {
-      // ok
-    } else {
-      // Se o mês não tem o dia de fechamento, pega o último dia do mês
+    if (end.month() !== m - 1) {
       end = dayjs(`${year}-${m}-01`).endOf('month');
     }
     return { start: start.startOf('day'), end: end.endOf('day') };
@@ -376,9 +372,9 @@ function CreditCards({ token }) {
           <Input name="description" label="Descrição" value={expenseForm.description} onChange={handleExpenseFormChange} required />
           <Input name="value" label="Valor" type="number" value={expenseForm.value} onChange={handleExpenseFormChange} required />
           <Input name="due_date" label="Data da compra" type="date" value={expenseForm.due_date} onChange={handleExpenseFormChange} required />
-          {dataForaDoPeriodo && (
+          {periodoFatura.start && periodoFatura.end && (
             <div style={{ color: '#d00', fontSize: 13, marginTop: -8, marginBottom: 8 }}>
-              Atenção: a data deve estar entre {periodoFatura.start && periodoFatura.start.format('DD/MM/YYYY')} e {periodoFatura.end && periodoFatura.end.format('DD/MM/YYYY')} para entrar na fatura do mês selecionado.
+              Atenção: a data deve estar entre {periodoFatura.start.format('DD/MM/YYYY')} e {periodoFatura.end.format('DD/MM/YYYY')} para entrar na fatura do mês selecionado.
             </div>
           )}
           <Input name="category" label="Categoria" value={expenseForm.category} onChange={handleExpenseFormChange} />
@@ -574,7 +570,7 @@ function CreditCards({ token }) {
                                       </tr>
                                     ) : (
                                       <tr key={exp.id}>
-                                        <td>{exp.due_date ? new Date(exp.due_date).toLocaleDateString('pt-BR') : '-'}</td>
+                                        <td>{exp.due_date ? dayjs(exp.due_date).format('DD/MM/YYYY') : '-'}</td>
                                         <td>{exp.description}</td>
                                         <td style={{ color: 'var(--color-despesa)', fontWeight: 600 }}>R$ {Number(exp.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                                         <td>{exp.category}</td>

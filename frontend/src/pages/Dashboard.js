@@ -3,6 +3,7 @@ import '../styles/global.css';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import Input from '../components/Input';
+import dayjs from 'dayjs';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
@@ -188,7 +189,7 @@ function Dashboard({ token }) {
                 <tr key={b.id}>
                   <td>{b.name}</td>
                   <td>{b.type === 'geral' ? 'Geral' : 'Cartão'}</td>
-                  <td>{b.period_start ? new Date(b.period_start).toLocaleDateString('pt-BR') : ''} a {b.period_end ? new Date(b.period_end).toLocaleDateString('pt-BR') : ''}</td>
+                  <td>{b.period_start ? dayjs(b.period_start).format('DD/MM/YYYY') : ''} a {b.period_end ? dayjs(b.period_end).format('DD/MM/YYYY') : ''}</td>
                   <td style={{ color: 'var(--color-primary)', fontWeight: 600 }}>R$ {Number(b.planned_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                   <td style={{ color: 'var(--color-despesa)', fontWeight: 600 }}>R$ {Number(b.utilizado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                 </tr>
