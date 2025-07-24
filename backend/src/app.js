@@ -29,6 +29,9 @@ app.use(cors({
   credentials: true
 }));
 
+// Permitir preflight para todos os endpoints
+app.options('*', cors());
+
 app.use(express.json());
 app.use(morgan('dev'));
 
