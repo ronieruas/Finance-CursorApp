@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Toast from '../components/Toast';
+import dayjs from 'dayjs';
 
 const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/expenses`; // ajuste conforme backend
 const ACCOUNTS_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/accounts`;
@@ -339,13 +340,13 @@ function Expenses({ token }) {
                       <td style={{ textAlign: 'left' }}>{accounts.find(a => a.id === exp.account_id)?.name || exp.account_id}</td>
                       <td style={{ textAlign: 'left' }}>{exp.description}</td>
                       <td style={{ textAlign: 'left', color: 'var(--color-despesa)', fontWeight: 600 }}>R$ {Number(exp.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                      <td style={{ textAlign: 'left' }}>{exp.due_date ? new Date(exp.due_date).toLocaleDateString('pt-BR') : '-'}</td>
+                      <td style={{ textAlign: 'left' }}>{exp.due_date ? dayjs(exp.due_date).format('DD/MM/YYYY') : '-'}</td>
                       <td style={{ textAlign: 'left' }}>{exp.category}</td>
                       <td style={{ textAlign: 'left' }}>{exp.status}</td>
                       <td style={{ textAlign: 'left' }}>{exp.is_recurring ? 'Sim' : 'Não'}</td>
                       <td style={{ textAlign: 'left' }}>{exp.auto_debit ? 'Sim' : 'Não'}</td>
                       <td style={{ textAlign: 'left' }}>{exp.installment_total > 1 ? `${exp.installment_number}/${exp.installment_total}` : '-'}</td>
-                      <td style={{ textAlign: 'left' }}>{exp.paid_at ? new Date(exp.paid_at).toLocaleString('pt-BR') : '-'}</td>
+                      <td style={{ textAlign: 'left' }}>{exp.paid_at ? dayjs(exp.paid_at).format('DD/MM/YYYY HH:mm') : '-'}</td>
                       <td style={{ textAlign: 'left' }}>
                         <Button variant="secondary" onClick={() => handleEdit(exp)}>Editar</Button>
                         <Button variant="danger" onClick={() => handleDelete(exp.id)}>Excluir</Button>
