@@ -292,9 +292,9 @@ function CreditCards({ token }) {
     // O início é o dia do fechamento do mês anterior
     let start = dayjs(new Date(year, m - 1, closingDay));
     start = start.subtract(1, 'month');
-    // O fim é o dia do fechamento do mês atual
-    let end = dayjs(new Date(year, m, closingDay));
-    return { start: start.startOf('day'), end: end.startOf('day') };
+    // O fim é o dia do fechamento do mês atual menos 1 dia
+    let end = dayjs(new Date(year, m, closingDay)).subtract(1, 'day');
+    return { start: start.startOf('day'), end: end.endOf('day') };
   }
 
   // Função para determinar o mês da fatura em aberto (considerando fechamento)
@@ -459,7 +459,7 @@ function CreditCards({ token }) {
                 // Na tabela, filtrar despesas do período usando o novo getBillPeriod
                 const faturaAtual = expenses.filter(exp => {
                   const due = dayjs(exp.due_date);
-                  return start && end && due.isSameOrAfter(start) && due.isBefore(end);
+                  return start && end && due.isSameOrAfter(start) && due.isSameOrBefore(end);
                 });
                 // Debug: mostrar despesas do período e seus status
                 console.log(`DEBUG - Cartão ${card.id} (${card.name}) - Fatura do período`, billMonth, faturaAtual.map(d => ({ id: d.id, desc: d.description, status: d.status, valor: d.value, due: d.due_date })));
