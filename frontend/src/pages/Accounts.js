@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Toast from '../components/Toast';
+import Modal from '../components/Modal';
 
 const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/accounts`; // ajuste conforme backend
 
@@ -20,6 +21,11 @@ function Accounts({ token }) {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const [extratoConta, setExtratoConta] = useState(null); // conta selecionada para extrato
+  const [extrato, setExtrato] = useState([]);
+  const [extratoLoading, setExtratoLoading] = useState(false);
+  const [extratoPeriodo, setExtratoPeriodo] = useState({ start: '', end: '' });
+  const [extratoError, setExtratoError] = useState('');
 
   useEffect(() => {
     fetchAccounts();
@@ -114,6 +120,47 @@ function Accounts({ token }) {
     }
   };
 
+  const handleExtratoClick = acc => {
+    setExtratoConta(acc);
+    setExtrato([]);
+    setExtratoPeriodo({ start: '', end: '' });
+    setExtratoError('');
+  };
+
+  const fetchExtrato = async () => {
+    if (!extratoConta) return;
+    setExtratoLoading(true);
+    setExtratoError('');
+    try {
+      const params = [];
+      if (extratoPeriodo.start) params.push(`start=${extratoPeriodo.start}`);
+      if (extratoPeriodo.end) params.push(`end=${extratoPeriodo.end}`);
+      const url = `${API_URL}/${extratoConta.id}/extrato${params.length ? '?' + params.join('&') : ''}`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Erro ao buscar extrato');
+      const data = await res.json();
+      setExtrato(data.extrato || []);
+    } catch (err) {
+      setExtratoError('Erro ao buscar extrato.');
+    } finally {
+      setExtratoLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (extratoConta) fetchExtrato();
+    // eslint-disable-next-line
+  }, [extratoConta]);
+
+  const handlePeriodoChange = e => {
+    setExtratoPeriodo({ ...extratoPeriodo, [e.target.name]: e.target.value });
+  };
+
+  const handleFiltrarExtrato = e => {
+    e.preventDefault();
+    fetchExtrato();
+  };
+
   return (
     <div style={{ marginLeft: 240, padding: 32 }}>
       <h2 style={{ marginBottom: 24, fontWeight: 700 }}>Contas</h2>
@@ -198,6 +245,7 @@ function Accounts({ token }) {
                       <td style={{ textAlign: 'left' }}>
                         <Button variant="secondary" onClick={() => handleEdit(acc)}>Editar</Button>
                         <Button variant="danger" onClick={() => handleDelete(acc.id)}>Excluir</Button>
+                        <Button variant="primary" onClick={() => handleExtratoClick(acc)} style={{ marginLeft: 8 }}>Extrato</Button>
                       </td>
                     </>
                   )}
@@ -205,6 +253,50 @@ function Accounts({ token }) {
               ))}
             </tbody>
           </table>
+        </motion.div>
+      )}
+      {/* Extrato da conta selecionada */}
+      {extratoConta && (
+        <motion.div className="glass-card fade-in" style={{ padding: 24, marginTop: 32 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h3 style={{ margin: 0 }}>Extrato: {extratoConta.name} ({extratoConta.bank})</h3>
+            <Button variant="secondary" onClick={() => setExtratoConta(null)}>Fechar</Button>
+          </div>
+          <form onSubmit={handleFiltrarExtrato} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
+            <label>Período:</label>
+            <input type="date" name="start" value={extratoPeriodo.start} onChange={handlePeriodoChange} className="input-glass" />
+            <span>a</span>
+            <input type="date" name="end" value={extratoPeriodo.end} onChange={handlePeriodoChange} className="input-glass" />
+            <Button variant="primary" type="submit" loading={extratoLoading}>Filtrar</Button>
+          </form>
+          {extratoLoading ? <p>Carregando extrato...</p> : extratoError ? <p style={{ color: 'red' }}>{extratoError}</p> : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
+              <thead>
+                <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
+                  <th style={{ padding: 8, textAlign: 'left' }}>Data</th>
+                  <th style={{ padding: 8, textAlign: 'left' }}>Descrição</th>
+                  <th style={{ padding: 8, textAlign: 'left' }}>Categoria</th>
+                  <th style={{ padding: 8, textAlign: 'left' }}>Tipo</th>
+                  <th style={{ padding: 8, textAlign: 'right' }}>Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {extrato.length === 0 ? (
+                  <tr><td colSpan={5} style={{ textAlign: 'center', padding: 16 }}>Nenhuma movimentação encontrada.</td></tr>
+                ) : extrato.map((item, idx) => (
+                  <tr key={idx}>
+                    <td style={{ padding: 8 }}>{new Date(item.data).toLocaleDateString('pt-BR')}</td>
+                    <td style={{ padding: 8 }}>{item.descricao}</td>
+                    <td style={{ padding: 8 }}>{item.categoria}</td>
+                    <td style={{ padding: 8, textTransform: 'capitalize' }}>{item.tipo.replace('_', ' ')}</td>
+                    <td style={{ padding: 8, textAlign: 'right', color: item.valor < 0 ? 'crimson' : 'seagreen', fontWeight: 600 }}>
+                      {item.valor < 0 ? '-' : ''}R$ {Math.abs(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </motion.div>
       )}
       <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />

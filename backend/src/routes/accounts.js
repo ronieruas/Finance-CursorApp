@@ -143,4 +143,108 @@ router.get('/:id/saldo', authMiddleware, async (req, res) => {
   }
 });
 
+// Extrato da conta: receitas, despesas e transferências, por período
+router.get('/:id/extrato', authMiddleware, async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    const accountId = req.params.id;
+    const userId = req.user.id;
+    const { Op } = require('sequelize');
+    const Income = require('../models/income');
+    const Expense = require('../models/expense');
+    const Transfer = require('../models/transfer');
+
+    // Verifica se a conta existe e pertence ao usuário
+    const account = await require('../models/account').findOne({ where: { id: accountId, user_id: userId } });
+    if (!account) return res.status(404).json({ error: 'Conta não encontrada' });
+
+    // Define período
+    let firstDay = start ? new Date(start) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    let lastDay = end ? new Date(end) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+
+    // Receitas da conta
+    const receitas = await Income.findAll({
+      where: {
+        user_id: userId,
+        account_id: accountId,
+        date: { [Op.between]: [firstDay, lastDay] },
+      },
+      order: [['date', 'ASC']],
+    });
+
+    // Despesas da conta
+    const despesas = await Expense.findAll({
+      where: {
+        user_id: userId,
+        account_id: accountId,
+        due_date: { [Op.between]: [firstDay, lastDay] },
+      },
+      order: [['due_date', 'ASC']],
+    });
+
+    // Transferências de saída (débito)
+    const transferenciasSaida = await Transfer.findAll({
+      where: {
+        user_id: userId,
+        from_account_id: accountId,
+        date: { [Op.between]: [firstDay, lastDay] },
+      },
+      order: [['date', 'ASC']],
+    });
+
+    // Transferências de entrada (crédito)
+    const transferenciasEntrada = await Transfer.findAll({
+      where: {
+        user_id: userId,
+        to_account_id: accountId,
+        date: { [Op.between]: [firstDay, lastDay] },
+      },
+      order: [['date', 'ASC']],
+    });
+
+    // Monta extrato unificado
+    const extrato = [
+      ...receitas.map(r => ({
+        tipo: 'receita',
+        id: r.id,
+        descricao: r.description,
+        valor: Number(r.value),
+        data: r.date,
+        categoria: r.category,
+      })),
+      ...despesas.map(d => ({
+        tipo: 'despesa',
+        id: d.id,
+        descricao: d.description,
+        valor: -Number(d.value),
+        data: d.due_date,
+        categoria: d.category,
+      })),
+      ...transferenciasSaida.map(t => ({
+        tipo: 'transferencia_saida',
+        id: t.id,
+        descricao: t.description || 'Transferência enviada',
+        valor: -Number(t.value),
+        data: t.date,
+        categoria: 'Transferência',
+      })),
+      ...transferenciasEntrada.map(t => ({
+        tipo: 'transferencia_entrada',
+        id: t.id,
+        descricao: t.description || 'Transferência recebida',
+        valor: Number(t.value),
+        data: t.date,
+        categoria: 'Transferência',
+      })),
+    ];
+
+    // Ordena por data (mais antigo primeiro)
+    extrato.sort((a, b) => new Date(a.data) - new Date(b.data));
+
+    res.json({ extrato });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar extrato da conta', details: err.message });
+  }
+});
+
 module.exports = router; 
