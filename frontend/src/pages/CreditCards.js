@@ -42,7 +42,7 @@ function CreditCards({ token }) {
   });
   const [expenseLoading, setExpenseLoading] = useState(false);
   const [expenseToast, setExpenseToast] = useState({ show: false, message: '', type: 'success' });
-  const [billMonth, setBillMonth] = useState(dayjs().format('YYYY-MM'));
+  const [billMonth, setBillMonth] = useState('');
 
   useEffect(() => { 
     fetchCards(); 
@@ -215,7 +215,7 @@ function CreditCards({ token }) {
       const res = await fetch(`${API_URL}/${payModal.card.id}/pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ ...payForm, value: payForm.is_full_payment ? undefined : payForm.value }),
+        body: JSON.stringify({ ...payForm, value: payForm.is_full_payment ? undefined : payForm.value, bill_month: billMonth }),
       });
       if (res.ok) {
         setToast({ show: true, message: 'Pagamento realizado com sucesso!', type: 'success' });
@@ -303,6 +303,18 @@ function CreditCards({ token }) {
     return { start: start.startOf('day'), end: end.endOf('day') };
   };
 
+  // Função para determinar o mês da fatura em aberto (considerando fechamento)
+  function getOpenBillMonth(card) {
+    if (!card) return dayjs().format('YYYY-MM');
+    const today = dayjs();
+    const closing = dayjs().date(card.closing_day);
+    // Se hoje é igual ou após o fechamento, fatura em aberto é do próximo mês
+    if (today.isSameOrAfter(closing, 'day')) {
+      return today.add(1, 'month').format('YYYY-MM');
+    }
+    return today.format('YYYY-MM');
+  }
+
   // Novo: Preencher automaticamente a data da compra ao selecionar cartão ou mês
   useEffect(() => {
     if (expenseForm.credit_card_id && billMonth) {
@@ -336,6 +348,25 @@ function CreditCards({ token }) {
     const due = dayjs(expenseForm.due_date);
     dataForaDoPeriodo = !due.isSameOrAfter(periodoFatura.start) || !due.isSameOrBefore(periodoFatura.end);
   }
+
+  // Status da fatura: 'Em aberto', 'Em atraso', 'Paga'
+  function getBillStatus(card, fatura, billMonth) {
+    if (!card || !fatura) return '-';
+    const { end } = getBillPeriod(card, billMonth);
+    const todasPagas = fatura.length > 0 && fatura.every(d => d.status === 'paga');
+    if (todasPagas) return 'Paga';
+    // Se hoje > vencimento e não está paga, está em atraso
+    const vencimento = dayjs(`${billMonth}-${String(card.due_day).padStart(2, '0')}`);
+    if (dayjs().isAfter(vencimento, 'day')) return 'Em atraso';
+    return 'Em aberto';
+  }
+
+  // Ao carregar cartões, definir billMonth para o mês da fatura em aberto do primeiro cartão (ou manter manual)
+  useEffect(() => {
+    if (cards.length > 0) {
+      setBillMonth(getOpenBillMonth(cards[0]));
+    }
+  }, [cards.length]);
 
   return (
     <div style={{ marginLeft: 240, padding: 32 }}>
@@ -480,7 +511,9 @@ function CreditCards({ token }) {
                           <td style={{ textAlign: 'left' }}>{card.due_day}</td>
                           <td style={{ textAlign: 'left' }}>{card.closing_day}</td>
                           <td style={{ textAlign: 'left' }}>{card.name}</td>
-                          <td style={{ textAlign: 'left' }}>{card.status}</td>
+                          <td style={{ textAlign: 'left' }}>
+                            {getBillStatus(card, faturaAtual, billMonth)}
+                          </td>
                           <td style={{ textAlign: 'left' }}>
                             <Button variant="secondary" onClick={() => handleEdit(card)}>Editar</Button>
                             <Button variant="danger" onClick={() => handleDelete(card.id)}>Excluir</Button>
@@ -609,6 +642,10 @@ function CreditCards({ token }) {
       <Modal open={payModal.open} onClose={() => setPayModal({ open: false, card: null })} title={payModal.card ? `Pagamento do cartão: ${payModal.card.name}` : ''} width={480}>
         {payModal.card && (
           <form onSubmit={handlePay}>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontWeight: 500 }}>Competência da fatura</label>
+              <input type="month" name="payBillMonth" value={billMonth} onChange={e => setBillMonth(e.target.value)} style={{ minWidth: 120, marginLeft: 8 }} />
+            </div>
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontWeight: 500 }}>Conta para débito</label>
               <select name="account_id" value={payForm.account_id} onChange={handlePayFormChange} required className="input-glass" style={{ width: '100%', marginTop: 4 }}>
