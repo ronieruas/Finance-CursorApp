@@ -3,6 +3,12 @@ import { motion } from 'framer-motion';
 
 const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api`;
 
+function formatDateBR(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  return `${d}-${m}-${y}`;
+}
+
 function Transfers({ token }) {
   const [accounts, setAccounts] = useState([]);
   const [transfers, setTransfers] = useState([]);
@@ -277,7 +283,7 @@ function Transfers({ token }) {
                   </>
                 ) : (
                   <>
-                    <td style={{ textAlign: 'left' }}>{t.date}</td>
+                    <td style={{ textAlign: 'left' }}>{formatDateBR(t.date)}</td>
                     <td style={{ textAlign: 'left' }}>{accounts.find(a => a.id === t.from_account_id)?.name || t.from_account_id}</td>
                     <td style={{ textAlign: 'left' }}>{t.to_account_id ? (accounts.find(a => a.id === t.to_account_id)?.name || t.to_account_id) : 'Terceiro'}</td>
                     <td style={{ textAlign: 'left' }}>R$ {Number(t.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>

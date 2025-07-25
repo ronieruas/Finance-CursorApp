@@ -285,7 +285,7 @@ function Accounts({ token }) {
                   <tr><td colSpan={5} style={{ textAlign: 'center', padding: 16 }}>Nenhuma movimentação encontrada.</td></tr>
                 ) : extrato.map((item, idx) => (
                   <tr key={idx}>
-                    <td style={{ padding: 8 }}>{new Date(item.data).toLocaleDateString('pt-BR')}</td>
+                    <td style={{ padding: 8 }}>{item.data}</td>
                     <td style={{ padding: 8 }}>{item.descricao}</td>
                     <td style={{ padding: 8 }}>{item.categoria}</td>
                     <td style={{ padding: 8, textTransform: 'capitalize' }}>{item.tipo.replace('_', ' ')}</td>
