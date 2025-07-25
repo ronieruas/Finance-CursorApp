@@ -166,6 +166,11 @@ exports.pay = async (req, res) => {
         periods = getBillPeriods(closing_day, card.due_day);
       }
       periodoFatura = periods.atual;
+      console.log('[PAGAMENTO] Período da fatura:', {
+        start: periodoFatura.start,
+        end: periodoFatura.end,
+        bill_month
+      });
       despesasFatura = await Expense.findAll({
         where: {
           user_id: userId,
@@ -173,7 +178,9 @@ exports.pay = async (req, res) => {
           due_date: { [Op.gte]: periodoFatura.start, [Op.lt]: periodoFatura.end },
         },
       });
+      console.log('[PAGAMENTO] Despesas encontradas para pagamento:', despesasFatura.map(d => ({ id: d.id, due_date: d.due_date, status: d.status, valor: d.value })));
       valorPagamento = despesasFatura.reduce((acc, d) => acc + Number(d.value), 0);
+      console.log('[PAGAMENTO] Valor total calculado para pagamento:', valorPagamento);
     }
     // Debita valor da conta
     if (account.balance < valorPagamento) {
