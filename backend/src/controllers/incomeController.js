@@ -2,7 +2,13 @@ const { Income } = require('../models');
 const Account = require('../models/account');
 
 exports.list = async (req, res) => {
-  const incomes = await Income.findAll({ where: { user_id: req.user.id } });
+  const { start, end } = req.query;
+  const where = { user_id: req.user.id };
+  const { Op } = require('sequelize');
+  if (start && end) {
+    where.date = { [Op.gte]: start, [Op.lte]: end };
+  }
+  const incomes = await Income.findAll({ where });
   res.json(incomes);
 };
 
