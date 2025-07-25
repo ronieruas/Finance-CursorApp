@@ -32,9 +32,14 @@ function Expenses({ token }) {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-  const [filters, setFilters] = useState({ start: '', end: '', type: '', account_id: '', credit_card_id: '', category: '', status: '' });
+  const [filters, setFilters] = useState(() => {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0,10);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0,10);
+    return { start: firstDay, end: lastDay, type: '', account_id: '', credit_card_id: '', category: '', status: '' };
+  });
 
-  useEffect(() => { fetchExpenses(); fetchAccounts(); }, []);
+  useEffect(() => { fetchExpensesWithFilters(); fetchAccounts(); }, []);
 
   const fetchExpenses = async () => {
     setLoading(true);
@@ -220,6 +225,9 @@ function Expenses({ token }) {
             <option value="atrasada">Atrasada</option>
           </select>
           <Button variant="primary" type="submit">Filtrar</Button>
+          <span style={{ marginLeft: 24, fontWeight: 600, color: 'crimson', fontSize: 18 }}>
+            Total: R$ {expenses.reduce((sum, exp) => sum + Number(exp.value), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </span>
         </form>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 0 }}>
           {/* Tipo fixo como conta, não permite mais cadastrar despesas de cartão aqui */}
