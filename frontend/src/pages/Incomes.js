@@ -22,6 +22,12 @@ function Incomes({ token }) {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const [period, setPeriod] = useState(() => {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0,10);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0,10);
+    return { start: firstDay, end: lastDay };
+  });
 
   useEffect(() => { fetchIncomes(); fetchAccounts(); }, []);
 
@@ -35,9 +41,14 @@ function Incomes({ token }) {
     }
   };
 
-  const fetchIncomes = async () => {
+  const fetchIncomes = async (customPeriod) => {
     setLoading(true);
-    const res = await fetch(API_URL, { headers: { Authorization: `Bearer ${token}` } });
+    const p = customPeriod || period;
+    const params = [];
+    if (p.start) params.push(`start=${p.start}`);
+    if (p.end) params.push(`end=${p.end}`);
+    const url = `${API_URL}${params.length ? '?' + params.join('&') : ''}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
     setIncomes(data);
     setLoading(false);
@@ -119,9 +130,29 @@ function Incomes({ token }) {
     setLoading(false);
   };
 
+  const handlePeriodChange = e => {
+    setPeriod({ ...period, [e.target.name]: e.target.value });
+  };
+
+  const handlePeriodSubmit = e => {
+    e.preventDefault();
+    fetchIncomes(period);
+  };
+
   return (
     <div style={{ marginLeft: 240, padding: 32 }}>
       <h2 style={{ marginBottom: 24, fontWeight: 700 }}>Receitas</h2>
+      {/* Filtro de período e total */}
+      <form onSubmit={handlePeriodSubmit} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 24 }}>
+        <label>Período:</label>
+        <input type="date" name="start" value={period.start} onChange={handlePeriodChange} className="input-glass" />
+        <span>a</span>
+        <input type="date" name="end" value={period.end} onChange={handlePeriodChange} className="input-glass" />
+        <Button variant="primary" type="submit">Filtrar</Button>
+        <span style={{ marginLeft: 24, fontWeight: 600, color: 'seagreen', fontSize: 18 }}>
+          Total: R$ {incomes.reduce((sum, inc) => sum + Number(inc.value), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+        </span>
+      </form>
       <motion.div className="glass-card fade-in" style={{ padding: 24, marginBottom: 32 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 0 }}>
           <label style={{ minWidth: 120 }}>
