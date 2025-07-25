@@ -161,6 +161,9 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
     // Define período
     let firstDay = start ? new Date(start) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     let lastDay = end ? new Date(end) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+    if (end) {
+      lastDay.setHours(23, 59, 59, 999);
+    }
 
     // Receitas da conta
     const receitas = await Income.findAll({
