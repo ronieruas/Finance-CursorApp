@@ -290,10 +290,9 @@ function CreditCards({ token }) {
     const closingDay = Number(card.closing_day);
     const [year, m] = month.split('-').map(Number);
     // O início é o dia do fechamento do mês anterior
-    let start = dayjs(new Date(year, m - 1, closingDay));
-    start = start.subtract(1, 'month');
+    let start = dayjs(new Date(year, m - 1, closingDay)).subtract(1, 'month');
     // O fim é o dia do fechamento do mês atual menos 1 dia
-    let end = dayjs(new Date(year, m, closingDay)).subtract(1, 'day');
+    let end = dayjs(new Date(year, m - 1, closingDay)).subtract(1, 'day');
     return { start: start.startOf('day'), end: end.endOf('day') };
   }
 
