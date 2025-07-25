@@ -161,16 +161,13 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
     // Define período
     let firstDay = start ? new Date(start) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     let lastDay = end ? new Date(end) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
-    if (end) {
-      lastDay.setHours(23, 59, 59, 999);
-    }
 
     // Receitas da conta
     const receitas = await Income.findAll({
       where: {
         user_id: userId,
         account_id: accountId,
-        date: { [Op.between]: [firstDay, lastDay] },
+        date: { [Op.gte]: firstDay, [Op.lte]: lastDay },
       },
       order: [['date', 'ASC']],
     });
@@ -180,7 +177,7 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
       where: {
         user_id: userId,
         account_id: accountId,
-        due_date: { [Op.between]: [firstDay, lastDay] },
+        due_date: { [Op.gte]: firstDay, [Op.lte]: lastDay },
       },
       order: [['due_date', 'ASC']],
     });
@@ -190,7 +187,7 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
       where: {
         user_id: userId,
         from_account_id: accountId,
-        date: { [Op.between]: [firstDay, lastDay] },
+        date: { [Op.gte]: firstDay, [Op.lte]: lastDay },
       },
       order: [['date', 'ASC']],
     });
@@ -200,10 +197,19 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
       where: {
         user_id: userId,
         to_account_id: accountId,
-        date: { [Op.between]: [firstDay, lastDay] },
+        date: { [Op.gte]: firstDay, [Op.lte]: lastDay },
       },
       order: [['date', 'ASC']],
     });
+
+    // Função para formatar data dd-mm-aaaa
+    function formatDateBR(dateStr) {
+      const d = new Date(dateStr);
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}-${month}-${year}`;
+    }
 
     // Monta extrato unificado
     const extrato = [
@@ -212,7 +218,7 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
         id: r.id,
         descricao: r.description,
         valor: Number(r.value),
-        data: r.date,
+        data: formatDateBR(r.date),
         categoria: r.category,
       })),
       ...despesas.map(d => ({
@@ -220,7 +226,7 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
         id: d.id,
         descricao: d.description,
         valor: -Number(d.value),
-        data: d.due_date,
+        data: formatDateBR(d.due_date),
         categoria: d.category,
       })),
       ...transferenciasSaida.map(t => ({
@@ -228,7 +234,7 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
         id: t.id,
         descricao: t.description || 'Transferência enviada',
         valor: -Number(t.value),
-        data: t.date,
+        data: formatDateBR(t.date),
         categoria: 'Transferência',
       })),
       ...transferenciasEntrada.map(t => ({
@@ -236,13 +242,17 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
         id: t.id,
         descricao: t.description || 'Transferência recebida',
         valor: Number(t.value),
-        data: t.date,
+        data: formatDateBR(t.date),
         categoria: 'Transferência',
       })),
     ];
 
     // Ordena por data (mais antigo primeiro)
-    extrato.sort((a, b) => new Date(a.data) - new Date(b.data));
+    extrato.sort((a, b) => {
+      const [da, ma, aa] = a.data.split('-');
+      const [db, mb, ab] = b.data.split('-');
+      return new Date(`${aa}-${ma}-${da}`) - new Date(`${ab}-${mb}-${db}`);
+    });
 
     res.json({ extrato });
   } catch (err) {
