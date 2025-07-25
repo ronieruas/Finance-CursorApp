@@ -137,7 +137,7 @@ exports.getBill = async (req, res) => {
 
 exports.pay = async (req, res) => {
   try {
-    const { account_id, value, payment_date, is_full_payment, auto_debit } = req.body;
+    const { account_id, value, payment_date, is_full_payment, auto_debit, bill_month } = req.body;
     const userId = req.user.id;
     const cardId = req.params.id;
     // Verifica cartão
@@ -149,16 +149,28 @@ exports.pay = async (req, res) => {
     // Valor a pagar
     let valorPagamento = Number(value);
     let despesasFatura = [];
+    let periodoFatura = null;
     if (is_full_payment) {
-      // Calcula valor total da fatura atual
-      const { closing_day } = card;
-      const periods = getBillPeriods(closing_day, card.due_day);
+      // Calcula período da fatura baseado em bill_month (competência)
+      let periods;
+      if (bill_month) {
+        // bill_month no formato YYYY-MM
+        const [ano, mes] = bill_month.split('-').map(Number);
+        // Função para calcular período da fatura para o mês informado
+        const closingDay = card.closing_day;
+        const start = new Date(ano, mes - 1, closingDay);
+        const end = new Date(ano, mes, closingDay);
+        periods = { atual: { start, end } };
+      } else {
+        const { closing_day } = card;
+        periods = getBillPeriods(closing_day, card.due_day);
+      }
+      periodoFatura = periods.atual;
       despesasFatura = await Expense.findAll({
         where: {
           user_id: userId,
           credit_card_id: card.id,
-          due_date: { [Op.gte]: periods.atual.start, [Op.lt]: periods.atual.end },
-          // Removido o filtro de status
+          due_date: { [Op.gte]: periodoFatura.start, [Op.lt]: periodoFatura.end },
         },
       });
       valorPagamento = despesasFatura.reduce((acc, d) => acc + Number(d.value), 0);
@@ -179,19 +191,8 @@ exports.pay = async (req, res) => {
       auto_debit: !!auto_debit,
     });
     // Atualiza despesas do período como pagas
-    if (is_full_payment) {
-      // Marca todas as despesas do período como pagas, independente do status
-      const { closing_day } = card;
-      const periods = getBillPeriods(closing_day, card.due_day);
-      const despesasFaturaPeriodo = await Expense.findAll({
-        where: {
-          user_id: userId,
-          credit_card_id: card.id,
-          due_date: { [Op.gte]: periods.atual.start, [Op.lt]: periods.atual.end },
-          // Removido o filtro de status
-        },
-      });
-      await Promise.all(despesasFaturaPeriodo.map(despesa => despesa.update({ status: 'paga', paid_at: payment_date || new Date() })));
+    if (is_full_payment && periodoFatura) {
+      await Promise.all(despesasFatura.map(despesa => despesa.update({ status: 'paga', paid_at: payment_date || new Date() })));
     }
     // Atualiza débito automático do cartão se solicitado
     if (auto_debit !== undefined) {
