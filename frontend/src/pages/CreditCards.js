@@ -284,24 +284,18 @@ function CreditCards({ token }) {
     setExpenseLoading(false);
   };
 
-  // Função para calcular o período da fatura
-  const getBillPeriod = (card, month) => {
+  // Função para calcular o período da fatura igual ao backend
+  function getBillPeriod(card, month) {
     if (!card) return { start: null, end: null };
     const closingDay = Number(card.closing_day);
     const [year, m] = month.split('-').map(Number);
     // O início é o dia do fechamento do mês anterior
-    let start = dayjs(`${year}-${m}-01`).subtract(1, 'month').date(closingDay);
-    // O fim é um dia antes do fechamento do mês atual
-    let end = dayjs(`${year}-${m}-01`).date(closingDay).subtract(1, 'day');
-    // Ajuste para meses com menos dias
-    if (start.month() !== (m === 1 ? 11 : m - 2)) {
-      start = dayjs(`${year}-${m}-01`).subtract(1, 'day');
-    }
-    if (end.month() !== m - 1) {
-      end = dayjs(`${year}-${m}-01`).endOf('month');
-    }
-    return { start: start.startOf('day'), end: end.endOf('day') };
-  };
+    let start = dayjs(new Date(year, m - 1, closingDay));
+    start = start.subtract(1, 'month');
+    // O fim é o dia do fechamento do mês atual
+    let end = dayjs(new Date(year, m, closingDay));
+    return { start: start.startOf('day'), end: end.startOf('day') };
+  }
 
   // Função para determinar o mês da fatura em aberto (considerando fechamento)
   function getOpenBillMonth(card) {
@@ -462,9 +456,10 @@ function CreditCards({ token }) {
                 // Calcular valor da fatura do mês atual
                 const expenses = cardExpenses[card.id] || [];
                 const { start, end } = getBillPeriod(card, billMonth);
+                // Na tabela, filtrar despesas do período usando o novo getBillPeriod
                 const faturaAtual = expenses.filter(exp => {
                   const due = dayjs(exp.due_date);
-                  return start && end && due.isSameOrAfter(start) && due.isSameOrBefore(end);
+                  return start && end && due.isSameOrAfter(start) && due.isBefore(end);
                 });
                 // Debug: mostrar despesas do período e seus status
                 console.log(`DEBUG - Cartão ${card.id} (${card.name}) - Fatura do período`, billMonth, faturaAtual.map(d => ({ id: d.id, desc: d.description, status: d.status, valor: d.value, due: d.due_date })));
