@@ -8,6 +8,12 @@ import Toast from '../components/Toast';
 const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/incomes`; // ajuste conforme backend
 const ACCOUNTS_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/accounts`;
 
+function formatDateBR(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  return `${d}-${m}-${y}`;
+}
+
 function Incomes({ token }) {
   const [incomes, setIncomes] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -179,7 +185,7 @@ function Incomes({ token }) {
                       <td style={{ textAlign: 'left' }}>{accounts.find(a => a.id === inc.account_id)?.name || inc.account_id}</td>
                       <td style={{ textAlign: 'left' }}>{inc.description}</td>
                       <td style={{ textAlign: 'left', color: 'var(--color-receita)', fontWeight: 600 }}>R$ {Number(inc.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                      <td style={{ textAlign: 'left' }}>{inc.date}</td>
+                      <td style={{ textAlign: 'left' }}>{formatDateBR(inc.date)}</td>
                       <td style={{ textAlign: 'left' }}>{inc.category}</td>
                       <td style={{ textAlign: 'left' }}>{inc.is_recurring ? 'Sim' : 'Não'}</td>
                       <td style={{ textAlign: 'left' }}>
