@@ -11,6 +11,7 @@ import Login from './pages/Login';
 import ChangePassword from './pages/ChangePassword';
 import ManageUsers from './pages/ManageUsers';
 import Transfers from './pages/Transfers';
+import Analytics from './pages/Analytics';
 import { AnimatePresence, motion } from 'framer-motion';
 import { jwtDecode } from 'jwt-decode';
 
@@ -32,6 +33,13 @@ function AnimatedRoutes({ token, setToken }) {
           <PrivateRoute token={token}>
             <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -24 }} transition={{ duration: 0.4 }}>
               <Dashboard token={token} />
+            </motion.div>
+          </PrivateRoute>
+        } />
+        <Route path="/analytics" element={
+          <PrivateRoute token={token}>
+            <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -24 }} transition={{ duration: 0.4 }}>
+              <Analytics token={token} />
             </motion.div>
           </PrivateRoute>
         } />
