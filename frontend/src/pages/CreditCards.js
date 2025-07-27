@@ -289,10 +289,14 @@ function CreditCards({ token }) {
     if (!card) return { start: null, end: null };
     const closingDay = Number(card.closing_day);
     const [year, m] = month.split('-').map(Number);
-    // O início é o dia do fechamento do mês anterior
-    let start = dayjs(new Date(year, m - 1, closingDay)).subtract(1, 'month');
-    // O fim é o dia do fechamento do mês atual menos 1 dia
-    let end = dayjs(new Date(year, m - 1, closingDay)).subtract(1, 'day');
+    
+    // Fechamento da fatura para o mês especificado
+    const closingDate = new Date(year, m - 1, closingDay);
+    
+    // Período da fatura: do fechamento do mês anterior até o dia anterior ao fechamento atual
+    const start = dayjs(closingDate).subtract(1, 'month');
+    const end = dayjs(closingDate).subtract(1, 'day');
+    
     return { start: start.startOf('day'), end: end.endOf('day') };
   }
 

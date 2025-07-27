@@ -4,21 +4,58 @@ const { Op } = require('sequelize');
 function getBillPeriods(closingDay, dueDay, refDate = new Date()) {
   // refDate: data de referência (hoje)
   // Retorna os períodos de fatura atual e próxima
+  // 
+  // Exemplo: cartão com fechamento dia 28 e vencimento dia 5
+  // - Fatura atual: compras de 28/jun até 27/jul -> vence em 5/ago
+  // - Próxima fatura: compras de 28/jul até 27/ago -> vence em 5/set
+  
   const year = refDate.getFullYear();
   const month = refDate.getMonth();
-  // Fechamento da fatura atual
-  let closing = new Date(year, month, closingDay);
-  if (refDate < closing) closing = new Date(year, month - 1, closingDay);
-  const nextClosing = new Date(closing);
-  nextClosing.setMonth(closing.getMonth() + 1);
-  // Período da fatura atual: [closing, nextClosing)
-  // Período da próxima fatura: [nextClosing, nextNextClosing)
-  const nextNextClosing = new Date(nextClosing);
-  nextNextClosing.setMonth(nextClosing.getMonth() + 1);
+  
+  // Calcular o fechamento da fatura atual
+  // Se hoje é antes do fechamento do mês atual, a fatura atual fecha no mês anterior
+  let currentClosing = new Date(year, month, closingDay);
+  if (refDate.getDate() < closingDay) {
+    // Ainda não fechou a fatura do mês atual, então a fatura atual é do mês anterior
+    currentClosing = new Date(year, month - 1, closingDay);
+  }
+  
+  // Período da fatura atual: do fechamento do mês anterior até o dia anterior ao fechamento atual
+  const faturaAtualStart = new Date(currentClosing);
+  faturaAtualStart.setMonth(currentClosing.getMonth() - 1);
+  
+  const faturaAtualEnd = new Date(currentClosing);
+  faturaAtualEnd.setDate(currentClosing.getDate() - 1);
+  
+  // Período da próxima fatura: do fechamento atual até o dia anterior ao próximo fechamento
+  const faturaProximaStart = new Date(currentClosing);
+  
+  const faturaProximaEnd = new Date(currentClosing);
+  faturaProximaEnd.setMonth(currentClosing.getMonth() + 1);
+  faturaProximaEnd.setDate(currentClosing.getDate() - 1);
+  
   return {
-    atual: { start: closing, end: nextClosing },
-    proxima: { start: nextClosing, end: nextNextClosing },
+    atual: { start: faturaAtualStart, end: faturaAtualEnd },
+    proxima: { start: faturaProximaStart, end: faturaProximaEnd },
   };
+}
+
+function getBillPeriodForMonth(closingDay, year, month) {
+  // Calcula o período da fatura para um mês específico
+  // month: 0-11 (janeiro = 0, dezembro = 11)
+  // year: ano completo
+  
+  // Fechamento da fatura para o mês especificado
+  const closingDate = new Date(year, month, closingDay);
+  
+  // Período da fatura: do fechamento do mês anterior até o dia anterior ao fechamento atual
+  const start = new Date(closingDate);
+  start.setMonth(closingDate.getMonth() - 1);
+  
+  const end = new Date(closingDate);
+  end.setDate(closingDate.getDate() - 1);
+  
+  return { start, end };
 }
 
 exports.list = async (req, res) => {
@@ -156,11 +193,10 @@ exports.pay = async (req, res) => {
       if (bill_month) {
         // bill_month no formato YYYY-MM
         const [ano, mes] = bill_month.split('-').map(Number);
-        // Função para calcular período da fatura para o mês informado
+        // Usar a nova função para calcular período da fatura para o mês informado
         const closingDay = card.closing_day;
-        const start = new Date(ano, mes - 1, closingDay);
-        const end = new Date(ano, mes, closingDay);
-        periods = { atual: { start, end } };
+        const periodo = getBillPeriodForMonth(closingDay, ano, mes - 1); // mes - 1 porque getBillPeriodForMonth usa 0-11
+        periods = { atual: periodo };
       } else {
         const { closing_day } = card;
         periods = getBillPeriods(closing_day, card.due_day);
