@@ -140,7 +140,7 @@ function Incomes({ token }) {
   };
 
   return (
-    <div style={{ marginLeft: 240, padding: 32 }}>
+    <div className="main-content" style={{ marginLeft: 240, padding: 32 }}>
       <h2 style={{ marginBottom: 24, fontWeight: 700 }}>Receitas</h2>
       {/* Filtro de período e total */}
       <form onSubmit={handlePeriodSubmit} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 24 }}>

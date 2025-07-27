@@ -178,7 +178,7 @@ function Transfers({ token }) {
   };
 
   return (
-    <div style={{ maxWidth: 600, margin: '40px auto', padding: 32, border: '1px solid #eee', borderRadius: 8 }}>
+    <div className="main-content" style={{ maxWidth: 600, margin: '40px auto', padding: 32, border: '1px solid #eee', borderRadius: 8 }}>
       <h2>Transferências</h2>
       {/* Filtros de visualização */}
       <form onSubmit={handleFilterSubmit} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 24 }}>

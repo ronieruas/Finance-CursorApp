@@ -84,6 +84,8 @@ body, .glass-card, .input-glass, .btn-primary, .btn-secondary, .btn-danger {
   font-weight: 700;
   letter-spacing: -0.01em;
 }
+
+/* Responsividade para tablets */
 @media (max-width: 900px) {
   .dashboard-flex {
     flex-direction: column;
@@ -93,28 +95,196 @@ body, .glass-card, .input-glass, .btn-primary, .btn-secondary, .btn-danger {
     min-width: unset !important;
     width: 100%;
   }
+  .main-content {
+    margin-left: 180px !important;
+    padding: 24px !important;
+  }
 }
+
+/* Responsividade para mobile */
+@media (max-width: 700px) {
+  body {
+    padding: 0;
+  }
+  
+  /* Conteúdo principal */
+  .main-content {
+    margin-left: 0 !important;
+    padding: 16px !important;
+    width: 100% !important;
+  }
+  
+  /* Dashboard flex */
+  .dashboard-flex {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+  
+  /* Cards */
+  .glass-card {
+    min-width: unset !important;
+    width: 100% !important;
+    padding: 16px !important;
+    margin-bottom: 12px !important;
+  }
+  
+  /* Sidebar */
+  aside {
+    position: fixed !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    padding: 16px !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    z-index: 1000;
+    background: #f5f7fa !important;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  
+  aside.open {
+    transform: translateX(0);
+  }
+  
+  /* Botão mobile toggle */
+  .sidebar-mobile-toggle {
+    display: block !important;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 10001;
+    background: var(--color-primary);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    font-size: 1.5rem;
+    box-shadow: 0 2px 8px #2563eb22;
+    cursor: pointer;
+  }
+  
+  /* Formulários */
+  form {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+  
+  .form-row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  
+  /* Inputs */
+  .input-glass {
+    width: 100% !important;
+    font-size: 16px !important; /* Evita zoom no iOS */
+  }
+  
+  /* Botões */
+  .btn-primary, .btn-secondary, .btn-danger {
+    width: 100% !important;
+    padding: 12px 16px !important;
+    font-size: 16px !important;
+  }
+  
+  /* Tabelas */
+  table {
+    font-size: 14px !important;
+  }
+  
+  th, td {
+    padding: 8px 4px !important;
+  }
+  
+  /* Gráficos */
+  .recharts-wrapper {
+    width: 100% !important;
+    height: 250px !important;
+  }
+  
+  /* Grid layouts */
+  .grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  
+  .grid-3 {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  
+  /* Títulos */
+  h1, h2, h3 {
+    font-size: 1.5rem !important;
+    margin-bottom: 16px !important;
+  }
+  
+  /* Espaçamentos */
+  .mobile-padding {
+    padding: 16px !important;
+  }
+  
+  .mobile-margin {
+    margin: 16px !important;
+  }
+}
+
+/* Responsividade para mobile pequeno */
+@media (max-width: 480px) {
+  .main-content {
+    padding: 12px !important;
+  }
+  
+  .glass-card {
+    padding: 12px !important;
+  }
+  
+  .kpi-value {
+    font-size: 1.5rem !important;
+  }
+  
+  .recharts-wrapper {
+    height: 200px !important;
+  }
+  
+  /* Overlay para sidebar */
+  .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+    display: none;
+  }
+  
+  .sidebar-overlay.open {
+    display: block;
+  }
+}
+
 .fade-in {
   animation: fadeIn 0.7s cubic-bezier(.4,0,.2,1);
 }
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(24px); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .input-glass {
-  background: var(--color-card);
+  background: rgba(255,255,255,0.8);
   border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 8px 12px;
   font-size: 1rem;
-  outline: none;
-  margin-bottom: 0;
   transition: border 0.2s, box-shadow 0.2s;
-  box-shadow: 0 1px 4px #0001;
 }
 .input-glass:focus {
-  border: 1.5px solid var(--color-primary);
-  box-shadow: 0 2px 8px #2563eb22;
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
 }
 .btn-primary {
   background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
@@ -165,44 +335,6 @@ body, .glass-card, .input-glass, .btn-primary, .btn-secondary, .btn-danger {
 .btn-loading {
   opacity: 0.7;
   pointer-events: none;
-}
-@media (max-width: 700px) {
-  body {
-    padding: 0;
-  }
-  .dashboard-flex {
-    flex-direction: column !important;
-    gap: 12px !important;
-  }
-  .glass-card {
-    min-width: unset !important;
-    width: 100%;
-    padding: 12px !important;
-  }
-  aside {
-    position: static !important;
-    width: 100vw !important;
-    height: auto !important;
-    padding: 12px !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    margin-bottom: 16px;
-  }
-  .sidebar-mobile-toggle {
-    display: block !important;
-    position: fixed;
-    top: 16px;
-    left: 16px;
-    z-index: 10000;
-    background: var(--color-primary);
-    color: #fff;
-    border: none;
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
-    font-size: 1.5rem;
-    box-shadow: 0 2px 8px #2563eb22;
-  }
 }
 @keyframes spinBtn {
   0% { transform: rotate(0deg); }

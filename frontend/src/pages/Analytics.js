@@ -114,7 +114,7 @@ function Analytics({ token }) {
   }
 
   return (
-    <div style={{ marginLeft: 240, padding: 32 }}>
+    <div className="main-content" style={{ marginLeft: 240, padding: 32 }}>
       <h2 style={{ marginBottom: 24, fontWeight: 700 }}>Dashboard Analítico</h2>
       
       {/* Filtros */}
@@ -173,7 +173,7 @@ function Analytics({ token }) {
       </motion.div>
 
       {/* 3. Análise de Categorias */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, marginBottom: 32 }}>
+      <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, marginBottom: 32 }}>
         <motion.div className="glass-card fade-in" style={{ padding: 24 }}>
           <h3 style={{ marginBottom: 16, fontWeight: 600 }}>Top Categorias - Despesas</h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -222,7 +222,7 @@ function Analytics({ token }) {
       {/* 4. Projeções */}
       <motion.div className="glass-card fade-in" style={{ padding: 24, marginBottom: 32 }}>
         <h3 style={{ marginBottom: 16, fontWeight: 600 }}>Projeções</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+        <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
           <div style={{ textAlign: 'center', padding: 16, background: 'rgba(34, 197, 94, 0.1)', borderRadius: 8 }}>
             <h4 style={{ margin: 0, color: colors.receitas }}>Média de Receitas</h4>
             <p style={{ fontSize: 24, fontWeight: 700, margin: 8, color: colors.receitas }}>
@@ -251,7 +251,7 @@ function Analytics({ token }) {
       {data.analiseCartoes.length > 0 && (
         <motion.div className="glass-card fade-in" style={{ padding: 24, marginBottom: 32 }}>
           <h3 style={{ marginBottom: 16, fontWeight: 600 }}>Análise de Cartões de Crédito</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
+          <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
             {data.analiseCartoes.map((cartao, index) => (
               <div key={cartao.id} style={{ padding: 16, background: 'rgba(139, 92, 246, 0.1)', borderRadius: 8 }}>
                 <h4 style={{ margin: '0 0 8 0', color: colors.cartao }}>{cartao.nome}</h4>
@@ -297,7 +297,7 @@ function Analytics({ token }) {
       {data.metas.length > 0 && (
         <motion.div className="glass-card fade-in" style={{ padding: 24 }}>
           <h3 style={{ marginBottom: 16, fontWeight: 600 }}>Metas e Objetivos</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
+          <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
             {data.metas.map((meta) => (
               <div key={meta.id} style={{ padding: 16, background: 'rgba(0,0,0,0.05)', borderRadius: 8 }}>
                 <h4 style={{ margin: '0 0 8 0' }}>{meta.nome}</h4>
