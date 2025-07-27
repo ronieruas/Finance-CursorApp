@@ -36,6 +36,7 @@ const Sidebar = ({ setToken, user }) => {
           <nav role="navigation" aria-label="Menu principal">
             <ul style={{ listStyle: 'none', padding: 0, fontSize: 15 }}>
               <li><Link to="/">Dashboard</Link></li>
+              <li><Link to="/analytics">Analytics</Link></li>
               <li><Link to="/accounts">Contas</Link></li>
               <li><Link to="/incomes">Receitas</Link></li>
               <li><Link to="/expenses">Despesas</Link></li>
