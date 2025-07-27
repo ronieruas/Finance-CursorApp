@@ -199,7 +199,7 @@ function Expenses({ token }) {
   };
 
   return (
-    <div style={{ marginLeft: 240, padding: 32 }}>
+    <div className="main-content" style={{ marginLeft: 240, padding: 32 }}>
       <h2 style={{ marginBottom: 24, fontWeight: 700 }}>Despesas</h2>
       <motion.div className="glass-card fade-in" style={{ padding: 24, marginBottom: 32 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
         {/* Filtros de visualização */}

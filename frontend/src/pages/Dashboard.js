@@ -87,18 +87,20 @@ function Dashboard({ token }) {
   ];
 
   return (
-    <div style={{ marginLeft: 180, padding: 32 }}>
+    <div className="main-content" style={{ marginLeft: 180, padding: 32 }}>
       <h2 style={{ marginBottom: 24, fontWeight: 700, letterSpacing: '-0.01em' }}>Dashboard</h2>
-      <form onSubmit={handlePeriodSubmit} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 24 }}>
-        <label>Período:</label>
-        <Input name="start" type="date" value={periodInput.start} onChange={handlePeriodChange} required />
-        <span>a</span>
-        <Input name="end" type="date" value={periodInput.end} onChange={handlePeriodChange} required />
-        <button type="submit" style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 500 }}>Filtrar</button>
+      <form onSubmit={handlePeriodSubmit} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 24, flexWrap: 'wrap' }}>
+        <div className="form-row" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <label>Período:</label>
+          <Input name="start" type="date" value={periodInput.start} onChange={handlePeriodChange} required />
+          <span>a</span>
+          <Input name="end" type="date" value={periodInput.end} onChange={handlePeriodChange} required />
+          <button type="submit" className="btn-primary">Filtrar</button>
+        </div>
         <span style={{ color: '#888', fontSize: 13, marginLeft: 8 }}>(padrão: mês atual)</span>
       </form>
       {/* Primeira linha: Resumo Mensal e Evolução do Saldo */}
-      <div style={{ display: 'flex', gap: 24, marginBottom: 24, flexWrap: 'wrap' }}>
+      <div className="dashboard-flex" style={{ display: 'flex', gap: 24, marginBottom: 24, flexWrap: 'wrap' }}>
         <motion.div className="glass-card fade-in" style={{ flex: 1, minWidth: 320, maxWidth: '50%', padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           {/* Resumo Mensal */}
           <h3 style={{ marginBottom: 16, alignSelf: 'flex-start' }}>Resumo Mensal</h3>
@@ -133,7 +135,7 @@ function Dashboard({ token }) {
         </motion.div>
       </div>
       {/* Segunda linha: Alertas e Gastos por Cartão */}
-      <div style={{ display: 'flex', gap: 24, marginBottom: 24, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
+      <div className="dashboard-flex" style={{ display: 'flex', gap: 24, marginBottom: 24, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
         <motion.div className="glass-card fade-in" style={{ flex: 1, minWidth: 320, maxWidth: '50%', padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           {/* Alertas */}
           <h3 style={{ marginBottom: 16 }}>Alertas</h3>
