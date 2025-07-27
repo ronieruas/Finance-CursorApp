@@ -99,6 +99,20 @@ body, .glass-card, .input-glass, .btn-primary, .btn-secondary, .btn-danger {
     margin-left: 180px !important;
     padding: 24px !important;
   }
+  
+  /* Login responsivo para tablets */
+  .login-container {
+    grid-template-columns: 1fr !important;
+    max-width: 600px !important;
+  }
+  
+  .login-info {
+    display: none !important;
+  }
+  
+  .login-form {
+    padding: 40px 30px !important;
+  }
 }
 
 /* Responsividade para mobile */
@@ -229,6 +243,47 @@ body, .glass-card, .input-glass, .btn-primary, .btn-secondary, .btn-danger {
   .mobile-margin {
     margin: 16px !important;
   }
+  
+  /* Login responsivo para mobile */
+  .login-container {
+    grid-template-columns: 1fr !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    min-height: 100vh !important;
+  }
+  
+  .login-info {
+    display: none !important;
+  }
+  
+  .login-form {
+    padding: 30px 20px !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+  }
+  
+  .login-form h2 {
+    font-size: 24px !important;
+  }
+  
+  .login-form p {
+    font-size: 14px !important;
+  }
+  
+  .login-form input {
+    font-size: 16px !important;
+    padding: 14px 16px !important;
+  }
+  
+  .login-form button {
+    padding: 16px 24px !important;
+    font-size: 16px !important;
+  }
+  
+  .login-tip {
+    margin-top: 30px !important;
+    padding: 16px !important;
+  }
 }
 
 /* Responsividade para mobile pequeno */
@@ -263,6 +318,23 @@ body, .glass-card, .input-glass, .btn-primary, .btn-secondary, .btn-danger {
   
   .sidebar-overlay.open {
     display: block;
+  }
+  
+  /* Login para mobile pequeno */
+  .login-form {
+    padding: 20px 16px !important;
+  }
+  
+  .login-form h2 {
+    font-size: 20px !important;
+  }
+  
+  .login-form input {
+    padding: 12px 14px !important;
+  }
+  
+  .login-form button {
+    padding: 14px 20px !important;
   }
 }
 
