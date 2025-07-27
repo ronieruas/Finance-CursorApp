@@ -13,11 +13,11 @@ function getBillPeriods(closingDay, dueDay, refDate = new Date()) {
   const month = refDate.getMonth();
   
   // Calcular o fechamento da fatura atual
-  // Se hoje é antes do fechamento do mês atual, a fatura atual fecha no mês anterior
+  // A fatura atual é a que fecha no mês atual (se ainda não fechou) ou no mês anterior (se já fechou)
   let currentClosing = new Date(year, month, closingDay);
-  if (refDate.getDate() < closingDay) {
-    // Ainda não fechou a fatura do mês atual, então a fatura atual é do mês anterior
-    currentClosing = new Date(year, month - 1, closingDay);
+  if (refDate.getDate() >= closingDay) {
+    // Já fechou a fatura do mês atual, então a próxima fatura fecha no próximo mês
+    currentClosing = new Date(year, month + 1, closingDay);
   }
   
   // Período da fatura atual: do fechamento do mês anterior até o dia anterior ao fechamento atual
