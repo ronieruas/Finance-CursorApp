@@ -35,10 +35,16 @@ function Budgets({ token }) {
       const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/creditCards`, { 
         headers: { Authorization: `Bearer ${token}` } 
       });
-      const data = await res.json();
-      setCreditCards(data);
+      if (res.ok) {
+        const data = await res.json();
+        setCreditCards(data || []);
+      } else {
+        console.error('Erro ao carregar cartões:', res.status);
+        setCreditCards([]);
+      }
     } catch (error) {
       console.error('Erro ao carregar cartões:', error);
+      setCreditCards([]);
     }
   };
 
@@ -132,9 +138,9 @@ function Budgets({ token }) {
               <label style={{ marginBottom: 4, fontWeight: 500 }}>Cartão de Crédito</label>
               <select name="credit_card_id" value={form.credit_card_id} onChange={handleChange} className="input-glass" required={form.type === 'cartao'}>
                 <option value="">Selecione um cartão</option>
-                {creditCards.map(card => (
+                {creditCards && creditCards.map(card => (
                   <option key={card.id} value={card.id}>
-                    {card.name} - Final {card.card_number.slice(-4)}
+                    {card.name} - Final {card.card_number ? card.card_number.slice(-4) : '****'}
                   </option>
                 ))}
               </select>
@@ -175,14 +181,14 @@ function Budgets({ token }) {
                       </td>
                       <td>
                         {editForm.type === 'cartao' ? (
-                          <select name="credit_card_id" value={editForm.credit_card_id} onChange={handleEditChange} className="input-glass">
-                            <option value="">Selecione um cartão</option>
-                            {creditCards.map(card => (
-                              <option key={card.id} value={card.id}>
-                                {card.name} - Final {card.card_number.slice(-4)}
-                              </option>
-                            ))}
-                          </select>
+                                                      <select name="credit_card_id" value={editForm.credit_card_id} onChange={handleEditChange} className="input-glass">
+                              <option value="">Selecione um cartão</option>
+                              {creditCards && creditCards.map(card => (
+                                <option key={card.id} value={card.id}>
+                                  {card.name} - Final {card.card_number ? card.card_number.slice(-4) : '****'}
+                                </option>
+                              ))}
+                            </select>
                         ) : (
                           <span>-</span>
                         )}
@@ -202,7 +208,7 @@ function Budgets({ token }) {
                       <td style={{ textAlign: 'left' }}>{budget.type}</td>
                       <td style={{ textAlign: 'left' }}>
                         {budget.type === 'cartao' && budget.credit_card ? 
-                          `${budget.credit_card.name} - Final ${budget.credit_card.card_number.slice(-4)}` : 
+                          `${budget.credit_card.name} - Final ${budget.credit_card.card_number ? budget.credit_card.card_number.slice(-4) : '****'}` : 
                           '-'
                         }
                       </td>
