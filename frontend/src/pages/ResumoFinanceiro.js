@@ -39,6 +39,54 @@ const ResumoFinanceiro = ({ token }) => {
         const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
         const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
         
+        // Buscar dados dos últimos 6 meses para gráficos
+        const receitasChartData = [];
+        const despesasChartData = [];
+        
+        for (let i = 5; i >= 0; i--) {
+          const monthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+          const monthFirstDay = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+          const monthLastDay = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+          
+          const monthName = monthDate.toLocaleDateString('pt-BR', { month: 'short' });
+          
+          // Buscar receitas do mês
+          const monthIncomesRes = await fetch(
+            `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/incomes?start=${monthFirstDay.toISOString().split('T')[0]}&end=${monthLastDay.toISOString().split('T')[0]}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          const monthIncomesData = await monthIncomesRes.json();
+          const monthReceitas = monthIncomesData.reduce((sum, income) => {
+            const amount = parseFloat(income.amount) || 0;
+            return sum + amount;
+          }, 0);
+          
+          // Buscar despesas do mês
+          const monthExpensesRes = await fetch(
+            `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/expenses?start=${monthFirstDay.toISOString().split('T')[0]}&end=${monthLastDay.toISOString().split('T')[0]}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          const monthExpensesData = await monthExpensesRes.json();
+          const monthDespesas = monthExpensesData.reduce((sum, expense) => {
+            const amount = parseFloat(expense.amount) || 0;
+            return sum + amount;
+          }, 0);
+          
+          // Calcular saldo (receitas - despesas)
+          const monthSaldo = monthReceitas - monthDespesas;
+          
+          receitasChartData.push({
+            mes: monthName,
+            receitas: monthReceitas,
+            saldo: monthSaldo
+          });
+          
+          despesasChartData.push({
+            mes: monthName,
+            despesas: monthDespesas
+          });
+        }
+        
         const incomesRes = await fetch(
           `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/incomes?start=${firstDay.toISOString().split('T')[0]}&end=${lastDay.toISOString().split('T')[0]}`,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -64,29 +112,78 @@ const ResumoFinanceiro = ({ token }) => {
         });
         const budgetsData = await budgetsRes.json();
         
-        // Calcular totais
-        const totalReceitas = incomesData.reduce((sum, income) => sum + parseFloat(income.amount), 0);
-        const totalDespesas = expensesData.reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
+        // Buscar faturas dos cartões de crédito
+        const creditCardPaymentsRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/creditCardPayments`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const creditCardPaymentsData = await creditCardPaymentsRes.json();
+        
+        // Calcular totais com tratamento de dados
+        const totalReceitas = incomesData.reduce((sum, income) => {
+          const amount = parseFloat(income.amount) || 0;
+          return sum + amount;
+        }, 0);
+        
+        const totalDespesas = expensesData.reduce((sum, expense) => {
+          const amount = parseFloat(expense.amount) || 0;
+          return sum + amount;
+        }, 0);
+        
         const despesasGerais = expensesData
           .filter(expense => expense.type !== 'cartao')
-          .reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
+          .reduce((sum, expense) => {
+            const amount = parseFloat(expense.amount) || 0;
+            return sum + amount;
+          }, 0);
+        
+        // Calcular faturas de cartão (despesas + faturas em aberto)
         const faturasCartao = expensesData
           .filter(expense => expense.type === 'cartao')
-          .reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
+          .reduce((sum, expense) => {
+            const amount = parseFloat(expense.amount) || 0;
+            return sum + amount;
+          }, 0);
+        
+        // Adicionar faturas em aberto
+        const faturasEmAberto = creditCardPaymentsData
+          .filter(payment => !payment.paid)
+          .reduce((sum, payment) => {
+            const amount = parseFloat(payment.amount) || 0;
+            return sum + amount;
+          }, 0);
+        
+        const totalFaturasCartao = faturasCartao + faturasEmAberto;
         
         // Preparar dados dos cartões
         const cartoesComGastos = creditCardsData.map(card => {
+          // Gastos do cartão (despesas + faturas em aberto)
           const gastosCartao = expensesData
             .filter(expense => expense.credit_card_id === card.id)
-            .reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
+            .reduce((sum, expense) => {
+              const amount = parseFloat(expense.amount) || 0;
+              return sum + amount;
+            }, 0);
+          
+          // Faturas em aberto do cartão
+          const faturasEmAberto = creditCardPaymentsData
+            .filter(payment => payment.credit_card_id === card.id && !payment.paid)
+            .reduce((sum, payment) => {
+              const amount = parseFloat(payment.amount) || 0;
+              return sum + amount;
+            }, 0);
+          
+          const totalGastosCartao = gastosCartao + faturasEmAberto;
           
           const orcamentoCartao = budgetsData
             .filter(budget => budget.credit_card_id === card.id && budget.type === 'cartao')
-            .reduce((sum, budget) => sum + parseFloat(budget.planned_value), 0);
+            .reduce((sum, budget) => {
+              const amount = parseFloat(budget.planned_value) || 0;
+              return sum + amount;
+            }, 0);
           
           return {
             nome: card.name,
-            gasto: gastosCartao,
+            gasto: totalGastosCartao,
             orcamento: orcamentoCartao,
             vencimento: card.due_date ? new Date(card.due_date).toLocaleDateString('pt-BR') : 'N/A'
           };
@@ -98,20 +195,43 @@ const ResumoFinanceiro = ({ token }) => {
           saldo: parseFloat(account.balance || 0)
         }));
         
+        // Debug logs
+        console.log('Dados carregados:', {
+          accountsData,
+          incomesData,
+          expensesData,
+          creditCardsData,
+          budgetsData,
+          creditCardPaymentsData,
+          totalReceitas,
+          totalDespesas,
+          despesasGerais,
+          faturasCartao: totalFaturasCartao,
+          faturasEmAberto,
+          cartoesComGastos,
+          saldoPorConta,
+          receitasChartData,
+          despesasChartData
+        });
+        
         setData({
           receitas: {
             total: totalReceitas,
             saldoPorConta
           },
           despesas: {
-            total: totalDespesas,
+            total: totalDespesas + faturasEmAberto,
             gerais: despesasGerais,
-            faturasCartao
+            faturasCartao: totalFaturasCartao
           },
           cartoes: cartoesComGastos,
           vencimentos: [], // Será implementado quando houver API de vencimentos
           parceladas: [] // Será implementado quando houver API de despesas parceladas
         });
+        
+        // Atualizar dados dos gráficos
+        setReceitasChartData(receitasChartData);
+        setDespesasChartData(despesasChartData);
         
         setLoading(false);
       } catch (error) {
@@ -128,7 +248,7 @@ const ResumoFinanceiro = ({ token }) => {
   const [despesasChartData, setDespesasChartData] = useState([]);
   const [orcamentoChartData, setOrcamentoChartData] = useState([]);
 
-  // Atualizar dados dos gráficos quando os dados principais mudarem
+  // Atualizar dados do gráfico de orçamento quando os dados principais mudarem
   useEffect(() => {
     // Dados do gráfico de orçamento vs gasto
     const orcamentoData = data.cartoes.map(cartao => ({
@@ -137,11 +257,6 @@ const ResumoFinanceiro = ({ token }) => {
       orcamento: cartao.orcamento
     }));
     setOrcamentoChartData(orcamentoData);
-    
-    // Por enquanto, manter gráficos de receitas e despesas vazios
-    // até implementar histórico de meses
-    setReceitasChartData([]);
-    setDespesasChartData([]);
   }, [data.cartoes]);
 
   const formatCurrency = (value) => {
