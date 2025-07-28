@@ -140,7 +140,7 @@ function Budgets({ token }) {
                 <option value="">Selecione um cartão</option>
                 {creditCards && creditCards.map(card => (
                   <option key={card.id} value={card.id}>
-                    {card.name} - Final {card.card_number ? card.card_number.slice(-4) : '****'}
+                    {card.name}
                   </option>
                 ))}
               </select>
@@ -185,7 +185,7 @@ function Budgets({ token }) {
                               <option value="">Selecione um cartão</option>
                               {creditCards && creditCards.map(card => (
                                 <option key={card.id} value={card.id}>
-                                  {card.name} - Final {card.card_number ? card.card_number.slice(-4) : '****'}
+                                  {card.name}
                                 </option>
                               ))}
                             </select>
@@ -208,7 +208,7 @@ function Budgets({ token }) {
                       <td style={{ textAlign: 'left' }}>{budget.type}</td>
                       <td style={{ textAlign: 'left' }}>
                         {budget.type === 'cartao' && budget.credit_card ? 
-                          `${budget.credit_card.name} - Final ${budget.credit_card.card_number ? budget.credit_card.card_number.slice(-4) : '****'}` : 
+                          budget.credit_card.name : 
                           '-'
                         }
                       </td>

@@ -8,33 +8,17 @@ import { motion } from 'framer-motion';
 const ResumoFinanceiro = ({ token }) => {
   const [data, setData] = useState({
     receitas: {
-      total: 7500,
-      saldoPorConta: [
-        { conta: 'Conta Corrente (Banco A)', saldo: 4250.50 },
-        { conta: 'Poupança (Banco B)', saldo: 10100.00 },
-        { conta: 'Carteira Digital', saldo: 850.75 }
-      ]
+      total: 0,
+      saldoPorConta: []
     },
     despesas: {
-      total: 4850,
-      gerais: 2150,
-      faturasCartao: 2700
+      total: 0,
+      gerais: 0,
+      faturasCartao: 0
     },
-    cartoes: [
-      { nome: 'Cartão Final 1234', gasto: 1550.20, orcamento: 2000, vencimento: '25/07' },
-      { nome: 'Cartão Final 5678', gasto: 1149.80, orcamento: 1500, vencimento: '10/08' }
-    ],
-    vencimentos: [
-      { descricao: 'Conta de Luz', valor: 180.45, dias: 3, urgente: true },
-      { descricao: 'Plano de Internet', valor: 99.90, dias: 5, urgente: false },
-      { descricao: 'Aluguel', valor: 1800.00, dias: 7, urgente: false },
-      { descricao: 'Fatura Cartão Final 1234', valor: 1550.20, dias: 12, urgente: false }
-    ],
-    parceladas: [
-      { descricao: 'Notebook', parcela: '5/12', cartao: 'Cartão Final 5678', valor: 450.00 },
-      { descricao: 'Celular', parcela: '8/10', cartao: 'Cartão Final 1234', valor: 320.00 },
-      { descricao: 'Curso Online', parcela: '2/6', cartao: 'Cartão Final 1234', valor: 150.00 }
-    ]
+    cartoes: [],
+    vencimentos: [],
+    parceladas: []
   });
 
   const [loading, setLoading] = useState(true);
@@ -42,8 +26,93 @@ const ResumoFinanceiro = ({ token }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Aqui você pode fazer as chamadas para a API para buscar dados reais
-        // Por enquanto, usando dados mockados
+        setLoading(true);
+        
+        // Buscar dados das contas (receitas e saldos)
+        const accountsRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/accounts`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const accountsData = await accountsRes.json();
+        
+        // Buscar dados de receitas do mês atual
+        const currentDate = new Date();
+        const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+        
+        const incomesRes = await fetch(
+          `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/incomes?start=${firstDay.toISOString().split('T')[0]}&end=${lastDay.toISOString().split('T')[0]}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const incomesData = await incomesRes.json();
+        
+        // Buscar dados de despesas do mês atual
+        const expensesRes = await fetch(
+          `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/expenses?start=${firstDay.toISOString().split('T')[0]}&end=${lastDay.toISOString().split('T')[0]}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const expensesData = await expensesRes.json();
+        
+        // Buscar cartões de crédito
+        const creditCardsRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/creditCards`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const creditCardsData = await creditCardsRes.json();
+        
+        // Buscar orçamentos
+        const budgetsRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/budgets`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const budgetsData = await budgetsRes.json();
+        
+        // Calcular totais
+        const totalReceitas = incomesData.reduce((sum, income) => sum + parseFloat(income.amount), 0);
+        const totalDespesas = expensesData.reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
+        const despesasGerais = expensesData
+          .filter(expense => expense.type !== 'cartao')
+          .reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
+        const faturasCartao = expensesData
+          .filter(expense => expense.type === 'cartao')
+          .reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
+        
+        // Preparar dados dos cartões
+        const cartoesComGastos = creditCardsData.map(card => {
+          const gastosCartao = expensesData
+            .filter(expense => expense.credit_card_id === card.id)
+            .reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
+          
+          const orcamentoCartao = budgetsData
+            .filter(budget => budget.credit_card_id === card.id && budget.type === 'cartao')
+            .reduce((sum, budget) => sum + parseFloat(budget.planned_value), 0);
+          
+          return {
+            nome: card.name,
+            gasto: gastosCartao,
+            orcamento: orcamentoCartao,
+            vencimento: card.due_date ? new Date(card.due_date).toLocaleDateString('pt-BR') : 'N/A'
+          };
+        });
+        
+        // Preparar dados de saldo por conta
+        const saldoPorConta = accountsData.map(account => ({
+          conta: account.name,
+          saldo: parseFloat(account.balance || 0)
+        }));
+        
+        setData({
+          receitas: {
+            total: totalReceitas,
+            saldoPorConta
+          },
+          despesas: {
+            total: totalDespesas,
+            gerais: despesasGerais,
+            faturasCartao
+          },
+          cartoes: cartoesComGastos,
+          vencimentos: [], // Será implementado quando houver API de vencimentos
+          parceladas: [] // Será implementado quando houver API de despesas parceladas
+        });
+        
         setLoading(false);
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
@@ -54,30 +123,26 @@ const ResumoFinanceiro = ({ token }) => {
     fetchData();
   }, [token]);
 
-  // Dados para os gráficos
-  const receitasChartData = [
-    { mes: 'Fev', receitas: 6500, saldo: 8000 },
-    { mes: 'Mar', receitas: 5900, saldo: 8500 },
-    { mes: 'Abr', receitas: 8000, saldo: 9200 },
-    { mes: 'Mai', receitas: 8100, saldo: 9800 },
-    { mes: 'Jun', receitas: 5600, saldo: 9000 },
-    { mes: 'Jul', receitas: 7500, saldo: 10100 }
-  ];
+  // Dados para os gráficos (serão preenchidos com dados reais)
+  const [receitasChartData, setReceitasChartData] = useState([]);
+  const [despesasChartData, setDespesasChartData] = useState([]);
+  const [orcamentoChartData, setOrcamentoChartData] = useState([]);
 
-  const despesasChartData = [
-    { mes: 'Fev', despesas: 4200 },
-    { mes: 'Mar', despesas: 4500 },
-    { mes: 'Abr', despesas: 3800 },
-    { mes: 'Mai', despesas: 5200 },
-    { mes: 'Jun', despesas: 4700 },
-    { mes: 'Jul', despesas: 4850 }
-  ];
-
-  const orcamentoChartData = data.cartoes.map(cartao => ({
-    nome: cartao.nome,
-    gasto: cartao.gasto,
-    orcamento: cartao.orcamento
-  }));
+  // Atualizar dados dos gráficos quando os dados principais mudarem
+  useEffect(() => {
+    // Dados do gráfico de orçamento vs gasto
+    const orcamentoData = data.cartoes.map(cartao => ({
+      nome: cartao.nome,
+      gasto: cartao.gasto,
+      orcamento: cartao.orcamento
+    }));
+    setOrcamentoChartData(orcamentoData);
+    
+    // Por enquanto, manter gráficos de receitas e despesas vazios
+    // até implementar histórico de meses
+    setReceitasChartData([]);
+    setDespesasChartData([]);
+  }, [data.cartoes]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -203,17 +268,30 @@ const ResumoFinanceiro = ({ token }) => {
             <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', margin: '0 0 16px' }}>
               Receitas e Saldos (Últimos 6 Meses)
             </h2>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={receitasChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="mes" />
-                <YAxis />
-                <Tooltip formatter={(value) => formatCurrency(value)} />
-                <Legend />
-                <Bar dataKey="receitas" fill="#10b981" name="Receitas" />
-                <Bar dataKey="saldo" fill="#3b82f6" name="Saldo Final" />
-              </BarChart>
-            </ResponsiveContainer>
+            {receitasChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={receitasChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="mes" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => formatCurrency(value)} />
+                  <Legend />
+                  <Bar dataKey="receitas" fill="#10b981" name="Receitas" />
+                  <Bar dataKey="saldo" fill="#3b82f6" name="Saldo Final" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ 
+                height: 250, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                color: '#6b7280',
+                fontSize: '14px'
+              }}>
+                Histórico de receitas será exibido aqui
+              </div>
+            )}
           </motion.div>
 
           {/* Card: Despesas do Mês */}
@@ -274,22 +352,35 @@ const ResumoFinanceiro = ({ token }) => {
             <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', margin: '0 0 16px' }}>
               Total de Despesas (Últimos 6 Meses)
             </h2>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={despesasChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="mes" />
-                <YAxis />
-                <Tooltip formatter={(value) => formatCurrency(value)} />
-                <Line 
-                  type="monotone" 
-                  dataKey="despesas" 
-                  stroke="#ef4444" 
-                  strokeWidth={3}
-                  fill="#fef2f2"
-                  fillOpacity={0.3}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {despesasChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={despesasChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="mes" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => formatCurrency(value)} />
+                  <Line 
+                    type="monotone" 
+                    dataKey="despesas" 
+                    stroke="#ef4444" 
+                    strokeWidth={3}
+                    fill="#fef2f2"
+                    fillOpacity={0.3}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ 
+                height: 250, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                color: '#6b7280',
+                fontSize: '14px'
+              }}>
+                Histórico de despesas será exibido aqui
+              </div>
+            )}
           </motion.div>
 
           {/* Card: Gastos por Cartão */}
@@ -359,17 +450,30 @@ const ResumoFinanceiro = ({ token }) => {
             <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', margin: '0 0 16px' }}>
               Orçamento vs. Gasto por Cartão
             </h2>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={orcamentoChartData} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="nome" type="category" width={120} />
-                <Tooltip formatter={(value) => formatCurrency(value)} />
-                <Legend />
-                <Bar dataKey="gasto" fill="#ef4444" name="Gasto Atual" />
-                <Bar dataKey="orcamento" fill="#3b82f6" name="Orçamento" />
-              </BarChart>
-            </ResponsiveContainer>
+            {orcamentoChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={orcamentoChartData} layout="horizontal">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis dataKey="nome" type="category" width={120} />
+                  <Tooltip formatter={(value) => formatCurrency(value)} />
+                  <Legend />
+                  <Bar dataKey="gasto" fill="#ef4444" name="Gasto Atual" />
+                  <Bar dataKey="orcamento" fill="#3b82f6" name="Orçamento" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ 
+                height: 250, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                color: '#6b7280',
+                fontSize: '14px'
+              }}>
+                Nenhum cartão com orçamento configurado
+              </div>
+            )}
           </motion.div>
 
           {/* Card: Próximos Vencimentos */}
@@ -395,32 +499,43 @@ const ResumoFinanceiro = ({ token }) => {
               <span style={{ fontSize: '24px' }}>⚠️</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {data.vencimentos.map((vencimento, index) => (
-                <div key={index} style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  background: vencimento.urgente ? '#fef2f2' : '#f9fafb',
-                  border: vencimento.urgente ? '1px solid #fecaca' : 'none'
-                }}>
-                  <div>
-                    <p style={{ fontWeight: '500', color: '#111827', margin: '0 0 4px' }}>
-                      {vencimento.descricao}
-                    </p>
-                    <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
-                      Vence em {vencimento.dias} dias
-                    </p>
-                  </div>
-                  <span style={{ 
-                    fontWeight: '600', 
-                    color: vencimento.urgente ? '#dc2626' : '#374151'
+              {data.vencimentos.length > 0 ? (
+                data.vencimentos.map((vencimento, index) => (
+                  <div key={index} style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    background: vencimento.urgente ? '#fef2f2' : '#f9fafb',
+                    border: vencimento.urgente ? '1px solid #fecaca' : 'none'
                   }}>
-                    {formatCurrency(vencimento.valor)}
-                  </span>
+                    <div>
+                      <p style={{ fontWeight: '500', color: '#111827', margin: '0 0 4px' }}>
+                        {vencimento.descricao}
+                      </p>
+                      <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                        Vence em {vencimento.dias} dias
+                      </p>
+                    </div>
+                    <span style={{ 
+                      fontWeight: '600', 
+                      color: vencimento.urgente ? '#dc2626' : '#374151'
+                    }}>
+                      {formatCurrency(vencimento.valor)}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div style={{ 
+                  padding: '12px',
+                  textAlign: 'center',
+                  color: '#6b7280',
+                  fontSize: '14px'
+                }}>
+                  Nenhum vencimento próximo
                 </div>
-              ))}
+              )}
             </div>
           </motion.div>
 
@@ -447,28 +562,39 @@ const ResumoFinanceiro = ({ token }) => {
               <span style={{ fontSize: '24px' }}>📅</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {data.parceladas.map((parcelada, index) => (
-                <div key={index} style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  background: index === 1 ? '#f9fafb' : 'transparent'
-                }}>
-                  <div>
-                    <p style={{ fontWeight: '500', color: '#111827', margin: '0 0 4px' }}>
-                      {parcelada.descricao} ({parcelada.parcela})
-                    </p>
-                    <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
-                      {parcelada.cartao}
-                    </p>
+              {data.parceladas.length > 0 ? (
+                data.parceladas.map((parcelada, index) => (
+                  <div key={index} style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    background: index === 1 ? '#f9fafb' : 'transparent'
+                  }}>
+                    <div>
+                      <p style={{ fontWeight: '500', color: '#111827', margin: '0 0 4px' }}>
+                        {parcelada.descricao} ({parcelada.parcela})
+                      </p>
+                      <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                        {parcelada.cartao}
+                      </p>
+                    </div>
+                    <span style={{ fontWeight: '600', color: '#374151' }}>
+                      {formatCurrency(parcelada.valor)}
+                    </span>
                   </div>
-                  <span style={{ fontWeight: '600', color: '#374151' }}>
-                    {formatCurrency(parcelada.valor)}
-                  </span>
+                ))
+              ) : (
+                <div style={{ 
+                  padding: '12px',
+                  textAlign: 'center',
+                  color: '#6b7280',
+                  fontSize: '14px'
+                }}>
+                  Nenhuma despesa parcelada
                 </div>
-              ))}
+              )}
             </div>
           </motion.div>
         </div>
