@@ -10,13 +10,17 @@ const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api
 
 function Budgets({ token }) {
   const [budgets, setBudgets] = useState([]);
-  const [form, setForm] = useState({ name: '', type: 'geral', period_start: '', period_end: '', planned_value: '' });
+  const [form, setForm] = useState({ name: '', type: 'geral', credit_card_id: '', period_start: '', period_end: '', planned_value: '' });
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [creditCards, setCreditCards] = useState([]);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
-  useEffect(() => { fetchBudgets(); }, []);
+  useEffect(() => { 
+    fetchBudgets(); 
+    fetchCreditCards();
+  }, []);
 
   const fetchBudgets = async () => {
     setLoading(true);
@@ -24,6 +28,18 @@ function Budgets({ token }) {
     const data = await res.json();
     setBudgets(data);
     setLoading(false);
+  };
+
+  const fetchCreditCards = async () => {
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/creditCards`, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
+      const data = await res.json();
+      setCreditCards(data);
+    } catch (error) {
+      console.error('Erro ao carregar cartões:', error);
+    }
   };
 
   const handleChange = e => {
@@ -41,7 +57,7 @@ function Budgets({ token }) {
       });
       if (res.ok) {
         setToast({ show: true, message: 'Orçamento adicionado com sucesso!', type: 'success' });
-        setForm({ name: '', type: 'geral', period_start: '', period_end: '', planned_value: '' });
+        setForm({ name: '', type: 'geral', credit_card_id: '', period_start: '', period_end: '', planned_value: '' });
         fetchBudgets();
       } else {
         setToast({ show: true, message: 'Erro ao adicionar orçamento.', type: 'error' });
@@ -111,6 +127,19 @@ function Budgets({ token }) {
               <option value="cartao">Cartão</option>
             </select>
           </div>
+          {form.type === 'cartao' && (
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 200 }}>
+              <label style={{ marginBottom: 4, fontWeight: 500 }}>Cartão de Crédito</label>
+              <select name="credit_card_id" value={form.credit_card_id} onChange={handleChange} className="input-glass" required={form.type === 'cartao'}>
+                <option value="">Selecione um cartão</option>
+                {creditCards.map(card => (
+                  <option key={card.id} value={card.id}>
+                    {card.name} - Final {card.card_number.slice(-4)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <Input name="period_start" label="Início" type="date" value={form.period_start} onChange={handleChange} required />
           <Input name="period_end" label="Fim" type="date" value={form.period_end} onChange={handleChange} required />
           <Input name="planned_value" label="Valor planejado" type="number" value={form.planned_value} onChange={handleChange} required />
@@ -124,6 +153,7 @@ function Budgets({ token }) {
               <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
                 <th style={{ padding: 8, textAlign: 'left' }}>Nome</th>
                 <th style={{ padding: 8, textAlign: 'left' }}>Tipo</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Cartão</th>
                 <th style={{ padding: 8, textAlign: 'left' }}>Início</th>
                 <th style={{ padding: 8, textAlign: 'left' }}>Fim</th>
                 <th style={{ padding: 8, textAlign: 'left' }}>Valor Planejado</th>
@@ -143,6 +173,20 @@ function Budgets({ token }) {
                           <option value="cartao">Cartão</option>
                         </select>
                       </td>
+                      <td>
+                        {editForm.type === 'cartao' ? (
+                          <select name="credit_card_id" value={editForm.credit_card_id} onChange={handleEditChange} className="input-glass">
+                            <option value="">Selecione um cartão</option>
+                            {creditCards.map(card => (
+                              <option key={card.id} value={card.id}>
+                                {card.name} - Final {card.card_number.slice(-4)}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span>-</span>
+                        )}
+                      </td>
                       <td><Input name="period_start" value={editForm.period_start} onChange={handleEditChange} /></td>
                       <td><Input name="period_end" value={editForm.period_end} onChange={handleEditChange} /></td>
                       <td><Input name="planned_value" value={editForm.planned_value} onChange={handleEditChange} /></td>
@@ -156,6 +200,12 @@ function Budgets({ token }) {
                     <>
                       <td style={{ textAlign: 'left' }}>{budget.name}</td>
                       <td style={{ textAlign: 'left' }}>{budget.type}</td>
+                      <td style={{ textAlign: 'left' }}>
+                        {budget.type === 'cartao' && budget.credit_card ? 
+                          `${budget.credit_card.name} - Final ${budget.credit_card.card_number.slice(-4)}` : 
+                          '-'
+                        }
+                      </td>
                       <td style={{ textAlign: 'left' }}>{budget.period_start ? dayjs(budget.period_start).format('DD/MM/YYYY') : ''}</td>
                       <td style={{ textAlign: 'left' }}>{budget.period_end ? dayjs(budget.period_end).format('DD/MM/YYYY') : ''}</td>
                       <td style={{ textAlign: 'left', color: 'var(--color-primary)', fontWeight: 600 }}>R$ {Number(budget.planned_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
