@@ -288,7 +288,9 @@ function Accounts({ token }) {
                     <td style={{ padding: 8 }}>{item.data}</td>
                     <td style={{ padding: 8 }}>{item.descricao}</td>
                     <td style={{ padding: 8 }}>{item.categoria}</td>
-                    <td style={{ padding: 8, textTransform: 'capitalize' }}>{item.tipo.replace('_', ' ')}</td>
+                    <td style={{ padding: 8, textTransform: 'capitalize' }}>
+                      {item.tipo === 'pagamento_cartao' ? 'Fatura Cartão' : item.tipo.replace('_', ' ')}
+                    </td>
                     <td style={{ padding: 8, textAlign: 'right', color: item.valor < 0 ? 'crimson' : 'seagreen', fontWeight: 600 }}>
                       {item.valor < 0 ? '-' : ''}R$ {Math.abs(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </td>

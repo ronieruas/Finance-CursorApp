@@ -170,6 +170,16 @@ exports.getDashboard = async (req, res) => {
     const cartoesMap = {};
     const cartoes = await CreditCard.findAll({ where: { user_id: userId } });
     cartoes.forEach(c => { cartoesMap[c.id] = c.name; });
+    
+    // Função para formatar data dd-mm-aaaa
+    function formatDateBR(dateStr) {
+      const d = new Date(dateStr);
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}-${month}-${year}`;
+    }
+    
     // Adicionar receitas de cartão separadas
     // const receitasCartaoRecentes = receitasRecentes.filter(r => r.credit_card_id);
     // const receitasContaRecentes = receitasRecentes.filter(r => !r.credit_card_id);
@@ -178,7 +188,7 @@ exports.getDashboard = async (req, res) => {
         tipo: 'receita',
         descricao: r.description || r.name || 'Receita',
         valor: r.value,
-        data: r.date,
+        data: formatDateBR(r.date),
         conta: r.account_id,
         conta_nome: contasMap[r.account_id] || '',
         cartao_id: null,
@@ -188,7 +198,7 @@ exports.getDashboard = async (req, res) => {
         tipo: d.credit_card_id ? 'cartao' : 'despesa',
         descricao: d.description || d.name || 'Despesa',
         valor: d.value,
-        data: d.due_date,
+        data: formatDateBR(d.due_date),
         conta: d.account_id || d.credit_card_id,
         conta_nome: d.credit_card_id ? (cartoesMap[d.credit_card_id] || '') : (contasMap[d.account_id] || ''),
         cartao_id: d.credit_card_id || null,
@@ -196,7 +206,11 @@ exports.getDashboard = async (req, res) => {
       })),
     ];
     const recentes = recentesRaw
-      .sort((a, b) => new Date(b.data) - new Date(a.data))
+      .sort((a, b) => {
+        const [da, ma, aa] = a.data.split('-');
+        const [db, mb, ab] = b.data.split('-');
+        return new Date(`${ab}-${mb}-${db}`) - new Date(`${aa}-${ma}-${da}`);
+      })
       .slice(0, 10);
 
     // Alertas automáticos

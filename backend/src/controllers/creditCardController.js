@@ -5,9 +5,10 @@ function getBillPeriods(closingDay, dueDay, refDate = new Date()) {
   // refDate: data de referência (hoje)
   // Retorna os períodos de fatura atual e próxima
   // 
-  // Exemplo: cartão com fechamento dia 28 e vencimento dia 5
-  // - Fatura atual: compras de 28/jun até 27/jul -> vence em 5/ago
-  // - Próxima fatura: compras de 28/jul até 27/ago -> vence em 5/set
+  // Regra: O vencimento sempre é posterior ao fechamento
+  // Exemplo: cartão com fechamento dia 9 e vencimento dia 15
+  // - Fatura atual: compras de 9/jun até 8/jul -> vence em 15/jul
+  // - Próxima fatura: compras de 9/jul até 8/ago -> vence em 15/ago
   
   const year = refDate.getFullYear();
   const month = refDate.getMonth();
@@ -19,13 +20,17 @@ function getBillPeriods(closingDay, dueDay, refDate = new Date()) {
     // Já fechou a fatura do mês atual, então a próxima fatura fecha no próximo mês
     currentClosing = new Date(year, month + 1, closingDay);
   }
-  
+ 
   // Período da fatura atual: do fechamento do mês anterior até o dia anterior ao fechamento atual
   const faturaAtualStart = new Date(currentClosing);
   faturaAtualStart.setMonth(currentClosing.getMonth() - 1);
   
   const faturaAtualEnd = new Date(currentClosing);
   faturaAtualEnd.setDate(currentClosing.getDate() - 1);
+  
+  // Data de vencimento da fatura atual (sempre posterior ao fechamento)
+  const vencimentoAtual = new Date(currentClosing);
+  vencimentoAtual.setDate(dueDay);
   
   // Período da próxima fatura: do fechamento atual até o dia anterior ao próximo fechamento
   const faturaProximaStart = new Date(currentClosing);
@@ -34,9 +39,22 @@ function getBillPeriods(closingDay, dueDay, refDate = new Date()) {
   faturaProximaEnd.setMonth(currentClosing.getMonth() + 1);
   faturaProximaEnd.setDate(currentClosing.getDate() - 1);
   
+  // Data de vencimento da próxima fatura
+  const vencimentoProxima = new Date(faturaProximaEnd);
+  vencimentoProxima.setMonth(vencimentoProxima.getMonth() + 1);
+  vencimentoProxima.setDate(dueDay);
+  
   return {
-    atual: { start: faturaAtualStart, end: faturaAtualEnd },
-    proxima: { start: faturaProximaStart, end: faturaProximaEnd },
+    atual: { 
+      start: faturaAtualStart, 
+      end: faturaAtualEnd,
+      vencimento: vencimentoAtual
+    },
+    proxima: { 
+      start: faturaProximaStart, 
+      end: faturaProximaEnd,
+      vencimento: vencimentoProxima
+    },
   };
 }
 
@@ -55,7 +73,11 @@ function getBillPeriodForMonth(closingDay, year, month) {
   const end = new Date(closingDate);
   end.setDate(closingDate.getDate() - 1);
   
-  return { start, end };
+  // Data de vencimento (sempre posterior ao fechamento)
+  const vencimento = new Date(closingDate);
+  vencimento.setDate(closingDate.getDate() + (dueDay - closingDay));
+  
+  return { start, end, vencimento };
 }
 
 exports.list = async (req, res) => {
@@ -223,6 +245,7 @@ exports.pay = async (req, res) => {
       return res.status(400).json({ error: 'Saldo insuficiente na conta' });
     }
     await account.update({ balance: account.balance - valorPagamento });
+    
     // Registra pagamento
     const payment = await CreditCardPayment.create({
       card_id: card.id,
@@ -233,6 +256,20 @@ exports.pay = async (req, res) => {
       is_full_payment: !!is_full_payment,
       auto_debit: !!auto_debit,
     });
+    
+    // Registra despesa no extrato da conta para pagamento do cartão
+    const Expense = require('../models/expense');
+    await Expense.create({
+      user_id: userId,
+      account_id,
+      description: `Fatura Cartão ${card.name}`,
+      value: valorPagamento,
+      due_date: payment_date || new Date(),
+      category: 'Cartão de Crédito',
+      status: 'paga',
+      paid_at: payment_date || new Date(),
+    });
+    
     // Atualiza despesas do período como pagas
     if (is_full_payment && periodoFatura) {
       await Promise.all(despesasFatura.map(despesa => despesa.update({ status: 'paga', paid_at: payment_date || new Date() })));
