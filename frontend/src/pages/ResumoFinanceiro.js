@@ -112,11 +112,8 @@ const ResumoFinanceiro = ({ token }) => {
         });
         const budgetsData = await budgetsRes.json();
         
-        // Buscar faturas dos cartões de crédito
-        const creditCardPaymentsRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/creditCardPayments`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const creditCardPaymentsData = await creditCardPaymentsRes.json();
+        // Por enquanto, usar apenas despesas de cartão (faturas serão implementadas posteriormente)
+        const creditCardBillsData = [];
         
         // Calcular totais com tratamento de dados
         const totalReceitas = incomesData.reduce((sum, income) => {
@@ -144,15 +141,9 @@ const ResumoFinanceiro = ({ token }) => {
             return sum + amount;
           }, 0);
         
-        // Adicionar faturas em aberto
-        const faturasEmAberto = creditCardPaymentsData
-          .filter(payment => !payment.paid)
-          .reduce((sum, payment) => {
-            const amount = parseFloat(payment.amount) || 0;
-            return sum + amount;
-          }, 0);
-        
-        const totalFaturasCartao = faturasCartao + faturasEmAberto;
+        // Por enquanto, usar apenas despesas de cartão
+        const faturasEmAberto = 0;
+        const totalFaturasCartao = faturasCartao;
         
         // Preparar dados dos cartões
         const cartoesComGastos = creditCardsData.map(card => {
@@ -164,15 +155,8 @@ const ResumoFinanceiro = ({ token }) => {
               return sum + amount;
             }, 0);
           
-          // Faturas em aberto do cartão
-          const faturasEmAberto = creditCardPaymentsData
-            .filter(payment => payment.credit_card_id === card.id && !payment.paid)
-            .reduce((sum, payment) => {
-              const amount = parseFloat(payment.amount) || 0;
-              return sum + amount;
-            }, 0);
-          
-          const totalGastosCartao = gastosCartao + faturasEmAberto;
+          // Por enquanto, usar apenas despesas do cartão
+          const totalGastosCartao = gastosCartao;
           
           const orcamentoCartao = budgetsData
             .filter(budget => budget.credit_card_id === card.id && budget.type === 'cartao')
@@ -202,12 +186,10 @@ const ResumoFinanceiro = ({ token }) => {
           expensesData,
           creditCardsData,
           budgetsData,
-          creditCardPaymentsData,
           totalReceitas,
           totalDespesas,
           despesasGerais,
           faturasCartao: totalFaturasCartao,
-          faturasEmAberto,
           cartoesComGastos,
           saldoPorConta,
           receitasChartData,
