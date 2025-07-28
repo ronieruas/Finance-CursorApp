@@ -24,4 +24,10 @@ CreditCardPayment.init(
   }
 );
 
+// Definir relacionamento com CreditCard
+CreditCardPayment.belongsTo(require('./creditCard'), { 
+  foreignKey: 'card_id', 
+  as: 'card' 
+});
+
 module.exports = CreditCardPayment; 

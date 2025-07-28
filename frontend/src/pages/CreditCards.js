@@ -288,16 +288,20 @@ function CreditCards({ token }) {
   function getBillPeriod(card, month) {
     if (!card) return { start: null, end: null };
     const closingDay = Number(card.closing_day);
+    const dueDay = Number(card.due_day);
     const [year, m] = month.split('-').map(Number);
     
     // Fechamento da fatura para o mês especificado
-    const closingDate = new Date(year, m - 1, closingDay);
+    const closingDate = dayjs(year, m - 1, closingDay);
     
     // Período da fatura: do fechamento do mês anterior até o dia anterior ao fechamento atual
-    const start = dayjs(closingDate).subtract(1, 'month');
-    const end = dayjs(closingDate).subtract(1, 'day');
+    const start = closingDate.subtract(1, 'month');
+    const end = closingDate.subtract(1, 'day');
     
-    return { start: start.startOf('day'), end: end.endOf('day') };
+    // Data de vencimento (sempre posterior ao fechamento)
+    const vencimento = closingDate.add(dueDay - closingDay, 'day');
+    
+    return { start: start.startOf('day'), end: end.endOf('day'), vencimento };
   }
 
   // Função para determinar o mês da fatura em aberto (considerando fechamento)
@@ -349,11 +353,10 @@ function CreditCards({ token }) {
   // Status da fatura: 'Em aberto', 'Em atraso', 'Paga'
   function getBillStatus(card, fatura, billMonth) {
     if (!card || !fatura) return '-';
-    const { end } = getBillPeriod(card, billMonth);
+    const { vencimento } = getBillPeriod(card, billMonth);
     const todasPagas = fatura.length > 0 && fatura.every(d => d.status === 'paga');
     if (todasPagas) return 'Paga';
     // Se hoje > vencimento e não está paga, está em atraso
-    const vencimento = dayjs(`${billMonth}-${String(card.due_day).padStart(2, '0')}`);
     if (dayjs().isAfter(vencimento, 'day')) return 'Em atraso';
     return 'Em aberto';
   }
@@ -435,8 +438,8 @@ function CreditCards({ token }) {
         <span style={{ color: '#888', fontSize: 13 }}>(Período da fatura: {cards.length && expandedCardId ? (() => {
           const card = cards.find(c => c.id === expandedCardId);
           if (!card) return '-';
-          const { start, end } = getBillPeriod(card, billMonth);
-          return `${start ? start.format('DD/MM/YYYY') : '-'} a ${end ? end.format('DD/MM/YYYY') : '-'}`;
+          const { start, end, vencimento } = getBillPeriod(card, billMonth);
+          return `${start ? start.format('DD/MM/YYYY') : '-'} a ${end ? end.format('DD/MM/YYYY') : '-'} (Vence: ${vencimento ? vencimento.format('DD/MM/YYYY') : '-'})`;
         })() : '-'})</span>
       </div>
       <motion.div className="glass-card fade-in" style={{ padding: 24 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>

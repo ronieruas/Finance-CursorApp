@@ -202,6 +202,27 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
       order: [['date', 'ASC']],
     });
 
+    // Pagamentos de cartão de crédito
+    const CreditCardPayment = require('../models/creditCardPayment');
+    const CreditCard = require('../models/creditCard');
+    const pagamentosCartao = await CreditCardPayment.findAll({
+      where: {
+        user_id: userId,
+        account_id: accountId,
+        payment_date: { [Op.gte]: firstDay, [Op.lte]: lastDay },
+      },
+      order: [['payment_date', 'ASC']],
+    });
+    
+    // Buscar nomes dos cartões
+    const cardIds = pagamentosCartao.map(p => p.card_id);
+    const cartoes = await CreditCard.findAll({
+      where: { id: { [Op.in]: cardIds } },
+      attributes: ['id', 'name']
+    });
+    const cartoesMap = {};
+    cartoes.forEach(c => { cartoesMap[c.id] = c.name; });
+
     // Função para formatar data dd-mm-aaaa
     function formatDateBR(dateStr) {
       const d = new Date(dateStr);
@@ -244,6 +265,14 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
         valor: Number(t.value),
         data: formatDateBR(t.date),
         categoria: 'Transferência',
+      })),
+      ...pagamentosCartao.map(p => ({
+        tipo: 'pagamento_cartao',
+        id: p.id,
+        descricao: `Fatura Cartão ${cartoesMap[p.card_id] || 'Desconhecido'}`,
+        valor: -Number(p.value),
+        data: formatDateBR(p.payment_date),
+        categoria: 'Cartão de Crédito',
       })),
     ];
 
