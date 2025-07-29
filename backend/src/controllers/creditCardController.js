@@ -58,7 +58,7 @@ function getBillPeriods(closingDay, dueDay, refDate = new Date()) {
   };
 }
 
-function getBillPeriodForMonth(closingDay, year, month) {
+function getBillPeriodForMonth(closingDay, dueDay, year, month) {
   // Calcula o período da fatura para um mês específico
   // month: 0-11 (janeiro = 0, dezembro = 11)
   // year: ano completo
@@ -74,8 +74,8 @@ function getBillPeriodForMonth(closingDay, year, month) {
   end.setDate(closingDate.getDate() - 1);
   
   // Data de vencimento (sempre posterior ao fechamento)
-  const vencimento = new Date(closingDate);
-  vencimento.setDate(closingDate.getDate() + (dueDay - closingDay));
+  // O vencimento é no mesmo mês do fechamento, mas no dia especificado
+  const vencimento = new Date(year, month, dueDay);
   
   return { start, end, vencimento };
 }
@@ -217,7 +217,7 @@ exports.pay = async (req, res) => {
         const [ano, mes] = bill_month.split('-').map(Number);
         // Usar a nova função para calcular período da fatura para o mês informado
         const closingDay = card.closing_day;
-        const periodo = getBillPeriodForMonth(closingDay, ano, mes - 1); // mes - 1 porque getBillPeriodForMonth usa 0-11
+        const periodo = getBillPeriodForMonth(closingDay, card.due_day, ano, mes - 1); // mes - 1 porque getBillPeriodForMonth usa 0-11
         periods = { atual: periodo };
       } else {
         const { closing_day } = card;
