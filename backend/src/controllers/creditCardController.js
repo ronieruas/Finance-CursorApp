@@ -30,6 +30,7 @@ function getBillPeriods(closingDay, dueDay, refDate = new Date()) {
   
   // Data de vencimento da fatura atual (sempre posterior ao fechamento)
   const vencimentoAtual = new Date(currentClosing);
+  vencimentoAtual.setMonth(currentClosing.getMonth() + 1);
   vencimentoAtual.setDate(dueDay);
   
   // Período da próxima fatura: do fechamento atual até o dia anterior ao próximo fechamento
@@ -74,8 +75,8 @@ function getBillPeriodForMonth(closingDay, dueDay, year, month) {
   end.setDate(closingDate.getDate() - 1);
   
   // Data de vencimento (sempre posterior ao fechamento)
-  // O vencimento é no mesmo mês do fechamento, mas no dia especificado
-  const vencimento = new Date(year, month, dueDay);
+  // O vencimento é no mês seguinte ao fechamento, no dia especificado
+  const vencimento = new Date(year, month + 1, dueDay);
   
   return { start, end, vencimento };
 }
