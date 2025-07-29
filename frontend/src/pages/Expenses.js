@@ -269,7 +269,7 @@ function Expenses({ token }) {
             <thead>
               <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
                 <th style={{ padding: 8, textAlign: 'left', width: 80 }}>Data</th>
-                <th style={{ padding: 8, textAlign: 'left', width: 98 }}>Conta/Cartão</th>
+                <th style={{ padding: 8, textAlign: 'left', width: 98 }}>Conta</th>
                 <th style={{ padding: 8, textAlign: 'left', width: 128 }}>Descrição</th>
                 <th style={{ padding: 8, textAlign: 'left', width: 80 }}>Valor</th>
                 <th style={{ padding: 8, textAlign: 'left', width: 80 }}>Vencimento</th>

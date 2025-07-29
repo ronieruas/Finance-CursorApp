@@ -214,9 +214,19 @@ function Transfers({ token }) {
         </select>
         <label>
           <input type="checkbox" name="isThirdParty" checked={form.isThirdParty} onChange={handleChange} />
-          Transferência para terceiro
+          Transferência para terceiro.
         </label>
-        {!form.isThirdParty && (
+        {form.isThirdParty ? (
+          <>
+            <label>Conta de origem (opcional):</label>
+            <select name="to_account_id" value={form.to_account_id} onChange={handleChange} style={{ width: '100%', marginBottom: 12 }}>
+              <option value="">Selecione (opcional)</option>
+              {accounts.filter(acc => acc.id !== Number(form.from_account_id)).map(acc => (
+                <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
+              ))}
+            </select>
+          </>
+        ) : (
           <>
             <label>Conta de destino:</label>
             <select name="to_account_id" value={form.to_account_id} onChange={handleChange} required style={{ width: '100%', marginBottom: 12 }}>
@@ -265,13 +275,26 @@ function Transfers({ token }) {
                       <label style={{ fontSize: 12 }}>
                         <input type="checkbox" name="isThirdParty" checked={editForm.isThirdParty} onChange={handleEditChange} /> Terceiro
                       </label>
-                      {!editForm.isThirdParty && (
-                        <select name="to_account_id" value={editForm.to_account_id} onChange={handleEditChange} style={{ width: '100%' }}>
-                          <option value="">Selecione</option>
-                          {accounts.filter(acc => acc.id !== Number(editForm.from_account_id)).map(acc => (
-                            <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
-                          ))}
-                        </select>
+                      {editForm.isThirdParty ? (
+                        <div>
+                          <label style={{ fontSize: 12, display: 'block', marginTop: 4 }}>Conta de origem (opcional):</label>
+                          <select name="to_account_id" value={editForm.to_account_id} onChange={handleEditChange} style={{ width: '100%' }}>
+                            <option value="">Selecione (opcional)</option>
+                            {accounts.filter(acc => acc.id !== Number(editForm.from_account_id)).map(acc => (
+                              <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <div>
+                          <label style={{ fontSize: 12, display: 'block', marginTop: 4 }}>Conta de destino:</label>
+                          <select name="to_account_id" value={editForm.to_account_id} onChange={handleEditChange} style={{ width: '100%' }}>
+                            <option value="">Selecione</option>
+                            {accounts.filter(acc => acc.id !== Number(editForm.from_account_id)).map(acc => (
+                              <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
+                            ))}
+                          </select>
+                        </div>
                       )}
                     </td>
                     <td><input name="value" type="number" step="0.01" value={editForm.value} onChange={handleEditChange} style={{ width: '100%' }} /></td>
@@ -285,7 +308,7 @@ function Transfers({ token }) {
                   <>
                     <td style={{ textAlign: 'left' }}>{formatDateBR(t.date)}</td>
                     <td style={{ textAlign: 'left' }}>{accounts.find(a => a.id === t.from_account_id)?.name || t.from_account_id}</td>
-                    <td style={{ textAlign: 'left' }}>{t.to_account_id ? (accounts.find(a => a.id === t.to_account_id)?.name || t.to_account_id) : 'Terceiro'}</td>
+                    <td style={{ textAlign: 'left' }}>{t.to_account_id ? (accounts.find(a => a.id === t.to_account_id)?.name || t.to_account_id) : 'Transferência para terceiro'}</td>
                     <td style={{ textAlign: 'left' }}>R$ {Number(t.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                     <td style={{ textAlign: 'left' }}>{t.description}</td>
                     <td>

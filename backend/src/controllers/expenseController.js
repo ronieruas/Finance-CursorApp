@@ -94,8 +94,8 @@ exports.create = async (req, res) => {
         auto_debit: !!auto_debit,
         paid_at
       });
-      // Deduzir valor do saldo da conta
-      if (account_id) {
+      // Deduzir valor do saldo da conta apenas se estiver paga
+      if (account_id && status === 'paga') {
         const account = await Account.findOne({ where: { id: account_id, user_id: req.user.id } });
         if (account) {
           account.balance = Number(account.balance) - Number(value);
@@ -119,17 +119,23 @@ exports.update = async (req, res) => {
     const { description, value, due_date, category, status, is_recurring, auto_debit, paid_at } = req.body;
     const expense = await Expense.findOne({ where: { id: req.params.id, user_id: req.user.id } });
     if (!expense) return res.status(404).json({ error: 'Despesa não encontrada' });
+    
     // Ajustar saldo da conta se for despesa de conta
     if (expense.account_id) {
       const account = await Account.findOne({ where: { id: expense.account_id, user_id: req.user.id } });
       if (account) {
-        // Devolve o valor antigo
-        account.balance = Number(account.balance) + Number(expense.value);
-        // Deduz o novo valor
-        account.balance = Number(account.balance) - Number(value);
+        // Se a despesa estava paga, devolve o valor antigo
+        if (expense.status === 'paga') {
+          account.balance = Number(account.balance) + Number(expense.value);
+        }
+        // Se a nova despesa será paga, deduz o novo valor
+        if (status === 'paga') {
+          account.balance = Number(account.balance) - Number(value);
+        }
         await account.save();
       }
     }
+    
     await expense.update({ description, value, due_date, category, status, is_recurring, auto_debit, paid_at });
     res.json(expense);
   } catch (err) {
@@ -141,8 +147,8 @@ exports.update = async (req, res) => {
 exports.remove = async (req, res) => {
   const expense = await Expense.findOne({ where: { id: req.params.id, user_id: req.user.id } });
   if (!expense) return res.status(404).json({ error: 'Despesa não encontrada' });
-  // Devolver valor ao saldo da conta se for despesa de conta
-  if (expense.account_id) {
+  // Devolver valor ao saldo da conta se for despesa de conta e estiver paga
+  if (expense.account_id && expense.status === 'paga') {
     const account = await Account.findOne({ where: { id: expense.account_id, user_id: req.user.id } });
     if (account) {
       account.balance = Number(account.balance) + Number(expense.value);
