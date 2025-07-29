@@ -42,7 +42,7 @@ function CreditCards({ token }) {
   });
   const [expenseLoading, setExpenseLoading] = useState(false);
   const [expenseToast, setExpenseToast] = useState({ show: false, message: '', type: 'success' });
-  const [billMonth, setBillMonth] = useState('');
+  const [billMonth, setBillMonth] = useState(dayjs().format('YYYY-MM'));
 
   useEffect(() => { 
     fetchCards(); 
@@ -286,10 +286,30 @@ function CreditCards({ token }) {
 
   // Função para calcular o período da fatura igual ao backend
   function getBillPeriod(card, month) {
-    if (!card) return { start: null, end: null };
+    if (!card || !month) return { start: null, end: null };
+    
     const closingDay = Number(card.closing_day);
     const dueDay = Number(card.due_day);
-    const [year, m] = month.split('-').map(Number);
+    
+    // Validar se month está no formato correto
+    if (!month.includes('-')) {
+      console.warn('Formato de mês inválido:', month);
+      return { start: null, end: null };
+    }
+    
+    const parts = month.split('-');
+    if (parts.length !== 2) {
+      console.warn('Formato de mês inválido:', month);
+      return { start: null, end: null };
+    }
+    
+    const [year, m] = parts.map(Number);
+    
+    // Validar se year e m são números válidos
+    if (isNaN(year) || isNaN(m) || m < 1 || m > 12) {
+      console.warn('Valores de ano ou mês inválidos:', { year, m });
+      return { start: null, end: null };
+    }
     
     // Fechamento da fatura para o mês especificado
     const closingDate = dayjs(`${year}-${m.toString().padStart(2, '0')}-${closingDay.toString().padStart(2, '0')}`);
