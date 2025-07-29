@@ -299,8 +299,8 @@ function CreditCards({ token }) {
     const end = closingDate.subtract(1, 'day');
     
     // Data de vencimento (sempre posterior ao fechamento)
-    // O vencimento é no mesmo mês do fechamento, mas no dia especificado
-    const vencimento = dayjs().year(year).month(m - 1).date(dueDay);
+    // O vencimento é no mês seguinte ao fechamento, no dia especificado
+    const vencimento = dayjs().year(year).month(m).date(dueDay);
     
     return { start: start.startOf('day'), end: end.endOf('day'), vencimento };
   }
