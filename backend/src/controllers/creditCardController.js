@@ -259,7 +259,6 @@ exports.pay = async (req, res) => {
     });
     
     // Registra despesa no extrato da conta para pagamento do cartão
-    const Expense = require('../models/expense');
     await Expense.create({
       user_id: userId,
       account_id,
