@@ -292,14 +292,15 @@ function CreditCards({ token }) {
     const [year, m] = month.split('-').map(Number);
     
     // Fechamento da fatura para o mês especificado
-    const closingDate = dayjs(year, m - 1, closingDay);
+    const closingDate = dayjs().year(year).month(m - 1).date(closingDay);
     
     // Período da fatura: do fechamento do mês anterior até o dia anterior ao fechamento atual
     const start = closingDate.subtract(1, 'month');
     const end = closingDate.subtract(1, 'day');
     
     // Data de vencimento (sempre posterior ao fechamento)
-    const vencimento = closingDate.add(dueDay - closingDay, 'day');
+    // O vencimento é no mesmo mês do fechamento, mas no dia especificado
+    const vencimento = dayjs().year(year).month(m - 1).date(dueDay);
     
     return { start: start.startOf('day'), end: end.endOf('day'), vencimento };
   }
