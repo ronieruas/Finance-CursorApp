@@ -37,18 +37,8 @@ router.post('/', authMiddleware, async (req, res) => {
       await to.save();
       transfer = await Transfer.create({ user_id: req.user.id, from_account_id, to_account_id, value, description, date });
     } else {
-      // Transferência para terceiro: lança como despesa
-      await Expense.create({
-        user_id: req.user.id,
-        account_id: from_account_id,
-        description: description || 'Transferência para terceiro',
-        value,
-        due_date: date,
-        category: 'Transferência',
-        status: 'paga',
-        paid_at: date,
-      });
-      transfer = await Transfer.create({ user_id: req.user.id, from_account_id, value, description, date });
+      // Transferência para terceiro: não credita em nenhuma conta (já foi debitada da origem)
+      transfer = await Transfer.create({ user_id: req.user.id, from_account_id, to_account_id: null, value, description, date });
     }
     res.status(201).json(transfer);
   } catch (err) {
