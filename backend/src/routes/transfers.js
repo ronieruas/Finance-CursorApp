@@ -30,14 +30,14 @@ router.post('/', authMiddleware, async (req, res) => {
     await from.save();
     let transfer;
     if (to_account_id) {
-      // Transferência interna: credita na conta destino
+      // Transferência interna ou de terceiros: credita na conta destino
       const to = await Account.findOne({ where: { id: to_account_id, user_id: req.user.id } });
       if (!to) return res.status(404).json({ error: 'Conta de destino não encontrada.' });
       to.balance = Number(to.balance) + Number(value);
       await to.save();
       transfer = await Transfer.create({ user_id: req.user.id, from_account_id, to_account_id, value, description, date });
     } else {
-      // Transferência para terceiro: não credita em nenhuma conta (já foi debitada da origem)
+      // Transferência para terceiro sem conta específica: não credita em nenhuma conta (já foi debitada da origem)
       transfer = await Transfer.create({ user_id: req.user.id, from_account_id, to_account_id: null, value, description, date });
     }
     res.status(201).json(transfer);

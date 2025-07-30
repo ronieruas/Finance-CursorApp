@@ -78,7 +78,7 @@ function Transfers({ token }) {
     try {
       const body = {
         from_account_id: form.from_account_id,
-        to_account_id: form.isThirdParty ? null : form.to_account_id,
+        to_account_id: form.to_account_id,
         value: form.value,
         date: form.date,
         description: form.description,
@@ -121,7 +121,7 @@ function Transfers({ token }) {
     try {
       const body = {
         from_account_id: editForm.from_account_id,
-        to_account_id: editForm.isThirdParty ? null : editForm.to_account_id,
+        to_account_id: editForm.to_account_id,
         value: editForm.value,
         date: editForm.date,
         description: editForm.description,
@@ -214,13 +214,13 @@ function Transfers({ token }) {
         </select>
         <label>
           <input type="checkbox" name="isThirdParty" checked={form.isThirdParty} onChange={handleChange} />
-          Transferência para terceiro.
+          Transferência para terceiro. 
         </label>
         {form.isThirdParty ? (
           <>
-            <label>Conta de origem (opcional):</label>
-            <select name="to_account_id" value={form.to_account_id} onChange={handleChange} style={{ width: '100%', marginBottom: 12 }}>
-              <option value="">Selecione (opcional)</option>
+            <label>Conta de destino:</label>
+            <select name="to_account_id" value={form.to_account_id} onChange={handleChange} required style={{ width: '100%', marginBottom: 12 }}>
+              <option value="">Selecione</option>
               {accounts.filter(acc => acc.id !== Number(form.from_account_id)).map(acc => (
                 <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
               ))}
@@ -277,9 +277,9 @@ function Transfers({ token }) {
                       </label>
                       {editForm.isThirdParty ? (
                         <div>
-                          <label style={{ fontSize: 12, display: 'block', marginTop: 4 }}>Conta de origem (opcional):</label>
+                          <label style={{ fontSize: 12, display: 'block', marginTop: 4 }}>Conta de destino:</label>
                           <select name="to_account_id" value={editForm.to_account_id} onChange={handleEditChange} style={{ width: '100%' }}>
-                            <option value="">Selecione (opcional)</option>
+                            <option value="">Selecione</option>
                             {accounts.filter(acc => acc.id !== Number(editForm.from_account_id)).map(acc => (
                               <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
                             ))}

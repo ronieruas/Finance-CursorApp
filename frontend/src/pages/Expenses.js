@@ -38,8 +38,15 @@ function Expenses({ token }) {
     const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0,10);
     return { start: firstDay, end: lastDay, type: '', account_id: '', credit_card_id: '', category: '', status: '' };
   });
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  useEffect(() => { fetchExpensesWithFilters(); fetchAccounts(); }, []);
+  useEffect(() => { 
+    fetchExpensesWithFilters(); 
+    fetchAccounts(); 
+    // Verificar se é admin
+    const tokenData = JSON.parse(atob(token.split('.')[1]));
+    setIsAdmin(tokenData.role === 'admin');
+  }, []);
 
   const fetchExpenses = async () => {
     setLoading(true);
@@ -126,23 +133,43 @@ function Expenses({ token }) {
     setLoading(false);
   };
 
-  const handleDelete = async id => {
+  const handleDelete = async (id) => {
     if (!window.confirm('Deseja realmente excluir esta despesa?')) return;
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
         setToast({ show: true, message: 'Despesa excluída com sucesso!', type: 'success' });
-        fetchExpenses();
+        fetchExpensesWithFilters();
       } else {
         setToast({ show: true, message: 'Erro ao excluir despesa.', type: 'error' });
       }
     } catch (err) {
-      // Exibir mensagem amigável
-      alert(err.message || 'Erro ao processar requisição.');
+      setToast({ show: true, message: 'Erro ao excluir despesa.', type: 'error' });
+    }
+    setLoading(false);
+  };
+
+  const handleTestProcess = async () => {
+    if (!window.confirm('Deseja executar o teste de processamento automático?')) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/test-process`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setToast({ show: true, message: data.message, type: 'success' });
+        fetchExpensesWithFilters();
+      } else {
+        setToast({ show: true, message: data.error || 'Erro ao executar teste.', type: 'error' });
+      }
+    } catch (err) {
+      setToast({ show: true, message: 'Erro ao executar teste.', type: 'error' });
     }
     setLoading(false);
   };
@@ -261,6 +288,11 @@ function Expenses({ token }) {
             <input name="auto_debit" type="checkbox" checked={form.auto_debit} onChange={handleChange} /> Débito automático
           </label>
           <Button variant="primary" loading={loading} type="submit">Adicionar Despesa</Button>
+          {isAdmin && (
+            <Button variant="secondary" onClick={handleTestProcess} loading={loading} style={{ marginLeft: 12 }}>
+              Testar Processamento Automático
+            </Button>
+          )}
         </form>
       </motion.div>
       {loading ? <p>Carregando...</p> : (
