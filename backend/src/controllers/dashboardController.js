@@ -92,6 +92,9 @@ exports.getDashboard = async (req, res) => {
         period_start: { [Op.lte]: lastDay },
         period_end: { [Op.gte]: firstDay },
       },
+      include: [
+        { model: CreditCard, as: 'credit_card', attributes: ['name', 'bank'] }
+      ]
     });
     const budgetsWithSpent = await Promise.all(budgets.map(async (budget) => {
       let utilizado = 0;
@@ -104,14 +107,18 @@ exports.getDashboard = async (req, res) => {
           },
         });
       } else if (budget.type === 'cartao') {
-        // Soma apenas despesas de cartão de crédito do período
-        utilizado = await Expense.sum('value', {
-          where: {
-            user_id: userId,
-            due_date: { [Op.between]: [budget.period_start, budget.period_end] },
-            credit_card_id: { [Op.ne]: null },
-          },
-        });
+        // Se tem credit_card_id específico, filtrar por esse cartão
+        const whereClause = {
+          user_id: userId,
+          due_date: { [Op.between]: [budget.period_start, budget.period_end] },
+          credit_card_id: { [Op.ne]: null },
+        };
+        
+        if (budget.credit_card_id) {
+          whereClause.credit_card_id = budget.credit_card_id;
+        }
+        
+        utilizado = await Expense.sum('value', { where: whereClause });
       }
       return {
         ...budget.toJSON(),
