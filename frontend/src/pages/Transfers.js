@@ -90,12 +90,17 @@ function Transfers({ token }) {
         description: form.description,
         is_third_party: form.from_account_id === 'terceiros'
       };
+      
+      console.log('Enviando dados:', body);
+      
       const res = await fetch(`${API_URL}/transfers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),
       });
       const data = await res.json();
+      console.log('Resposta do servidor:', data);
+      
       if (res.ok) {
         setMessage('Transferência realizada com sucesso!');
         setForm({ from_account_id: '', to_account_id: '', value: '', date: '', description: '', isThirdParty: false });
@@ -105,6 +110,7 @@ function Transfers({ token }) {
         setError(data.error || 'Erro ao realizar transferência.');
       }
     } catch (err) {
+      console.error('Erro na requisição:', err);
       setError('Erro ao realizar transferência.');
     }
     setLoading(false);
