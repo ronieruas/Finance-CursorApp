@@ -19,6 +19,7 @@ router.get('/', authMiddleware, async (req, res) => {
 // Criar transferência
 router.post('/', authMiddleware, async (req, res) => {
   try {
+    console.log('Dados recebidos para transferência:', req.body);
     const { from_account_id, to_account_id, value, description, date, is_third_party } = req.body;
     if (!to_account_id || !value || !date) return res.status(400).json({ error: 'Dados obrigatórios.' });
     
@@ -26,13 +27,18 @@ router.post('/', authMiddleware, async (req, res) => {
     
     if (is_third_party || !from_account_id) {
       // Transferência de terceiros: credita na conta destino
+      console.log('Criando transferência de terceiros para conta:', to_account_id);
       const to = await Account.findOne({ where: { id: to_account_id, user_id: req.user.id } });
       if (!to) return res.status(404).json({ error: 'Conta de destino não encontrada.' });
+      console.log('Conta de destino encontrada:', to.id, 'Saldo atual:', to.balance);
       to.balance = Number(to.balance) + Number(value);
       await to.save();
+      console.log('Saldo atualizado para:', to.balance);
       transfer = await Transfer.create({ user_id: req.user.id, from_account_id: null, to_account_id, value, description, date });
+      console.log('Transferência criada:', transfer.id);
     } else {
       // Transferência interna: debita da origem e credita na destino
+      console.log('Criando transferência interna de', from_account_id, 'para', to_account_id);
       const from = await Account.findOne({ where: { id: from_account_id, user_id: req.user.id } });
       if (!from) return res.status(404).json({ error: 'Conta de origem não encontrada.' });
       if (Number(from.balance) < Number(value)) return res.status(400).json({ error: 'Saldo insuficiente.' });
@@ -40,20 +46,28 @@ router.post('/', authMiddleware, async (req, res) => {
       const to = await Account.findOne({ where: { id: to_account_id, user_id: req.user.id } });
       if (!to) return res.status(404).json({ error: 'Conta de destino não encontrada.' });
       
+      console.log('Conta de origem:', from.id, 'Saldo atual:', from.balance);
+      console.log('Conta de destino:', to.id, 'Saldo atual:', to.balance);
+      
       // Debita da origem
       from.balance = Number(from.balance) - Number(value);
       await from.save();
+      console.log('Saldo da origem atualizado para:', from.balance);
       
       // Credita na destino
       to.balance = Number(to.balance) + Number(value);
       await to.save();
+      console.log('Saldo da destino atualizado para:', to.balance);
       
       transfer = await Transfer.create({ user_id: req.user.id, from_account_id, to_account_id, value, description, date });
+      console.log('Transferência interna criada:', transfer.id);
     }
     
     res.status(201).json(transfer);
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao registrar transferência.' });
+    console.error('Erro ao criar transferência:', err);
+    console.error('Stack trace:', err.stack);
+    res.status(500).json({ error: 'Erro ao registrar transferência.', details: err.message });
   }
 });
 
@@ -102,7 +116,8 @@ router.put('/:id', authMiddleware, async (req, res) => {
     
     res.json(transfer);
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao editar transferência.' });
+    console.error('Erro ao editar transferência:', err);
+    res.status(500).json({ error: 'Erro ao editar transferência.', details: err.message });
   }
 });
 
@@ -125,7 +140,8 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     await transfer.destroy();
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao remover transferência.' });
+    console.error('Erro ao remover transferência:', err);
+    res.status(500).json({ error: 'Erro ao remover transferência.', details: err.message });
   }
 });
 
