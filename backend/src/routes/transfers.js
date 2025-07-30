@@ -6,11 +6,13 @@ const { Op } = require('sequelize');
 
 // Listar transferências do usuário
 router.get('/', authMiddleware, async (req, res) => {
-  const { start, end, from_account_id, to_account_id, description } = req.query;
+  const { start, end, from_account_id, to_account_id, description, from_third_party, to_third_party } = req.query;
   const where = { user_id: req.user.id };
   if (start && end) where.date = { [Op.between]: [start, end] };
   if (from_account_id) where.from_account_id = from_account_id;
   if (to_account_id) where.to_account_id = to_account_id;
+  if (from_third_party === 'true') where.from_account_id = null;
+  if (to_third_party === 'true') where.to_account_id = null;
   if (description) where.description = { [Op.iLike]: `%${description}%` };
   const transfers = await Transfer.findAll({ where, order: [['date', 'DESC']] });
   res.json(transfers);
