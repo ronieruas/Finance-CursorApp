@@ -88,6 +88,7 @@ function Transfers({ token }) {
       };
       
       console.log('Enviando dados:', body);
+      console.log('Form data:', form);
       
       const res = await fetch(`${API_URL}/transfers`, {
         method: 'POST',
