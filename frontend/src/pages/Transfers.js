@@ -65,6 +65,12 @@ function Transfers({ token }) {
   const handleChange = e => {
     const { name, value, type, checked } = e.target;
     setForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
+    
+    // Se selecionar "Conta de Terceiros", marcar automaticamente o checkbox
+    if (name === 'from_account_id' && value === 'terceiros') {
+      setForm(f => ({ ...f, isThirdParty: true }));
+    }
+    
     if (name === 'isThirdParty' && !checked) {
       setForm(f => ({ ...f, to_account_id: '' }));
     }
@@ -77,11 +83,12 @@ function Transfers({ token }) {
     setError('');
     try {
       const body = {
-        from_account_id: form.from_account_id,
+        from_account_id: form.from_account_id === 'terceiros' ? null : form.from_account_id,
         to_account_id: form.to_account_id,
         value: form.value,
         date: form.date,
         description: form.description,
+        is_third_party: form.from_account_id === 'terceiros'
       };
       const res = await fetch(`${API_URL}/transfers`, {
         method: 'POST',
@@ -103,11 +110,24 @@ function Transfers({ token }) {
     setLoading(false);
   };
 
-  const handleEdit = t => { setEditingId(t.id); setEditForm({ ...t, isThirdParty: !t.to_account_id }); };
+  const handleEdit = t => { 
+    setEditingId(t.id); 
+    setEditForm({ 
+      ...t, 
+      from_account_id: t.from_account_id || 'terceiros',
+      isThirdParty: !t.from_account_id 
+    }); 
+  };
 
   const handleEditChange = e => {
     const { name, value, type, checked } = e.target;
     setEditForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
+    
+    // Se selecionar "Conta de Terceiros", marcar automaticamente o checkbox
+    if (name === 'from_account_id' && value === 'terceiros') {
+      setEditForm(f => ({ ...f, isThirdParty: true }));
+    }
+    
     if (name === 'isThirdParty' && !checked) {
       setEditForm(f => ({ ...f, to_account_id: '' }));
     }
@@ -120,11 +140,12 @@ function Transfers({ token }) {
     setError('');
     try {
       const body = {
-        from_account_id: editForm.from_account_id,
+        from_account_id: editForm.from_account_id === 'terceiros' ? null : editForm.from_account_id,
         to_account_id: editForm.to_account_id,
         value: editForm.value,
         date: editForm.date,
         description: editForm.description,
+        is_third_party: editForm.from_account_id === 'terceiros'
       };
       const res = await fetch(`${API_URL}/transfers/${editingId}`, {
         method: 'PUT',
@@ -208,13 +229,14 @@ function Transfers({ token }) {
         <label>Conta de origem:</label>
         <select name="from_account_id" value={form.from_account_id} onChange={handleChange} required style={{ width: '100%', marginBottom: 12 }}>
           <option value="">Selecione</option>
+          <option value="terceiros">Conta de Terceiros</option>
           {accounts.map(acc => (
             <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
           ))}
         </select>
         <label>
           <input type="checkbox" name="isThirdParty" checked={form.isThirdParty} onChange={handleChange} />
-          Transferência para terceiro. 
+          Transferência para terceiro. Conta de destino:
         </label>
         {form.isThirdParty ? (
           <>
@@ -266,6 +288,7 @@ function Transfers({ token }) {
                     <td>
                       <select name="from_account_id" value={editForm.from_account_id} onChange={handleEditChange} style={{ width: '100%' }}>
                         <option value="">Selecione</option>
+                        <option value="terceiros">Conta de Terceiros</option>
                         {accounts.map(acc => (
                           <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
                         ))}
@@ -307,7 +330,7 @@ function Transfers({ token }) {
                 ) : (
                   <>
                     <td style={{ textAlign: 'left' }}>{formatDateBR(t.date)}</td>
-                    <td style={{ textAlign: 'left' }}>{accounts.find(a => a.id === t.from_account_id)?.name || t.from_account_id}</td>
+                    <td style={{ textAlign: 'left' }}>{t.from_account_id ? (accounts.find(a => a.id === t.from_account_id)?.name || t.from_account_id) : 'Conta de Terceiros'}</td>
                     <td style={{ textAlign: 'left' }}>{t.to_account_id ? (accounts.find(a => a.id === t.to_account_id)?.name || t.to_account_id) : 'Transferência para terceiro'}</td>
                     <td style={{ textAlign: 'left' }}>R$ {Number(t.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                     <td style={{ textAlign: 'left' }}>{t.description}</td>
