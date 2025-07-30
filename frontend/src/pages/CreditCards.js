@@ -311,16 +311,22 @@ function CreditCards({ token }) {
       return { start: null, end: null };
     }
     
-    // Fechamento da fatura para o mês especificado
-    const closingDate = dayjs(`${year}-${m.toString().padStart(2, '0')}-${closingDay.toString().padStart(2, '0')}`);
+    // Data de vencimento da fatura para o mês especificado
+    const vencimento = dayjs(`${year}-${m.toString().padStart(2, '0')}-${dueDay.toString().padStart(2, '0')}`);
+    
+    // Calcular o fechamento correspondente ao vencimento
+    // O fechamento é sempre anterior ao vencimento
+    const fechamento = dayjs(`${year}-${m.toString().padStart(2, '0')}-${closingDay.toString().padStart(2, '0')}`);
+    
+    // Se o fechamento seria após o vencimento, ajustar para o mês anterior
+    let fechamentoAjustado = fechamento;
+    if (fechamento.isSameOrAfter(vencimento)) {
+      fechamentoAjustado = fechamento.subtract(1, 'month');
+    }
     
     // Período da fatura: do fechamento do mês anterior até o dia anterior ao fechamento atual
-    const start = closingDate.subtract(1, 'month');
-    const end = closingDate.subtract(1, 'day');
-    
-    // Data de vencimento (sempre posterior ao fechamento)
-    // O vencimento é no mês seguinte ao fechamento, no dia especificado
-    const vencimento = dayjs(`${year}-${(m + 1).toString().padStart(2, '0')}-${dueDay.toString().padStart(2, '0')}`);
+    const start = fechamentoAjustado.subtract(1, 'month');
+    const end = fechamentoAjustado.subtract(1, 'day');
     
     return { start: start.startOf('day'), end: end.endOf('day'), vencimento };
   }
