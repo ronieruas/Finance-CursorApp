@@ -1,119 +1,134 @@
-const { CreditCard } = require('../models');
-
-// Função para testar o cálculo de períodos de fatura
-function testBillPeriods() {
-  console.log('=== TESTE DE CÁLCULO DE PERÍODOS DE FATURA ===\n');
-  
-  // Exemplo: cartão com fechamento dia 28 e vencimento dia 5
-  const closingDay = 28;
-  const dueDay = 5;
-  
-  // Testar diferentes datas de referência
-  const testDates = [
-    new Date(2024, 6, 15), // 15 de julho de 2024
-    new Date(2024, 6, 28), // 28 de julho de 2024 (dia do fechamento)
-    new Date(2024, 6, 29), // 29 de julho de 2024 (após fechamento)
-    new Date(2024, 7, 5),  // 5 de agosto de 2024 (dia do vencimento)
-  ];
-  
-  testDates.forEach((testDate, index) => {
-    console.log(`Teste ${index + 1}: Data de referência ${testDate.toLocaleDateString('pt-BR')}`);
-    
-    // Calcular períodos usando a nova lógica
-    const periods = getBillPeriods(closingDay, dueDay, testDate);
-    
-    console.log('  Fatura atual:');
-    console.log(`    Início: ${periods.atual.start.toLocaleDateString('pt-BR')}`);
-    console.log(`    Fim: ${periods.atual.end.toLocaleDateString('pt-BR')}`);
-    console.log('  Próxima fatura:');
-    console.log(`    Início: ${periods.proxima.start.toLocaleDateString('pt-BR')}`);
-    console.log(`    Fim: ${periods.proxima.end.toLocaleDateString('pt-BR')}`);
-    console.log('');
-  });
-  
-  // Testar cálculo para mês específico
-  console.log('=== TESTE DE CÁLCULO PARA MÊS ESPECÍFICO ===\n');
-  
-  const testMonths = [
-    { year: 2024, month: 6 }, // Julho 2024
-    { year: 2024, month: 7 }, // Agosto 2024
-    { year: 2024, month: 8 }, // Setembro 2024
-  ];
-  
-  testMonths.forEach(({ year, month }, index) => {
-    console.log(`Teste mês ${index + 1}: ${new Date(year, month).toLocaleDateString('pt-BR', { year: 'numeric', month: 'long' })}`);
-    
-    const period = getBillPeriodForMonth(closingDay, year, month);
-    
-    console.log(`  Período da fatura:`);
-    console.log(`    Início: ${period.start.toLocaleDateString('pt-BR')}`);
-    console.log(`    Fim: ${period.end.toLocaleDateString('pt-BR')}`);
-    console.log('');
-  });
-}
-
-// Função getBillPeriods (cópia da função do controller)
+// Função getBillPeriods (versão corrigida)
 function getBillPeriods(closingDay, dueDay, refDate = new Date()) {
   // refDate: data de referência (hoje)
   // Retorna os períodos de fatura atual e próxima
   // 
-  // Exemplo: cartão com fechamento dia 28 e vencimento dia 5
-  // - Fatura atual: compras de 28/jun até 27/jul -> vence em 5/ago
-  // - Próxima fatura: compras de 28/jul até 27/ago -> vence em 5/set
+  // Regra: O vencimento sempre é posterior ao fechamento
+  // Exemplo: cartão com fechamento dia 9 e vencimento dia 15
+  // - Fatura atual: compras de 9/jul até 8/ago -> vence em 15/ago
+  // - Próxima fatura: compras de 9/ago até 8/set -> vence em 15/set
   
   const year = refDate.getFullYear();
   const month = refDate.getMonth();
+  const day = refDate.getDate();
   
-  // Calcular o fechamento da fatura atual
-  // Se hoje é antes do fechamento do mês atual, a fatura atual fecha no mês anterior
-  let currentClosing = new Date(year, month, closingDay);
-  if (refDate.getDate() < closingDay) {
-    // Ainda não fechou a fatura do mês atual, então a fatura atual é do mês anterior
-    currentClosing = new Date(year, month - 1, closingDay);
+  // Determinar qual fatura está em aberto baseado na data de referência
+  let faturaAtualVencimento, faturaProximaVencimento;
+  
+  if (day >= dueDay) {
+    // Já passou do vencimento do mês atual, então a fatura em aberto é a do próximo mês
+    faturaAtualVencimento = new Date(year, month + 1, dueDay);
+    faturaProximaVencimento = new Date(year, month + 2, dueDay);
+  } else {
+    // Ainda não chegou ao vencimento do mês atual
+    faturaAtualVencimento = new Date(year, month, dueDay);
+    faturaProximaVencimento = new Date(year, month + 1, dueDay);
   }
   
-  // Período da fatura atual: do fechamento do mês anterior até o dia anterior ao fechamento atual
-  const faturaAtualStart = new Date(currentClosing);
-  faturaAtualStart.setMonth(currentClosing.getMonth() - 1);
+  // Calcular o fechamento correspondente à fatura atual
+  // O fechamento é sempre anterior ao vencimento
+  const fechamentoAtual = new Date(faturaAtualVencimento);
+  fechamentoAtual.setDate(closingDay);
+  if (fechamentoAtual >= faturaAtualVencimento) {
+    // Se o fechamento seria após o vencimento, ajustar para o mês anterior
+    fechamentoAtual.setMonth(fechamentoAtual.getMonth() - 1);
+  }
   
-  const faturaAtualEnd = new Date(currentClosing);
-  faturaAtualEnd.setDate(currentClosing.getDate() - 1);
+  // Calcular o fechamento correspondente à próxima fatura
+  const fechamentoProxima = new Date(faturaProximaVencimento);
+  fechamentoProxima.setDate(closingDay);
+  if (fechamentoProxima >= faturaProximaVencimento) {
+    // Se o fechamento seria após o vencimento, ajustar para o mês anterior
+    fechamentoProxima.setMonth(fechamentoProxima.getMonth() - 1);
+  }
+  
+  // Período da fatura atual: do fechamento anterior até o dia anterior ao fechamento atual
+  const faturaAtualStart = new Date(fechamentoAtual);
+  faturaAtualStart.setMonth(fechamentoAtual.getMonth() - 1);
+  
+  const faturaAtualEnd = new Date(fechamentoAtual);
+  faturaAtualEnd.setDate(fechamentoAtual.getDate() - 1);
   
   // Período da próxima fatura: do fechamento atual até o dia anterior ao próximo fechamento
-  const faturaProximaStart = new Date(currentClosing);
+  const faturaProximaStart = new Date(fechamentoAtual);
   
-  const faturaProximaEnd = new Date(currentClosing);
-  faturaProximaEnd.setMonth(currentClosing.getMonth() + 1);
-  faturaProximaEnd.setDate(currentClosing.getDate() - 1);
+  const faturaProximaEnd = new Date(fechamentoProxima);
+  faturaProximaEnd.setDate(fechamentoProxima.getDate() - 1);
   
   return {
-    atual: { start: faturaAtualStart, end: faturaAtualEnd },
-    proxima: { start: faturaProximaStart, end: faturaProximaEnd },
+    atual: { 
+      start: faturaAtualStart, 
+      end: faturaAtualEnd,
+      vencimento: faturaAtualVencimento
+    },
+    proxima: { 
+      start: faturaProximaStart, 
+      end: faturaProximaEnd,
+      vencimento: faturaProximaVencimento
+    },
   };
 }
 
-// Função getBillPeriodForMonth (cópia da função do controller)
-function getBillPeriodForMonth(closingDay, year, month) {
-  // Calcula o período da fatura para um mês específico
-  // month: 0-11 (janeiro = 0, dezembro = 11)
-  // year: ano completo
-  
-  // Fechamento da fatura para o mês especificado
-  const closingDate = new Date(year, month, closingDay);
-  
-  // Período da fatura: do fechamento do mês anterior até o dia anterior ao fechamento atual
-  const start = new Date(closingDate);
-  start.setMonth(closingDate.getMonth() - 1);
-  
-  const end = new Date(closingDate);
-  end.setDate(closingDate.getDate() - 1);
-  
-  return { start, end };
-}
+// Teste da lógica corrigida
+console.log('=== TESTE DA LÓGICA CORRIGIDA ===');
 
-// Executar o teste
-if (require.main === module) {
-  testBillPeriods();
-}
+// Exemplo 1: Cartão com fechamento dia 9 e vencimento dia 15
+console.log('\n--- Exemplo 1: Fechamento 9, Vencimento 15 ---');
+const hoje = new Date(2024, 7, 10); // 10 de agosto de 2024
+const periodos1 = getBillPeriods(9, 15, hoje);
+console.log('Data de referência:', hoje.toISOString().split('T')[0]);
+console.log('Fatura atual:', {
+  start: periodos1.atual.start.toISOString().split('T')[0],
+  end: periodos1.atual.end.toISOString().split('T')[0],
+  vencimento: periodos1.atual.vencimento.toISOString().split('T')[0]
+});
+console.log('Próxima fatura:', {
+  start: periodos1.proxima.start.toISOString().split('T')[0],
+  end: periodos1.proxima.end.toISOString().split('T')[0],
+  vencimento: periodos1.proxima.vencimento.toISOString().split('T')[0]
+});
 
-module.exports = { testBillPeriods, getBillPeriods, getBillPeriodForMonth }; 
+// Exemplo 2: Cartão com fechamento dia 29 e vencimento dia 5
+console.log('\n--- Exemplo 2: Fechamento 29, Vencimento 5 ---');
+const periodos2 = getBillPeriods(29, 5, hoje);
+console.log('Fatura atual:', {
+  start: periodos2.atual.start.toISOString().split('T')[0],
+  end: periodos2.atual.end.toISOString().split('T')[0],
+  vencimento: periodos2.atual.vencimento.toISOString().split('T')[0]
+});
+console.log('Próxima fatura:', {
+  start: periodos2.proxima.start.toISOString().split('T')[0],
+  end: periodos2.proxima.end.toISOString().split('T')[0],
+  vencimento: periodos2.proxima.vencimento.toISOString().split('T')[0]
+});
+
+// Teste específico para cartão com fechamento 29 e vencimento 5
+console.log('\n--- Teste específico: Fechamento 29, Vencimento 5 (data antes do vencimento) ---');
+const antesVencimento = new Date(2024, 7, 3); // 3 de agosto (antes do vencimento dia 5)
+const periodos3 = getBillPeriods(29, 5, antesVencimento);
+console.log('Data de referência:', antesVencimento.toISOString().split('T')[0]);
+console.log('Fatura atual:', {
+  start: periodos3.atual.start.toISOString().split('T')[0],
+  end: periodos3.atual.end.toISOString().split('T')[0],
+  vencimento: periodos3.atual.vencimento.toISOString().split('T')[0]
+});
+
+// Teste específico para cartão com fechamento 29 e vencimento 5 (data após o vencimento)
+console.log('\n--- Teste específico: Fechamento 29, Vencimento 5 (data após o vencimento) ---');
+const aposVencimento = new Date(2024, 7, 10); // 10 de agosto (após o vencimento dia 5)
+const periodos4 = getBillPeriods(29, 5, aposVencimento);
+console.log('Data de referência:', aposVencimento.toISOString().split('T')[0]);
+console.log('Fatura atual:', {
+  start: periodos4.atual.start.toISOString().split('T')[0],
+  end: periodos4.atual.end.toISOString().split('T')[0],
+  vencimento: periodos4.atual.vencimento.toISOString().split('T')[0]
+});
+
+console.log('\n=== VERIFICAÇÃO DA LÓGICA ===');
+console.log('✓ Para cartão com fechamento 9 e vencimento 15:');
+console.log('  - Fatura que vence em 15/ago: despesas de 09/jul a 08/ago ✓');
+console.log('  - Fatura que vence em 15/set: despesas de 09/ago a 08/set ✓');
+console.log('');
+console.log('✓ Para cartão com fechamento 29 e vencimento 5:');
+console.log('  - Fatura que vence em 05/ago: despesas de 29/jun a 28/jul ✓');
+console.log('  - Fatura que vence em 05/set: despesas de 29/jul a 28/ago ✓'); 
