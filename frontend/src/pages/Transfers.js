@@ -71,8 +71,14 @@ function Transfers({ token }) {
       setForm(f => ({ ...f, isThirdParty: true }));
     }
     
+    // Se desmarcar o checkbox de terceiro, limpar a conta de origem
     if (name === 'isThirdParty' && !checked) {
-      setForm(f => ({ ...f, to_account_id: '' }));
+      setForm(f => ({ ...f, from_account_id: '', to_account_id: '' }));
+    }
+    
+    // Se marcar o checkbox de terceiro, definir conta de origem como terceiros
+    if (name === 'isThirdParty' && checked) {
+      setForm(f => ({ ...f, from_account_id: 'terceiros' }));
     }
   };
 
@@ -83,12 +89,12 @@ function Transfers({ token }) {
     setError('');
     try {
       const body = {
-        from_account_id: form.from_account_id === 'terceiros' ? null : form.from_account_id,
+        from_account_id: form.isThirdParty ? null : form.from_account_id,
         to_account_id: form.to_account_id,
         value: form.value,
         date: form.date,
         description: form.description,
-        is_third_party: form.from_account_id === 'terceiros'
+        is_third_party: form.isThirdParty
       };
       
       console.log('Enviando dados:', body);
@@ -120,7 +126,7 @@ function Transfers({ token }) {
     setEditingId(t.id); 
     setEditForm({ 
       ...t, 
-      from_account_id: t.from_account_id || 'terceiros',
+      from_account_id: t.from_account_id || '',
       isThirdParty: !t.from_account_id 
     }); 
   };
@@ -134,8 +140,14 @@ function Transfers({ token }) {
       setEditForm(f => ({ ...f, isThirdParty: true }));
     }
     
+    // Se desmarcar o checkbox de terceiro, limpar a conta de origem
     if (name === 'isThirdParty' && !checked) {
-      setEditForm(f => ({ ...f, to_account_id: '' }));
+      setEditForm(f => ({ ...f, from_account_id: '', to_account_id: '' }));
+    }
+    
+    // Se marcar o checkbox de terceiro, definir conta de origem como terceiros
+    if (name === 'isThirdParty' && checked) {
+      setEditForm(f => ({ ...f, from_account_id: 'terceiros' }));
     }
   };
 
@@ -146,12 +158,12 @@ function Transfers({ token }) {
     setError('');
     try {
       const body = {
-        from_account_id: editForm.from_account_id === 'terceiros' ? null : editForm.from_account_id,
+        from_account_id: editForm.isThirdParty ? null : editForm.from_account_id,
         to_account_id: editForm.to_account_id,
         value: editForm.value,
         date: editForm.date,
         description: editForm.description,
-        is_third_party: editForm.from_account_id === 'terceiros'
+        is_third_party: editForm.isThirdParty
       };
       const res = await fetch(`${API_URL}/transfers/${editingId}`, {
         method: 'PUT',
@@ -232,39 +244,34 @@ function Transfers({ token }) {
         <button type="submit" style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 500 }}>Filtrar</button>
       </form>
       <form onSubmit={handleSubmit} style={{ marginBottom: 24 }}>
-        <label>Conta de origem:</label>
-        <select name="from_account_id" value={form.from_account_id} onChange={handleChange} required style={{ width: '100%', marginBottom: 12 }}>
-          <option value="">Selecione</option>
-          <option value="terceiros">Conta de Terceiros</option>
-          {accounts.map(acc => (
-            <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
-          ))}
-        </select>
         <label>
           <input type="checkbox" name="isThirdParty" checked={form.isThirdParty} onChange={handleChange} />
-          Transferência para terceiro. Conta de destino:
+          Transferência para terceiro
         </label>
-        {form.isThirdParty ? (
+        
+        {!form.isThirdParty ? (
           <>
-            <label>Conta de destino:</label>
-            <select name="to_account_id" value={form.to_account_id} onChange={handleChange} required style={{ width: '100%', marginBottom: 12 }}>
+            <label>Conta de origem:</label>
+            <select name="from_account_id" value={form.from_account_id} onChange={handleChange} required style={{ width: '100%', marginBottom: 12 }}>
               <option value="">Selecione</option>
-              {accounts.filter(acc => acc.id !== Number(form.from_account_id)).map(acc => (
+              {accounts.map(acc => (
                 <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
               ))}
             </select>
           </>
         ) : (
-          <>
-            <label>Conta de destino:</label>
-            <select name="to_account_id" value={form.to_account_id} onChange={handleChange} required style={{ width: '100%', marginBottom: 12 }}>
-              <option value="">Selecione</option>
-              {accounts.filter(acc => acc.id !== Number(form.from_account_id)).map(acc => (
-                <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
-              ))}
-            </select>
-          </>
+          <div style={{ marginBottom: 12, padding: 8, background: '#f0f9ff', border: '1px solid #0ea5e9', borderRadius: 4 }}>
+            <small>Transferência de terceiros para conta cadastrada</small>
+          </div>
         )}
+        
+        <label>Conta de destino:</label>
+        <select name="to_account_id" value={form.to_account_id} onChange={handleChange} required style={{ width: '100%', marginBottom: 12 }}>
+          <option value="">Selecione</option>
+          {accounts.filter(acc => !form.isThirdParty ? acc.id !== Number(form.from_account_id) : true).map(acc => (
+            <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
+          ))}
+        </select>
         <input name="value" type="number" step="0.01" placeholder="Valor" value={form.value} onChange={handleChange} required style={{ width: '100%', marginBottom: 12 }} />
         <input name="date" type="date" value={form.date} onChange={handleChange} required style={{ width: '100%', marginBottom: 12 }} />
         <input name="description" type="text" placeholder="Descrição (opcional)" value={form.description} onChange={handleChange} style={{ width: '100%', marginBottom: 12 }} />
@@ -292,39 +299,30 @@ function Transfers({ token }) {
                   <>
                     <td><input name="date" type="date" value={editForm.date} onChange={handleEditChange} style={{ width: '100%' }} /></td>
                     <td>
-                      <select name="from_account_id" value={editForm.from_account_id} onChange={handleEditChange} style={{ width: '100%' }}>
-                        <option value="">Selecione</option>
-                        <option value="terceiros">Conta de Terceiros</option>
-                        {accounts.map(acc => (
-                          <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
-                        ))}
-                      </select>
+                      {!editForm.isThirdParty ? (
+                        <select name="from_account_id" value={editForm.from_account_id} onChange={handleEditChange} style={{ width: '100%' }}>
+                          <option value="">Selecione</option>
+                          {accounts.map(acc => (
+                            <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div style={{ fontSize: 12, color: '#0ea5e9' }}>Transferência de terceiros</div>
+                      )}
                     </td>
                     <td>
                       <label style={{ fontSize: 12 }}>
                         <input type="checkbox" name="isThirdParty" checked={editForm.isThirdParty} onChange={handleEditChange} /> Terceiro
                       </label>
-                      {editForm.isThirdParty ? (
-                        <div>
-                          <label style={{ fontSize: 12, display: 'block', marginTop: 4 }}>Conta de destino:</label>
-                          <select name="to_account_id" value={editForm.to_account_id} onChange={handleEditChange} style={{ width: '100%' }}>
-                            <option value="">Selecione</option>
-                            {accounts.filter(acc => acc.id !== Number(editForm.from_account_id)).map(acc => (
-                              <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
-                            ))}
-                          </select>
-                        </div>
-                      ) : (
-                        <div>
-                          <label style={{ fontSize: 12, display: 'block', marginTop: 4 }}>Conta de destino:</label>
-                          <select name="to_account_id" value={editForm.to_account_id} onChange={handleEditChange} style={{ width: '100%' }}>
-                            <option value="">Selecione</option>
-                            {accounts.filter(acc => acc.id !== Number(editForm.from_account_id)).map(acc => (
-                              <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
+                      <div>
+                        <label style={{ fontSize: 12, display: 'block', marginTop: 4 }}>Conta de destino:</label>
+                        <select name="to_account_id" value={editForm.to_account_id} onChange={handleEditChange} style={{ width: '100%' }}>
+                          <option value="">Selecione</option>
+                          {accounts.filter(acc => !editForm.isThirdParty ? acc.id !== Number(editForm.from_account_id) : true).map(acc => (
+                            <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
+                          ))}
+                        </select>
+                      </div>
                     </td>
                     <td><input name="value" type="number" step="0.01" value={editForm.value} onChange={handleEditChange} style={{ width: '100%' }} /></td>
                     <td><input name="description" type="text" value={editForm.description} onChange={handleEditChange} style={{ width: '100%' }} /></td>
