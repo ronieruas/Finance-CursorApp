@@ -223,13 +223,13 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
     const cartoesMap = {};
     cartoes.forEach(c => { cartoesMap[c.id] = c.name; });
 
-    // Função para formatar data dd-mm-aaaa
+    // Função para formatar data dd/mm/aaaa
     function formatDateBR(dateStr) {
       const d = new Date(dateStr);
       const day = String(d.getDate()).padStart(2, '0');
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const year = d.getFullYear();
-      return `${day}-${month}-${year}`;
+      return `${day}/${month}/${year}`;
     }
 
     // Monta extrato unificado
@@ -278,8 +278,8 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
 
     // Ordena por data (mais antigo primeiro)
     extrato.sort((a, b) => {
-      const [da, ma, aa] = a.data.split('-');
-      const [db, mb, ab] = b.data.split('-');
+      const [da, ma, aa] = a.data.split('/');
+      const [db, mb, ab] = b.data.split('/');
       return new Date(`${aa}-${ma}-${da}`) - new Date(`${ab}-${mb}-${db}`);
     });
 

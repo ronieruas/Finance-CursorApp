@@ -376,7 +376,7 @@ function Expenses({ token }) {
                     </>
                   ) : (
                     <>
-                      <td style={{ textAlign: 'left' }}>{exp.createdAt ? new Date(exp.createdAt).toLocaleDateString('pt-BR') : '-'}</td>
+                      <td style={{ textAlign: 'left' }}>{exp.createdAt ? dayjs(exp.createdAt).format('DD/MM/YYYY') : '-'}</td>
                       <td style={{ textAlign: 'left' }}>{accounts.find(a => a.id === exp.account_id)?.name || exp.account_id}</td>
                       <td style={{ textAlign: 'left' }}>{exp.description}</td>
                       <td style={{ textAlign: 'left', color: 'var(--color-despesa)', fontWeight: 600 }}>R$ {Number(exp.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
