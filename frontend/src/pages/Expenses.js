@@ -112,7 +112,7 @@ function Expenses({ token }) {
       Object.keys(payload).forEach(k => {
         if (payload[k] === '' || payload[k] === null || payload[k] === undefined) delete payload[k];
       });
-      console.log('Payload enviado:', payload);
+      // console.log('Payload enviado:', payload);
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
