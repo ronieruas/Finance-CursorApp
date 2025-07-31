@@ -102,16 +102,15 @@ exports.getDashboard = async (req, res) => {
     const budgetsWithSpent = await Promise.all(budgets.map(async (budget) => {
       let utilizado = 0;
       if (budget.type === 'geral') {
-        // Soma todas as despesas do período (não pagas)
+        // Orçamento geral: considera TODAS as despesas (pagas e não pagas)
         utilizado = await Expense.sum('value', {
           where: {
             user_id: userId,
             due_date: { [Op.between]: [budget.period_start, budget.period_end] },
-            status: { [Op.ne]: 'paga' }, // Excluir despesas já pagas
           },
         });
       } else if (budget.type === 'cartao') {
-        // Se tem credit_card_id específico, filtrar por esse cartão
+        // Orçamento de cartão: considera apenas despesas não pagas
         const whereClause = {
           user_id: userId,
           due_date: { [Op.between]: [budget.period_start, budget.period_end] },
