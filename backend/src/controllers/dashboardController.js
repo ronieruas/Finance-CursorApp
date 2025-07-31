@@ -43,6 +43,7 @@ exports.getDashboard = async (req, res) => {
         user_id: userId,
         due_date: { [Op.between]: [firstDay, lastDay] },
         credit_card_id: { [Op.ne]: null },
+        status: { [Op.ne]: 'paga' }, // Excluir despesas já pagas
       },
     });
 
@@ -55,12 +56,13 @@ exports.getDashboard = async (req, res) => {
     let faturaCartaoMes = 0;
     let gastosPorCartao = [];
     if (cardIds.length > 0) {
-      // Soma despesas do cartão
+      // Soma despesas do cartão (não pagas)
       const despesasCartaoMes = await Expense.sum('value', {
         where: {
           user_id: userId,
           due_date: { [Op.between]: [firstDay, lastDay] },
           credit_card_id: { [Op.in]: cardIds },
+          status: { [Op.ne]: 'paga' }, // Excluir despesas já pagas
         },
       }) || 0;
       // NÃO existe receitas de cartão (Income.credit_card_id não existe)
@@ -73,6 +75,7 @@ exports.getDashboard = async (req, res) => {
             user_id: userId,
             due_date: { [Op.between]: [firstDay, lastDay] },
             credit_card_id: card.id,
+            status: { [Op.ne]: 'paga' }, // Excluir despesas já pagas
           },
         }) || 0;
         // const totalReceitas = await Income.sum('value', { ... })
@@ -99,11 +102,12 @@ exports.getDashboard = async (req, res) => {
     const budgetsWithSpent = await Promise.all(budgets.map(async (budget) => {
       let utilizado = 0;
       if (budget.type === 'geral') {
-        // Soma todas as despesas do período
+        // Soma todas as despesas do período (não pagas)
         utilizado = await Expense.sum('value', {
           where: {
             user_id: userId,
             due_date: { [Op.between]: [budget.period_start, budget.period_end] },
+            status: { [Op.ne]: 'paga' }, // Excluir despesas já pagas
           },
         });
       } else if (budget.type === 'cartao') {
@@ -112,6 +116,7 @@ exports.getDashboard = async (req, res) => {
           user_id: userId,
           due_date: { [Op.between]: [budget.period_start, budget.period_end] },
           credit_card_id: { [Op.ne]: null },
+          status: { [Op.ne]: 'paga' }, // Excluir despesas já pagas
         };
         
         if (budget.credit_card_id) {
@@ -144,6 +149,7 @@ exports.getDashboard = async (req, res) => {
         user_id: userId,
         due_date: { [Op.between]: [firstDay, lastDay] },
         credit_card_id: { [Op.ne]: null },
+        status: { [Op.ne]: 'paga' }, // Excluir despesas já pagas
       },
     }) || 0;
     const breakdown = {

@@ -219,11 +219,13 @@ async function getAnaliseCartoes(userId, firstDay, lastDay) {
   const cartoes = await CreditCard.findAll({ where: { user_id: userId, status: 'ativa' } });
   
   const analiseCartoes = await Promise.all(cartoes.map(async (cartao) => {
+    // Filtrar apenas despesas não pagas (status diferente de 'paga')
     const despesas = await Expense.sum('value', {
       where: {
         user_id: userId,
         credit_card_id: cartao.id,
         due_date: { [Op.between]: [firstDay, lastDay] },
+        status: { [Op.ne]: 'paga' }, // Excluir despesas já pagas
       },
     }) || 0;
 
@@ -264,6 +266,7 @@ async function getMetas(userId, firstDay, lastDay) {
         where: {
           user_id: userId,
           due_date: { [Op.between]: [budget.period_start, budget.period_end] },
+          status: { [Op.ne]: 'paga' }, // Excluir despesas já pagas
         },
       }) || 0;
     } else if (budget.type === 'cartao') {
@@ -272,6 +275,7 @@ async function getMetas(userId, firstDay, lastDay) {
         user_id: userId,
         due_date: { [Op.between]: [budget.period_start, budget.period_end] },
         credit_card_id: { [Op.ne]: null },
+        status: { [Op.ne]: 'paga' }, // Excluir despesas já pagas
       };
       
       if (budget.credit_card_id) {

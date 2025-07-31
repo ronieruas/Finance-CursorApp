@@ -16,6 +16,7 @@ exports.list = async (req, res) => {
         where: {
           user_id: req.user.id,
           due_date: { [Op.between]: [budget.period_start, budget.period_end] },
+          status: { [Op.ne]: 'paga' }, // Excluir despesas já pagas
         },
       });
     } else if (budget.type === 'cartao') {
@@ -24,6 +25,7 @@ exports.list = async (req, res) => {
         user_id: req.user.id,
         due_date: { [Op.between]: [budget.period_start, budget.period_end] },
         credit_card_id: { [Op.ne]: null },
+        status: { [Op.ne]: 'paga' }, // Excluir despesas já pagas
       };
       
       if (budget.credit_card_id) {
