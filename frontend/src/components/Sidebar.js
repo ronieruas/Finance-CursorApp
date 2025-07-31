@@ -114,6 +114,11 @@ const Sidebar = ({ setToken, user }) => {
               </Link>
             </li>
             <li>
+              <Link to="/resumo" onClick={handleLinkClick} style={{ display: 'block', padding: '8px 0', textDecoration: 'none', color: 'inherit' }}>
+                Resumo
+              </Link>
+            </li>
+            <li>
               <Link to="/accounts" onClick={handleLinkClick} style={{ display: 'block', padding: '8px 0', textDecoration: 'none', color: 'inherit' }}>
                 Contas
               </Link>
