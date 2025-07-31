@@ -16,6 +16,7 @@ router.use('/creditCards', require('./creditCards'));
 router.use('/budgets', require('./budgets'));
 router.use('/transfers', require('./transfers'));
 router.use('/analytics', require('./analytics'));
+router.use('/resumo', require('./resumo'));
 
 router.get('/', (req, res) => {
   res.json({ status: 'API online' });
