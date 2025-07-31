@@ -183,13 +183,13 @@ exports.getDashboard = async (req, res) => {
     const cartoes = await CreditCard.findAll({ where: { user_id: userId } });
     cartoes.forEach(c => { cartoesMap[c.id] = c.name; });
     
-    // Função para formatar data dd-mm-aaaa
+    // Função para formatar data dd/mm/aaaa
     function formatDateBR(dateStr) {
       const d = new Date(dateStr);
       const day = String(d.getDate()).padStart(2, '0');
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const year = d.getFullYear();
-      return `${day}-${month}-${year}`;
+      return `${day}/${month}/${year}`;
     }
     
     // Adicionar receitas de cartão separadas
@@ -219,8 +219,8 @@ exports.getDashboard = async (req, res) => {
     ];
     const recentes = recentesRaw
       .sort((a, b) => {
-        const [da, ma, aa] = a.data.split('-');
-        const [db, mb, ab] = b.data.split('-');
+        const [da, ma, aa] = a.data.split('/');
+        const [db, mb, ab] = b.data.split('/');
         return new Date(`${ab}-${mb}-${db}`) - new Date(`${aa}-${ma}-${da}`);
       })
       .slice(0, 10);

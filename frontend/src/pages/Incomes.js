@@ -11,7 +11,7 @@ const ACCOUNTS_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'
 function formatDateBR(dateStr) {
   if (!dateStr) return '';
   const [y, m, d] = dateStr.split('-');
-  return `${d}-${m}-${y}`;
+  return `${d}/${m}/${y}`;
 }
 
 function Incomes({ token }) {
