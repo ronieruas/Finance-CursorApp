@@ -23,6 +23,7 @@ app.use('/api/transfers', require('./routes/transfers'));
 app.use('/api/creditCards', require('./routes/creditCards'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/resumo', require('./routes/resumo'));
 app.use('/api/budgets', require('./routes/budgets'));
 app.use('/api/notifications', require('./routes/notifications'));
 

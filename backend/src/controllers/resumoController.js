@@ -1,6 +1,5 @@
 const { Account, Income, Expense, CreditCard, CreditCardTransaction, Budget } = require('../models');
-const { Op, Sequelize } = require('sequelize');
-const dayjs = require('dayjs');
+const { Op } = require('sequelize');
 
 exports.getResumo = async (req, res) => {
   try {
