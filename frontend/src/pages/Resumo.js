@@ -62,6 +62,12 @@ function Resumo({ token }) {
     return diff;
   };
 
+  // Obter o mês atual formatado
+  const mesAtual = dayjs().format('MMMM [de] YYYY');
+
+  // Calcular total das despesas parceladas
+  const totalDespesasParceladas = data.despesasParceladas.reduce((total, parcela) => total + parcela.valor, 0);
+
   if (loading) {
     return (
       <div className="main-content" style={{ marginLeft: 180, padding: 32 }}>
@@ -77,8 +83,11 @@ function Resumo({ token }) {
       <h2 style={{ marginBottom: 24, fontWeight: 700, letterSpacing: '-0.01em' }}>
         RESUMO GERAL
       </h2>
-      <p style={{ marginBottom: 32, color: '#666', fontSize: 16 }}>
+      <p style={{ marginBottom: 8, color: '#666', fontSize: 16 }}>
         Resumo de suas atividades financeiras
+      </p>
+      <p style={{ marginBottom: 32, color: '#888', fontSize: 14, fontStyle: 'italic' }}>
+        Dados referentes a {mesAtual}
       </p>
 
       {/* Grid principal - 3x3 */}
@@ -159,11 +168,23 @@ function Resumo({ token }) {
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis dataKey="mes" stroke="#888" fontSize={10} />
               <YAxis stroke="#888" fontSize={10} />
-              <Tooltip formatter={(value) => formatCurrency(value)} />
+              <Tooltip 
+                formatter={(value) => formatCurrency(value)}
+                labelStyle={{ color: '#374151' }}
+                contentStyle={{ 
+                  backgroundColor: '#fff', 
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}
+              />
               <Bar dataKey="receitas" fill="#22c55e" radius={[2, 2, 0, 0]} />
               <Bar dataKey="saldoFinal" fill="#60a5fa" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+          <div style={{ marginTop: 8, fontSize: 12, color: '#6b7280', textAlign: 'center' }}>
+            <span style={{ color: '#22c55e' }}>■</span> Receitas <span style={{ marginLeft: 12, color: '#60a5fa' }}>■</span> Saldo
+          </div>
         </motion.div>
 
         {/* 4. Despesas do Mês */}
@@ -219,7 +240,16 @@ function Resumo({ token }) {
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis dataKey="mes" stroke="#888" fontSize={10} />
               <YAxis stroke="#888" fontSize={10} />
-              <Tooltip formatter={(value) => formatCurrency(value)} />
+              <Tooltip 
+                formatter={(value) => formatCurrency(value)}
+                labelStyle={{ color: '#374151' }}
+                contentStyle={{ 
+                  backgroundColor: '#fff', 
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}
+              />
               <Line type="monotone" dataKey="total" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
@@ -278,11 +308,23 @@ function Resumo({ token }) {
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis type="number" stroke="#888" fontSize={10} />
               <YAxis dataKey="cartao" type="category" stroke="#888" fontSize={10} />
-              <Tooltip formatter={(value) => formatCurrency(value)} />
+              <Tooltip 
+                formatter={(value) => formatCurrency(value)}
+                labelStyle={{ color: '#374151' }}
+                contentStyle={{ 
+                  backgroundColor: '#fff', 
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}
+              />
               <Bar dataKey="gastoAtual" fill="#ef4444" radius={[0, 2, 2, 0]} />
               <Bar dataKey="orcamento" fill="#3b82f6" radius={[0, 2, 2, 0]} />
             </BarChart>
           </ResponsiveContainer>
+          <div style={{ marginTop: 8, fontSize: 12, color: '#6b7280', textAlign: 'center' }}>
+            <span style={{ color: '#ef4444' }}>■</span> Gasto <span style={{ marginLeft: 12, color: '#3b82f6' }}>■</span> Orçamento
+          </div>
         </motion.div>
 
         {/* 8. Próximos Vencimentos */}
@@ -337,6 +379,11 @@ function Resumo({ token }) {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Despesas Parceladas</h3>
             <span style={{ color: '#ec4899', fontSize: 16 }}>📅</span>
+          </div>
+          <div style={{ marginBottom: 12, padding: '8px 12px', backgroundColor: 'rgba(236, 72, 153, 0.1)', borderRadius: 8 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#ec4899', textAlign: 'center' }}>
+              Total: {formatCurrency(totalDespesasParceladas)}
+            </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {data.despesasParceladas.map((parcela, index) => (

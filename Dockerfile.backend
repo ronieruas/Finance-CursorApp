@@ -4,7 +4,14 @@ WORKDIR /app
 COPY backend/package*.json ./
 RUN npm ci --production && npm install --save-dev sequelize-cli
 COPY backend/. .
+
 # Garante que scripts do src/scripts estejam disponíveis
 COPY backend/src/scripts ./src/scripts
+
+# Tornar o script de migração executável
+RUN chmod +x scripts/run_migrations.sh
+
 EXPOSE 3001
-CMD ["npm", "run", "start:migrate"] 
+
+# Script de inicialização que executa migrações antes de iniciar o servidor
+CMD ["sh", "-c", "scripts/run_migrations.sh && npm start"] 
