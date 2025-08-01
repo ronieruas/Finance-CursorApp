@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "start:migrate": "npx sequelize db:migrate && node src/server.js",
+    "start:migrate": "node scripts/wait-for-db.js && npx sequelize db:migrate && node scripts/check_incomes_table.js && node src/server.js",
     "migrate": "npx sequelize db:migrate",
     "migrate:undo": "npx sequelize db:migrate:undo",
     "migrate:undo:all": "npx sequelize db:migrate:undo:all"

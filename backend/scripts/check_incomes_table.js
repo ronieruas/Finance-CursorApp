@@ -98,7 +98,9 @@ async function checkIncomesTable() {
     console.log('Últimas 5 receitas:', incomes);
     
   } catch (error) {
-    console.error('Erro:', error);
+    console.error('Erro na verificação da tabela incomes:', error.message);
+    // Não falhar o processo se houver erro
+    console.log('Continuando com a inicialização...');
   } finally {
     await sequelize.close();
   }

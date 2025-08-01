@@ -8,10 +8,5 @@ COPY backend/. .
 # Garante que scripts do src/scripts estejam disponíveis
 COPY backend/src/scripts ./src/scripts
 
-# Tornar o script de migração executável
-RUN chmod +x scripts/run_migrations.sh
-
 EXPOSE 3001
-
-# Script de inicialização que executa migrações antes de iniciar o servidor
-CMD ["sh", "-c", "scripts/run_migrations.sh && npm start"] 
+CMD ["npm", "run", "start:migrate"] 
