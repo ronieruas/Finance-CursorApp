@@ -6,15 +6,18 @@ exports.getResumo = async (req, res) => {
     console.log('Resumo: início da requisição');
     const userId = req.user.id;
     
-    // Período atual (mês atual)
+    // Período atual (mês atual no Brasil)
     const hoje = new Date();
-    const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    const ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+    // Ajustar para fuso horário brasileiro (UTC-3)
+    const hojeBrasil = new Date(hoje.getTime() - (3 * 60 * 60 * 1000));
+    const primeiroDiaMes = new Date(hojeBrasil.getFullYear(), hojeBrasil.getMonth(), 1);
+    const ultimoDiaMes = new Date(hojeBrasil.getFullYear(), hojeBrasil.getMonth() + 1, 0);
     
     console.log('Período de consulta:', {
       primeiroDiaMes: primeiroDiaMes.toISOString(),
       ultimoDiaMes: ultimoDiaMes.toISOString(),
-      userId: userId
+      userId: userId,
+      mesAtual: hojeBrasil.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
     });
     
     // 1. Receitas do Mês - Buscar todas as receitas do mês atual
@@ -26,6 +29,19 @@ exports.getResumo = async (req, res) => {
     }) || 0;
 
     console.log('Receitas do mês:', receitasMes);
+
+    // Se não há receitas no mês atual, buscar receitas recorrentes do mês anterior
+    if (receitasMes === 0) {
+      const receitasRecorrentes = await Income.sum('value', {
+        where: {
+          user_id: userId,
+          is_recurring: true,
+          date: { [Op.between]: [primeiroDiaMes, ultimoDiaMes] },
+        },
+      }) || 0;
+      
+      console.log('Receitas recorrentes do mês:', receitasRecorrentes);
+    }
 
     // 2. Saldo por Conta
     const contas = await Account.findAll({
