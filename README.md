@@ -1,121 +1,261 @@
-# Finance App
+# Finance App - Sistema de Gestão Financeira Pessoal
 
-## 🚀 Instalação e Deploy Completo (Docker Compose)
+Sistema completo de gestão financeira pessoal com dashboard, controle de receitas, despesas, cartões de crédito e relatórios.
 
-### 1. Pré-requisitos
-- Docker e Docker Compose
-- Git
-- (Opcional) Cloudflare Tunnel ou DNS apontando para a porta 80 do servidor
+## 🚀 Instalação em Nova Máquina
 
-### 2. Clone o repositório
+### Opção 1: Instalação Rápida (Recomendada)
+
 ```bash
-git clone https://github.com/SEU_USUARIO/SEU_REPOSITORIO.git
-cd SEU_REPOSITORIO
+# Clone o repositório
+git clone <URL_DO_REPOSITORIO>
+cd finance
+
+# Execute o script de instalação automática
+./install.sh
 ```
 
-### 3. Configuração de variáveis de ambiente
+### Opção 2: Instalação Manual
 
-#### Frontend (`frontend/.env`):
-```
-REACT_APP_API_URL=https://SEU_DOMINIO
-```
-> **Importante:** O valor de `REACT_APP_API_URL` deve ser o domínio público (ex: `https://finance.ronieruas.com.br`).
+#### Pré-requisitos
 
-#### Backend (`backend/.env`):
-```
-PORT=3001
-DB_HOST=db
-DB_PORT=5432
-DB_NAME=finance
-DB_USER=finance
-DB_PASS=finance123
-JWT_SECRET=umasecretforte
-CORS_ORIGIN=https://SEU_DOMINIO
-```
+- Docker e Docker Compose instalados
+- Git instalado
+- Pelo menos 2GB de espaço livre em disco
 
-### 4. Build do frontend
+### Passo a Passo
+
+1. **Clone o repositório**
 ```bash
-cd frontend
-rm -rf build
-REACT_APP_API_URL=https://SEU_DOMINIO npm install
-REACT_APP_API_URL=https://SEU_DOMINIO npm run build
-cd ..
+git clone <URL_DO_REPOSITORIO>
+cd finance
 ```
 
-### 5. Limpeza total do Docker (opcional, para ambiente limpo)
+2. **Verifique se o Docker está rodando**
 ```bash
-docker-compose down
-docker builder prune -af
-docker system prune -af --volumes
+docker --version
+docker-compose --version
 ```
 
-### 6. Build e subida dos containers
+3. **Build e inicialização**
 ```bash
+# Build das imagens (primeira vez pode demorar)
 docker-compose build --no-cache
+
+# Iniciar todos os serviços
 docker-compose up -d
 ```
 
-### 7. Crie o usuário admin inicial
+4. **Verificar status dos serviços**
 ```bash
-docker-compose exec backend node src/scripts/seedAdmin.js
+docker-compose ps
 ```
 
-### 8. Acesse o sistema
-Abra o navegador em `https://SEU_DOMINIO` e faça login com o admin criado.
+5. **Verificar logs (opcional)**
+```bash
+# Logs de todos os serviços
+docker-compose logs
+
+# Logs específicos
+docker-compose logs backend
+docker-compose logs frontend
+docker-compose logs db
+```
+
+### 🎯 Acesso à Aplicação
+
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:3001
+- **Banco de dados**: localhost:5432
+
+### 📊 Credenciais Padrão
+
+- **Usuário**: admin@finance.com
+- **Senha**: admin123
+
+## 🔧 Comandos Úteis
+
+### Gerenciamento de Containers
+
+```bash
+# Parar todos os serviços
+docker-compose down
+
+# Parar e remover volumes (cuidado: apaga dados)
+docker-compose down -v
+
+# Reiniciar serviços
+docker-compose restart
+
+# Ver logs em tempo real
+docker-compose logs -f
+```
+
+### Rebuild e Atualizações
+
+```bash
+# Rebuild completo (recomendado após mudanças)
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
+
+# Rebuild apenas backend
+docker-compose build --no-cache backend
+docker-compose up -d backend
+```
+
+### Limpeza de Sistema
+
+```bash
+# Limpar containers não utilizados
+docker container prune
+
+# Limpar imagens não utilizadas
+docker image prune
+
+# Limpeza completa do Docker
+docker system prune -a
+
+# Limpar volumes (cuidado: apaga dados)
+docker volume prune
+```
+
+### Scripts de Emergência
+
+```bash
+# Script de limpeza e rebuild otimizado
+chmod +x backend/scripts/clean_and_build.sh
+./backend/scripts/clean_and_build.sh
+
+# Script de emergência para espaço limitado
+chmod +x backend/scripts/emergency_build.sh
+./backend/scripts/emergency_build.sh
+```
+
+## 🏗️ Arquitetura
+
+### Serviços Docker
+
+- **frontend**: React.js (porta 3000)
+- **backend**: Node.js + Express (porta 3001)
+- **db**: PostgreSQL (porta 5432)
+
+### Estrutura do Projeto
+
+```
+finance/
+├── frontend/          # Aplicação React
+├── backend/           # API Node.js
+├── database/          # Scripts de banco
+├── docker-compose.yml # Configuração Docker
+└── README.md
+```
+
+## 🔍 Troubleshooting
+
+### Problema: "no space left on device"
+```bash
+# Solução 1: Limpeza básica
+docker system prune -a
+
+# Solução 2: Script otimizado
+./backend/scripts/clean_and_build.sh
+
+# Solução 3: Emergência
+./backend/scripts/emergency_build.sh
+```
+
+### Problema: Containers não iniciam
+```bash
+# Verificar logs
+docker-compose logs
+
+# Verificar espaço em disco
+df -h
+
+# Verificar recursos do sistema
+docker system df
+```
+
+### Problema: Banco não conecta
+```bash
+# Verificar se o banco está rodando
+docker-compose ps db
+
+# Verificar logs do banco
+docker-compose logs db
+
+# Testar conexão
+docker exec finance-db pg_isready -U finance
+```
+
+### Problema: Migrações não executam
+```bash
+# Executar migrações manualmente
+docker exec finance-backend npx sequelize db:migrate
+
+# Verificar status das migrações
+docker exec finance-backend npx sequelize db:migrate:status
+```
+
+## 📝 Logs Importantes
+
+### Backend
+- Migrações executadas
+- Conexão com banco estabelecida
+- Scripts de seed executados
+- Servidor rodando na porta 3001
+
+### Frontend
+- Build concluído
+- Servidor rodando na porta 3000
+
+### Database
+- PostgreSQL iniciado
+- Banco 'finance' criado
+- Usuário 'finance' configurado
+
+## 🔄 Atualizações
+
+### Atualizar código
+```bash
+# 1. Parar serviços
+docker-compose down
+
+# 2. Pull das mudanças
+git pull origin main
+
+# 3. Rebuild
+docker-compose build --no-cache
+
+# 4. Iniciar
+docker-compose up -d
+```
+
+### Backup do banco
+```bash
+# Backup
+docker exec finance-db pg_dump -U finance finance > backup.sql
+
+# Restore
+docker exec -i finance-db psql -U finance finance < backup.sql
+```
+
+## 🚨 Importante
+
+- **Sempre use `docker-compose down` antes de rebuild**
+- **Para produção, configure variáveis de ambiente**
+- **Mantenha backups regulares do banco**
+- **Monitore o espaço em disco**
+
+## 📞 Suporte
+
+Para problemas específicos, verifique:
+1. Logs dos containers
+2. Espaço em disco disponível
+3. Recursos do sistema (CPU/RAM)
+4. Configurações de firewall/portas
 
 ---
 
-## 🛠️ Troubleshooting
-- **Login não funciona e erro 404/405 em `/api/auth/login`:**
-  - Verifique se o bloco `location /api/` está presente no `frontend/nginx.conf` para proxy das APIs.
-  - Exemplo:
-    ```nginx
-    location /api/ {
-      proxy_pass http://finance-backend:3001/api/;
-      proxy_set_header Host $host;
-      proxy_set_header X-Real-IP $remote_addr;
-      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-      proxy_set_header X-Forwarded-Proto $scheme;
-    }
-    ```
-  - O build do frontend deve ser feito SEM `/api` no final da variável.
-  - Se o login funciona pelo IP local mas não pelo domínio, revise o Cloudflare Tunnel ou proxy reverso.
-  - Se o frontend retorna 405 para `/api/auth/login`, o proxy do Nginx provavelmente não está configurado.
-  - Se o backend responde 401, verifique as credenciais ou rode o seed do admin novamente.
-- **Erro de porta ocupada (EADDRINUSE):**
-  - Só rode UM backend por vez na porta 3001. Use apenas Docker Compose.
-  - Pare processos antigos: `docker-compose down` e `pm2 stop all && pm2 delete all` (se usou PM2 antes)
-- **Variáveis de ambiente não aplicadas:**
-  - Sempre rode o build do frontend com a variável no comando, ou garanta que o `.env` está correto ANTES do build.
-- **Atualizar sistema:**
-  ```bash
-  git pull
-  cd frontend && rm -rf build && REACT_APP_API_URL=https://SEU_DOMINIO npm run build
-  cd ..
-  docker-compose build frontend
-  docker-compose up -d
-  docker-compose exec backend node src/scripts/seedAdmin.js
-  ```
-- **Ver logs do backend:**
-  ```bash
-  docker-compose logs backend
-  ```
-- **Ver logs do frontend (Nginx):**
-  ```bash
-  docker-compose logs frontend
-  ```
-- **Testar API manualmente:**
-  ```bash
-  curl -X POST https://SEU_DOMINIO/api/auth/login -H "Content-Type: application/json" -d '{"email":"admin@email.com","password":"suasenha"}'
-  ```
-
----
-
-## 📝 Dicas finais
-- Sempre limpe o cache do navegador após novo build (`Ctrl+Shift+R`).
-- O backend serve apenas a API, o frontend (Nginx) serve o React e faz proxy para o backend.
-- O sistema é responsivo e pode ser acessado de qualquer dispositivo.
-
----
-
-Se tiver dúvidas ou problemas, consulte este README ou peça ajuda! 😃
+**Desenvolvido com ❤️ para gestão financeira pessoal**
