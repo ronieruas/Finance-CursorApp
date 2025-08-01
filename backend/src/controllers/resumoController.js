@@ -11,13 +11,21 @@ exports.getResumo = async (req, res) => {
     const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
     const ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
     
-    // 1. Receitas do Mês
+    console.log('Período de consulta:', {
+      primeiroDiaMes: primeiroDiaMes.toISOString(),
+      ultimoDiaMes: ultimoDiaMes.toISOString(),
+      userId: userId
+    });
+    
+    // 1. Receitas do Mês - Buscar todas as receitas do mês atual
     const receitasMes = await Income.sum('value', {
       where: {
         user_id: userId,
         date: { [Op.between]: [primeiroDiaMes, ultimoDiaMes] },
       },
     }) || 0;
+
+    console.log('Receitas do mês:', receitasMes);
 
     // 2. Saldo por Conta
     const contas = await Account.findAll({
@@ -64,28 +72,45 @@ exports.getResumo = async (req, res) => {
       });
     }
 
-    // 4. Despesas do Mês
+    // 4. Despesas do Mês - Incluir despesas gerais + faturas de cartão
     const despesasGerais = await Expense.sum('value', {
       where: {
         user_id: userId,
         due_date: { [Op.between]: [primeiroDiaMes, ultimoDiaMes] },
-        credit_card_id: null,
+        credit_card_id: null, // Só despesas de conta
       },
     }) || 0;
 
-    const despesasCartao = await Expense.sum('value', {
-      where: {
-        user_id: userId,
-        due_date: { [Op.between]: [primeiroDiaMes, ultimoDiaMes] },
-        credit_card_id: { [Op.ne]: null },
-      },
-    }) || 0;
+    // Buscar faturas de cartão do mês atual
+    const cartoes = await CreditCard.findAll({
+      where: { user_id: userId, status: 'ativa' }
+    });
+
+    let despesasCartao = 0;
+    for (const cartao of cartoes) {
+      // Calcular faturas que vencem no mês atual
+      const dataVencimento = new Date(hoje.getFullYear(), hoje.getMonth(), cartao.due_day);
+      if (dataVencimento >= primeiroDiaMes && dataVencimento <= ultimoDiaMes) {
+        // Buscar despesas do cartão que fazem parte desta fatura
+        const totalFatura = await Expense.sum('value', {
+          where: {
+            user_id: userId,
+            credit_card_id: cartao.id,
+            status: { [Op.ne]: 'paga' },
+          },
+        }) || 0;
+        
+        despesasCartao += totalFatura;
+      }
+    }
 
     const despesasMes = {
       gerais: despesasGerais,
       cartao: despesasCartao,
       total: despesasGerais + despesasCartao
     };
+
+    console.log('Despesas do mês:', despesasMes);
 
     // 5. Total de Despesas (Últimos 6 Meses)
     const totalDespesasUltimos6Meses = [];
@@ -108,10 +133,6 @@ exports.getResumo = async (req, res) => {
     }
 
     // 6. Gastos por Cartão de Crédito
-    const cartoes = await CreditCard.findAll({
-      where: { user_id: userId, status: 'ativa' }
-    });
-
     const gastosPorCartao = [];
     for (const cartao of cartoes) {
       // Buscar faturas abertas (despesas não pagas)
@@ -123,8 +144,8 @@ exports.getResumo = async (req, res) => {
         },
       }) || 0;
 
-             // Calcular data de fechamento (próximo fechamento)
-       let dataFechamento = new Date(hoje.getFullYear(), hoje.getMonth(), cartao.closing_day);
+      // Calcular data de fechamento (próximo fechamento)
+      let dataFechamento = new Date(hoje.getFullYear(), hoje.getMonth(), cartao.closing_day);
       if (dataFechamento <= hoje) {
         dataFechamento = new Date(hoje.getFullYear(), hoje.getMonth() + 1, cartao.closing_day);
       }
@@ -150,7 +171,7 @@ exports.getResumo = async (req, res) => {
         },
       });
 
-      // Buscar gastos reais
+      // Buscar gastos reais do mês atual
       const gastoAtual = await Expense.sum('value', {
         where: {
           user_id: userId,

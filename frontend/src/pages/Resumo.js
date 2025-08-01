@@ -3,6 +3,10 @@ import '../styles/global.css';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts';
 import dayjs from 'dayjs';
+import 'dayjs/locale/pt-br';
+
+// Configurar dayjs para português brasileiro
+dayjs.locale('pt-br');
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
@@ -62,7 +66,7 @@ function Resumo({ token }) {
     return diff;
   };
 
-  // Obter o mês atual formatado
+  // Obter o mês atual formatado em português brasileiro
   const mesAtual = dayjs().format('MMMM [de] YYYY');
 
   // Calcular total das despesas parceladas
@@ -303,28 +307,43 @@ function Resumo({ token }) {
           transition={{ delay: 0.7 }}
         >
           <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Orçamento vs. Gasto por Cartão</h3>
-          <ResponsiveContainer width="100%" height={120}>
-            <BarChart data={data.orcamentoVsGasto} layout="horizontal">
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis type="number" stroke="#888" fontSize={10} />
-              <YAxis dataKey="cartao" type="category" stroke="#888" fontSize={10} />
-              <Tooltip 
-                formatter={(value) => formatCurrency(value)}
-                labelStyle={{ color: '#374151' }}
-                contentStyle={{ 
-                  backgroundColor: '#fff', 
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                }}
-              />
-              <Bar dataKey="gastoAtual" fill="#ef4444" radius={[0, 2, 2, 0]} />
-              <Bar dataKey="orcamento" fill="#3b82f6" radius={[0, 2, 2, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-          <div style={{ marginTop: 8, fontSize: 12, color: '#6b7280', textAlign: 'center' }}>
-            <span style={{ color: '#ef4444' }}>■</span> Gasto <span style={{ marginLeft: 12, color: '#3b82f6' }}>■</span> Orçamento
-          </div>
+          {data.orcamentoVsGasto.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={120}>
+                <BarChart data={data.orcamentoVsGasto} layout="horizontal">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis type="number" stroke="#888" fontSize={10} />
+                  <YAxis dataKey="cartao" type="category" stroke="#888" fontSize={10} />
+                  <Tooltip 
+                    formatter={(value) => formatCurrency(value)}
+                    labelStyle={{ color: '#374151' }}
+                    contentStyle={{ 
+                      backgroundColor: '#fff', 
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                    }}
+                  />
+                  <Bar dataKey="gastoAtual" fill="#ef4444" radius={[0, 2, 2, 0]} />
+                  <Bar dataKey="orcamento" fill="#3b82f6" radius={[0, 2, 2, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              <div style={{ marginTop: 8, fontSize: 12, color: '#6b7280', textAlign: 'center' }}>
+                <span style={{ color: '#ef4444' }}>■</span> Gasto <span style={{ marginLeft: 12, color: '#3b82f6' }}>■</span> Orçamento
+              </div>
+            </>
+          ) : (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              height: 120, 
+              color: '#6b7280',
+              fontSize: 14
+            }}>
+              Nenhum orçamento configurado
+            </div>
+          )}
         </motion.div>
 
         {/* 8. Próximos Vencimentos */}
