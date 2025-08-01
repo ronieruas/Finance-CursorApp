@@ -1,8 +1,15 @@
 # Dockerfile para backend Node.js
 FROM node:18-alpine
 WORKDIR /app
+
+# Copiar arquivos de dependências
 COPY backend/package*.json ./
-RUN npm ci --production && npm install --save-dev sequelize-cli
+
+# Instalar dependências com otimizações
+RUN npm ci --only=production --no-audit --no-fund --prefer-offline --cache /tmp/.npm && \
+    npm install --save-dev sequelize-cli --no-audit --no-fund --prefer-offline --cache /tmp/.npm
+
+# Copiar código fonte
 COPY backend/. .
 
 # Garante que scripts do src/scripts estejam disponíveis
