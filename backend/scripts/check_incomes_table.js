@@ -1,5 +1,15 @@
 const { Sequelize } = require('sequelize');
-const config = require('../src/config/config');
+
+// Usar variáveis de ambiente diretamente
+const config = {
+  host: process.env.DB_HOST || 'db',
+  port: process.env.DB_PORT || 5432,
+  username: process.env.DB_USER || 'finance',
+  password: process.env.DB_PASS || process.env.DB_PASSWORD || 'finance123',
+  database: process.env.DB_NAME || 'finance',
+  dialect: 'postgres',
+  logging: false
+};
 
 const sequelize = new Sequelize(config.database, config.username, config.password, {
   host: config.host,
