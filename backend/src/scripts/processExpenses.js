@@ -101,6 +101,51 @@ async function processExpenses() {
       }
     }
 
+
+    // 3. Processar despesas com débito automático
+    const autoDebitExpenses = await Expense.findAll({
+      where: {
+        auto_debit: true,
+        status: 'pendente',
+        due_date: {
+          [Op.lte]: today
+        },
+        account_id: {
+          [Op.ne]: null
+        }
+      }
+    });
+
+    console.log(`Encontradas ${autoDebitExpenses.length} despesas com débito automático para processar`);
+
+    for (const expense of autoDebitExpenses) {
+      try {
+        const account = await Account.findOne({
+          where: { id: expense.account_id, user_id: expense.user_id }
+        });
+
+        if (account && Number(account.balance) >= Number(expense.value)) {
+          // Saldo suficiente, processar pagamento
+          account.balance = Number(account.balance) - Number(expense.value);
+          await account.save();
+
+          await expense.update({
+            status: 'paga',
+            paid_at: today
+          });
+
+          console.log(`Despesa ${expense.id} paga por débito automático. Debitado R$ ${expense.value} da conta ${account.name}`);
+
+        } else {
+          // Saldo insuficiente
+          console.log(`Saldo insuficiente na conta ${account ? account.name : 'desconhecida'} para pagar a despesa ${expense.id}.`);
+          // Opcional: Criar uma notificação para o usuário aqui
+        }
+      } catch (err) {
+        console.error(`Erro ao processar débito automático da despesa ${expense.id}:`, err.message);
+      }
+    }
+
     console.log('Processamento de despesas automáticas concluído!');
   } catch (err) {
     console.error('Erro no processamento de despesas automáticas:', err);
@@ -118,4 +163,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { processExpenses }; 
+module.exports = { processExpenses };

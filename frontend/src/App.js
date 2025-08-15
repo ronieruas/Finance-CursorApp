@@ -122,7 +122,7 @@ function App() {
     if (!token) return;
     const fetchNotifications = async () => {
       try {
-        const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/notifications`, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/notifications`, { headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
         setNotifications(data);
       } catch {}
@@ -134,7 +134,7 @@ function App() {
 
   const markNotificationAsRead = async (id) => {
     try {
-      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/notifications/${id}/read`, {
+      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/notifications/${id}/read`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -166,4 +166,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/users`;
+const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/users`;
 
 function ManageUsers({ token }) {
   const [users, setUsers] = useState([]);
@@ -138,4 +138,4 @@ function ManageUsers({ token }) {
   );
 }
 
-export default ManageUsers; 
+export default ManageUsers;

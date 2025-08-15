@@ -6,8 +6,9 @@ WORKDIR /app
 COPY backend/package*.json ./
 
 # Instalar dependências com otimizações
-RUN npm ci --only=production --no-audit --no-fund --prefer-offline --cache /tmp/.npm && \
-    npm install --save-dev sequelize-cli --no-audit --no-fund --prefer-offline --cache /tmp/.npm
+RUN npm install --only=production --no-audit --no-fund
+RUN npm install json2csv
+RUN npm install --save-dev sequelize-cli --no-audit --no-fund
 
 # Copiar código fonte
 COPY backend/. .
@@ -16,4 +17,4 @@ COPY backend/. .
 COPY backend/src/scripts ./src/scripts
 
 EXPOSE 3001
-CMD ["npm", "run", "start:migrate"] 
+CMD ["npm", "run", "start:migrate"]

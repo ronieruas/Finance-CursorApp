@@ -35,7 +35,7 @@ function Resumo({ token }) {
   const fetchResumo = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_URL}/api/resumo`, {
+      const res = await fetch(`${API_URL}/resumo`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -428,4 +428,4 @@ function Resumo({ token }) {
   );
 }
 
-export default Resumo; 
+export default Resumo;

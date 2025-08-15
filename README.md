@@ -132,6 +132,34 @@ chmod +x backend/scripts/emergency_build.sh
 ./backend/scripts/emergency_build.sh
 ```
 
+## 💾 Backup e Restauração de Dados
+
+Para garantir a segurança dos seus dados, foram criados scripts para backup e restauração do banco de dados.
+
+### Fazer Backup
+
+Execute o comando abaixo na raiz do projeto. O backup será salvo na pasta `database/backups`.
+
+```bash
+# Dentro da pasta 'backend'
+cd backend
+
+npm run db:backup
+```
+
+### Restaurar Backup
+
+Este comando irá apagar o banco de dados atual e restaurar o último backup encontrado.
+
+```bash
+# Dentro da pasta 'backend'
+cd backend
+
+npm run db:restore
+```
+
+**Atenção**: A restauração é um processo destrutivo. Tenha certeza de que deseja substituir os dados atuais.
+
 ## 🏗️ Arquitetura
 
 ### Serviços Docker

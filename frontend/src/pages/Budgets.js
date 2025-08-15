@@ -6,7 +6,7 @@ import Input from '../components/Input';
 import Toast from '../components/Toast';
 import dayjs from 'dayjs';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/budgets`; // ajuste conforme backend
+const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/budgets`; // ajuste conforme backend
 
 function Budgets({ token }) {
   const [budgets, setBudgets] = useState([]);
@@ -32,7 +32,7 @@ function Budgets({ token }) {
 
   const fetchCreditCards = async () => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/creditCards`, { 
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/creditCards`, { 
         headers: { Authorization: `Bearer ${token}` } 
       });
       if (res.ok) {
@@ -233,4 +233,4 @@ function Budgets({ token }) {
   );
 }
 
-export default Budgets; 
+export default Budgets;

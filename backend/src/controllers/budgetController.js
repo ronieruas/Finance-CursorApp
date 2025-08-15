@@ -1,5 +1,5 @@
-const { Budget, Expense, CreditCard } = require('../models');
 const { Op } = require('sequelize');
+const { Budget, CreditCard, Expense } = require('../models');
 
 exports.list = async (req, res) => {
   const budgets = await Budget.findAll({ 
@@ -84,4 +84,4 @@ exports.remove = async (req, res) => {
   if (!budget) return res.status(404).json({ error: 'Orçamento não encontrado' });
   await budget.destroy();
   res.json({ success: true });
-}; 
+};
