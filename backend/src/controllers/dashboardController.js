@@ -1,6 +1,9 @@
 const { Account, Income, Expense, CreditCard, CreditCardTransaction } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('sequelize');
+const models = require('../models');
+
+
 
 exports.getDashboard = async (req, res) => {
   try {
@@ -14,11 +17,11 @@ exports.getDashboard = async (req, res) => {
     console.log('Dashboard: período', { firstDay, lastDay });
 
     // Saldo total (apenas contas em reais)
-    const accountsReais = await Account.findAll({ where: { user_id: userId, status: 'ativa', currency: { [Op.or]: [null, 'BRL'] } } });
+    const accountsReais = await models.Account.findAll({ where: { user_id: userId, status: 'ativa', currency: { [Op.or]: [null, 'BRL'] } } });
     const saldoTotalReais = accountsReais.reduce((sum, acc) => sum + parseFloat(acc.balance), 0);
 
     // Receitas do período (por conta)
-    const receitasPorConta = await Income.findAll({
+    const receitasPorConta = await models.Income.findAll({
       where: {
         user_id: userId,
         date: { [Op.between]: [firstDay, lastDay] },
@@ -28,7 +31,7 @@ exports.getDashboard = async (req, res) => {
     });
 
     // Despesas de conta (não associadas a cartão)
-    const despesasConta = await Expense.sum('value', {
+    const despesasConta = await models.Expense.sum('value', {
       where: {
         user_id: userId,
         due_date: { [Op.between]: [firstDay, lastDay] },
@@ -38,7 +41,7 @@ exports.getDashboard = async (req, res) => {
     });
 
     // Despesas de cartão (apenas associadas a cartão)
-    const despesasCartao = await Expense.sum('value', {
+    const despesasCartao = await models.Expense.sum('value', {
       where: {
         user_id: userId,
         due_date: { [Op.between]: [firstDay, lastDay] },
@@ -51,13 +54,13 @@ exports.getDashboard = async (req, res) => {
     const despesasMesTotal = (despesasConta || 0) + (despesasCartao || 0);
 
     // Valor da fatura do cartão do mês (parcelas com due_date no mês)
-    const creditCards = await CreditCard.findAll({ where: { user_id: userId, status: 'ativa' } });
+    const creditCards = await models.CreditCard.findAll({ where: { user_id: userId, status: 'ativa' } });
     const cardIds = creditCards.map(c => c.id);
     let faturaCartaoMes = 0;
     let gastosPorCartao = [];
     if (cardIds.length > 0) {
       // Soma despesas do cartão (não pagas)
-      const despesasCartaoMes = await Expense.sum('value', {
+      const despesasCartaoMes = await models.Expense.sum('value', {
         where: {
           user_id: userId,
           due_date: { [Op.between]: [firstDay, lastDay] },
@@ -70,7 +73,7 @@ exports.getDashboard = async (req, res) => {
       faturaCartaoMes = despesasCartaoMes;
       // Detalhamento por cartão
       for (const card of creditCards) {
-        const totalDespesas = await Expense.sum('value', {
+        const totalDespesas = await models.Expense.sum('value', {
           where: {
             user_id: userId,
             due_date: { [Op.between]: [firstDay, lastDay] },
@@ -89,7 +92,7 @@ exports.getDashboard = async (req, res) => {
     }
 
     // Orçamentos do período: valor planejado e valor gasto até a data
-    const budgets = await require('../models').Budget.findAll({
+    const budgets = await models.Budget.findAll({
       where: {
         user_id: userId,
         period_start: { [Op.lte]: lastDay },
@@ -103,7 +106,7 @@ exports.getDashboard = async (req, res) => {
       let utilizado = 0;
       if (budget.type === 'geral') {
         // Orçamento geral: considera TODAS as despesas (pagas e não pagas)
-        utilizado = await Expense.sum('value', {
+        utilizado = await models.Expense.sum('value', {
           where: {
             user_id: userId,
             due_date: { [Op.between]: [budget.period_start, budget.period_end] },
@@ -122,7 +125,7 @@ exports.getDashboard = async (req, res) => {
           whereClause.credit_card_id = budget.credit_card_id;
         }
         
-        utilizado = await Expense.sum('value', { where: whereClause });
+        utilizado = await models.Expense.sum('value', { where: whereClause });
       }
       return {
         ...budget.toJSON(),
@@ -131,19 +134,19 @@ exports.getDashboard = async (req, res) => {
     }));
 
     // Breakdown do período
-    const receitasPeriodo = await Income.sum('value', {
+    const receitasPeriodo = await models.Income.sum('value', {
       where: {
         user_id: userId,
         date: { [Op.between]: [firstDay, lastDay] },
       },
     }) || 0;
-    const despesasPeriodo = await Expense.sum('value', {
+    const despesasPeriodo = await models.Expense.sum('value', {
       where: {
         user_id: userId,
         due_date: { [Op.between]: [firstDay, lastDay] },
       },
     }) || 0;
-    const cartaoPeriodo = await Expense.sum('value', {
+    const cartaoPeriodo = await models.Expense.sum('value', {
       where: {
         user_id: userId,
         due_date: { [Op.between]: [firstDay, lastDay] },
@@ -158,7 +161,7 @@ exports.getDashboard = async (req, res) => {
     };
 
     // Transações recentes (10 últimas do período)
-    const receitasRecentes = await Income.findAll({
+    const receitasRecentes = await models.Income.findAll({
       where: {
         user_id: userId,
         date: { [Op.between]: [firstDay, lastDay] },
@@ -166,7 +169,7 @@ exports.getDashboard = async (req, res) => {
       order: [['date', 'DESC']],
       limit: 20,
     });
-    const despesasRecentes = await Expense.findAll({
+    const despesasRecentes = await models.Expense.findAll({
       where: {
         user_id: userId,
         due_date: { [Op.between]: [firstDay, lastDay] },
@@ -177,10 +180,10 @@ exports.getDashboard = async (req, res) => {
     // Unir, normalizar e pegar as 10 mais recentes
     // Buscar contas e cartões para mapear nomes
     const contasMap = {};
-    const contas = await Account.findAll({ where: { user_id: userId } });
+    const contas = await models.Account.findAll({ where: { user_id: userId } });
     contas.forEach(c => { contasMap[c.id] = c.name; });
     const cartoesMap = {};
-    const cartoes = await CreditCard.findAll({ where: { user_id: userId } });
+    const cartoes = await models.CreditCard.findAll({ where: { user_id: userId } });
     cartoes.forEach(c => { cartoesMap[c.id] = c.name; });
     
     // Função para formatar data dd/mm/aaaa
@@ -338,4 +341,4 @@ exports.getDashboard = async (req, res) => {
     console.error('Erro no dashboard:', err);
     res.status(500).json({ error: 'Erro ao buscar dados do dashboard', details: err.message, stack: err.stack });
   }
-}; 
+};

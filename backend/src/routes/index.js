@@ -17,6 +17,13 @@ router.use('/budgets', require('./budgets'));
 router.use('/transfers', require('./transfers'));
 router.use('/analytics', require('./analytics'));
 router.use('/resumo', require('./resumo'));
+console.log('Attempting to load exportRoutes');
+router.use('/export', require('./exportRoutes'));
+console.log('Export routes loaded successfully.');
+
+router.get('/test-export', (req, res) => {
+  res.json({ status: 'Test export route is working' });
+});
 
 router.get('/', (req, res) => {
   res.json({ status: 'API online' });

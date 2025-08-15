@@ -7,6 +7,8 @@ services:
       POSTGRES_USER: finance
       POSTGRES_PASSWORD: finance123
       POSTGRES_DB: finance
+      LC_ALL: en_US.UTF-8
+      LANG: en_US.UTF-8
     ports:
       - "5432:5432"
     volumes:
@@ -46,4 +48,4 @@ services:
       - backend
 
 volumes:
-  db_data: 
+  db_data:

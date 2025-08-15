@@ -4,7 +4,7 @@ const Account = require('./account');
 const Income = require('./income');
 const Expense = require('./expense');
 const CreditCard = require('./creditCard');
-const CreditCardTransaction = require('./creditCardTransaction');
+
 const Budget = require('./budget');
 const Transfer = require('./transfer');
 const CreditCardPayment = require('./creditCardPayment');
@@ -51,10 +51,10 @@ module.exports = {
   Income,
   Expense,
   CreditCard,
-  CreditCardTransaction,
+
   Budget,
   Transfer,
   CreditCardPayment,
   Notification,
   syncDb,
-}; 
+};

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import '../styles/global.css';
 
-const API_URL = `${process.env.REACT_APP_API_URL}/api/auth/login`;
+const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/auth/login`;
 
 function Login({ setToken }) {
   const [form, setForm] = useState({ email: '', password: '' });
@@ -276,6 +276,7 @@ function Login({ setToken }) {
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#667eea'}
                 onBlur={(e) => e.target.style.borderColor = '#e1e5e9'}
+                autoComplete="username"
               />
             </div>
 
@@ -291,26 +292,26 @@ function Login({ setToken }) {
               </label>
               <div style={{ position: 'relative' }}>
                 <input
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Sua senha"
-                  required
-                  autoComplete="current-password"
-                  value={form.password}
-                  onChange={handleChange}
-                  style={{ 
-                    width: '100%', 
-                    padding: '12px 16px',
-                    paddingRight: '48px',
-                    border: '2px solid #e1e5e9',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    transition: 'border-color 0.3s ease',
-                    boxSizing: 'border-box'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = '#667eea'}
-                  onBlur={(e) => e.target.style.borderColor = '#e1e5e9'}
-                />
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Sua senha"
+                    required
+                    autoComplete="current-password"
+                    value={form.password}
+                    onChange={handleChange}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      paddingRight: '48px',
+                      border: '2px solid #e1e5e9',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      transition: 'border-color 0.3s ease',
+                      boxSizing: 'border-box'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                    onBlur={(e) => e.target.style.borderColor = '#e1e5e9'}
+                  />
                 <button
                   type="button"
                   onClick={() => setShowPassword(s => !s)}
@@ -431,4 +432,4 @@ function Login({ setToken }) {
   );
 }
 
-export default Login; 
+export default Login;

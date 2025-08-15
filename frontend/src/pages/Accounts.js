@@ -6,7 +6,7 @@ import Input from '../components/Input';
 import Toast from '../components/Toast';
 import Modal from '../components/Modal';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/accounts`; // ajuste conforme backend
+const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/accounts`; // ajuste conforme backend
 
 const currencyOptions = [
   { value: 'BRL', label: 'Real (R$)' },
@@ -26,6 +26,7 @@ function Accounts({ token }) {
   const [extratoLoading, setExtratoLoading] = useState(false);
   const [extratoPeriodo, setExtratoPeriodo] = useState({ start: '', end: '' });
   const [extratoError, setExtratoError] = useState('');
+  const [exportLoading, setExportLoading] = useState(false);
 
   useEffect(() => {
     fetchAccounts();
@@ -161,6 +162,48 @@ function Accounts({ token }) {
     fetchExtrato();
   };
 
+  const handleExportExtrato = async () => {
+    if (!extratoConta) return;
+    setExportLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.append('accountId', extratoConta.id);
+      if (extratoPeriodo.start) {
+        params.append('startDate', extratoPeriodo.start);
+      }
+      if (extratoPeriodo.end) {
+        params.append('endDate', extratoPeriodo.end);
+      }
+
+      const url = `/export/statement?${params.toString()}`;
+      console.log('Final Export URL:', window.location.origin + url);
+
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        throw new Error('Erro ao exportar extrato');
+      }
+
+      const blob = await res.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', `extrato_${extratoConta.name}_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+
+      setToast({ show: true, message: 'Extrato exportado com sucesso!', type: 'success' });
+    } catch (err) {
+      setToast({ show: true, message: err.message || 'Erro ao exportar extrato.', type: 'error' });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   return (
     <div className="main-content" style={{ marginLeft: 240, padding: 32 }}>
       <h2 style={{ marginBottom: 24, fontWeight: 700 }}>Contas</h2>
@@ -268,6 +311,7 @@ function Accounts({ token }) {
             <span>a</span>
             <input type="date" name="end" value={extratoPeriodo.end} onChange={handlePeriodoChange} className="input-glass" />
             <Button variant="primary" type="submit" loading={extratoLoading}>Filtrar</Button>
+            <Button variant="secondary" onClick={handleExportExtrato} loading={exportLoading} style={{ marginLeft: 8 }}>Exportar</Button>
           </form>
           {extratoLoading ? <p>Carregando extrato...</p> : extratoError ? <p style={{ color: 'red' }}>{extratoError}</p> : (
             <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
@@ -306,4 +350,4 @@ function Accounts({ token }) {
   );
 }
 
-export default Accounts; 
+export default Accounts;

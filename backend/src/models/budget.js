@@ -1,4 +1,4 @@
-const { DataTypes, Model } = require('sequelize');
+const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
 class Budget extends Model {}
@@ -22,4 +22,4 @@ Budget.init(
   }
 );
 
-module.exports = Budget; 
+module.exports = Budget;

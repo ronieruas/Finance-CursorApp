@@ -37,7 +37,7 @@ function Dashboard({ token }) {
   }, [token]);
 
   const fetchDashboard = async (start, end) => {
-    let url = `${API_URL}/api/dashboard`;
+    let url = `${API_URL}/dashboard`;
     if (start && end) url += `?start=${start}&end=${end}`;
     try {
       const res = await fetch(url, {
@@ -251,4 +251,4 @@ function KpiCard({ label, value, prefix, color, glass, fadeIn }) {
   );
 }
 
-export default Dashboard; 
+export default Dashboard;

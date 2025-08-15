@@ -5,6 +5,12 @@ const routes = require('./routes');
 
 const app = express();
 
+// Middleware de log para todas as requisições
+app.use((req, res, next) => {
+  console.log(`Requisição recebida: ${req.method} ${req.url}`);
+  next();
+});
+
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   next();
@@ -14,7 +20,8 @@ app.use((req, res, next) => {
 const allowedOrigins = [
   'https://finance.ronieruas.com.br', // Frontend em produção
   'http://192.168.0.223',             // IP local para testes
-  'http://localhost:3000'             // Para desenvolvimento local (opcional)
+  'http://localhost:3000',             // Para desenvolvimento local (opcional)
+  'http://localhost'                  // Para acesso via Nginx no Docker
 ];
 
 app.use(cors({
@@ -35,7 +42,7 @@ app.options('*', cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
-app.use('/api', routes);
+app.use('/', routes);
 
 // Removido o trecho que servia o build do React e o fallback para index.html
 

@@ -1,4 +1,4 @@
-const { Expense, CreditCard, CreditCardTransaction, Account } = require('../models');
+const { Expense, CreditCard, Account } = require('../models');
 
 exports.list = async (req, res) => {
   const { start, end, type, account_id, credit_card_id, category, status } = req.query;
@@ -61,22 +61,13 @@ exports.create = async (req, res) => {
           installment_number: i,
           installment_total: totalParcelas
         });
-        await CreditCardTransaction.create({
-          card_id: credit_card_id,
-          user_id: req.user.id,
-          description: expense.description,
-          value: valorParcela,
-          date: dataParcela,
-          category,
-          installment_number: i,
-          installment_total: totalParcelas
-        });
+
         despesas.push(expense);
       }
       // Deduzir limite do cartão (simples: valor total)
       const card = await CreditCard.findOne({ where: { id: credit_card_id, user_id: req.user.id } });
       if (card) {
-        card.limit_value = Number(card.limit_value) - Number(value);
+        card.used_limit = (Number(card.used_limit) || 0) + Number(value);
         await card.save();
       }
       return res.status(201).json(despesas);
@@ -120,6 +111,8 @@ exports.update = async (req, res) => {
     const expense = await Expense.findOne({ where: { id: req.params.id, user_id: req.user.id } });
     if (!expense) return res.status(404).json({ error: 'Despesa não encontrada' });
     
+    const originalValue = expense.value;
+
     // Ajustar saldo da conta se for despesa de conta
     if (expense.account_id) {
       const account = await Account.findOne({ where: { id: expense.account_id, user_id: req.user.id } });
@@ -135,6 +128,16 @@ exports.update = async (req, res) => {
         await account.save();
       }
     }
+
+    // Ajustar limite do cartão se for despesa de cartão
+    if (expense.credit_card_id) {
+      const card = await CreditCard.findOne({ where: { id: expense.credit_card_id, user_id: req.user.id } });
+      if (card) {
+        const valueDifference = Number(value) - Number(originalValue);
+        card.used_limit = (Number(card.used_limit) || 0) + valueDifference;
+        await card.save();
+      }
+    }
     
     await expense.update({ description, value, due_date, category, status, is_recurring, auto_debit, paid_at });
     res.json(expense);
@@ -148,11 +151,21 @@ exports.remove = async (req, res) => {
   const expense = await Expense.findOne({ where: { id: req.params.id, user_id: req.user.id } });
   if (!expense) return res.status(404).json({ error: 'Despesa não encontrada' });
   // Devolver valor ao saldo da conta se for despesa de conta e estiver paga
+  // Devolver valor ao saldo da conta se for despesa de conta e estiver paga
   if (expense.account_id && expense.status === 'paga') {
     const account = await Account.findOne({ where: { id: expense.account_id, user_id: req.user.id } });
     if (account) {
       account.balance = Number(account.balance) + Number(expense.value);
       await account.save();
+    }
+  }
+
+  // Devolver valor ao limite do cartão se for despesa de cartão
+  if (expense.credit_card_id) {
+    const card = await CreditCard.findOne({ where: { id: expense.credit_card_id, user_id: req.user.id } });
+    if (card) {
+      card.used_limit = (Number(card.used_limit) || 0) - Number(expense.value);
+      await card.save();
     }
   }
   await expense.destroy();
@@ -166,4 +179,4 @@ exports.categories = async (req, res) => {
     order: [['category', 'ASC']]
   });
   res.json(categories.map(c => c.category).filter(Boolean));
-}; 
+};

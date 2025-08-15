@@ -30,7 +30,7 @@ function Analytics({ token }) {
   const fetchAnalytics = async (start, end) => {
     setLoading(true);
     try {
-      let url = `${API_URL}/api/analytics/dashboard`;
+      let url = `${API_URL}/analytics/dashboard`;
       const params = new URLSearchParams();
       
       if (start && end) {
@@ -347,4 +347,4 @@ function Analytics({ token }) {
   );
 }
 
-export default Analytics; 
+export default Analytics;

@@ -6,9 +6,9 @@ import Input from '../components/Input';
 import Toast from '../components/Toast';
 import dayjs from 'dayjs';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/expenses`; // ajuste conforme backend
-const ACCOUNTS_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/accounts`;
-const CARDS_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/creditCards`;
+const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/expenses`; // ajuste conforme backend
+const ACCOUNTS_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/accounts`;
+const CARDS_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/creditCards`;
 
 function Expenses({ token }) {
   const [expenses, setExpenses] = useState([]);
@@ -39,6 +39,7 @@ function Expenses({ token }) {
     return { start: firstDay, end: lastDay, type: '', account_id: '', credit_card_id: '', category: '', status: '' };
   });
   const [isAdmin, setIsAdmin] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
 
   useEffect(() => { 
     fetchExpensesWithFilters(); 
@@ -209,6 +210,43 @@ function Expenses({ token }) {
     setLoading(false);
   };
 
+  const handleExport = async () => {
+    setExportLoading(true);
+    const params = new URLSearchParams();
+    if (filters.start) params.append('startDate', filters.start);
+    if (filters.end) params.append('endDate', filters.end);
+    if (filters.account_id) params.append('accountId', filters.account_id);
+    if (filters.category) params.append('category', filters.category);
+    if (filters.status) params.append('status', filters.status);
+
+    try {
+      const url = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/export/expenses?${params.toString()}`; 
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        throw new Error('Erro ao exportar despesas');
+      }
+
+      const blob = await res.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', `despesas_${filters.start}_a_${filters.end}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+
+      setToast({ show: true, message: 'Despesas exportadas com sucesso!', type: 'success' });
+    } catch (err) {
+      setToast({ show: true, message: err.message || 'Erro ao exportar despesas.', type: 'error' });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   const fetchExpensesWithFilters = async () => {
     setLoading(true);
     const params = new URLSearchParams();
@@ -252,6 +290,7 @@ function Expenses({ token }) {
             <option value="atrasada">Atrasada</option>
           </select>
           <Button variant="primary" type="submit">Filtrar</Button>
+          <Button variant="secondary" onClick={handleExport} loading={exportLoading}>Exportar</Button>
           <span style={{ marginLeft: 24, fontWeight: 600, color: 'crimson', fontSize: 18 }}>
             Total: R$ {expenses.reduce((sum, exp) => sum + Number(exp.value), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </span>
@@ -404,4 +443,4 @@ function Expenses({ token }) {
   );
 }
 
-export default Expenses; 
+export default Expenses;
