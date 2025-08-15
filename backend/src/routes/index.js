@@ -1,3 +1,5 @@
+console.log('Loading routes module...');
+
 const express = require('express');
 const router = express.Router();
 
@@ -5,20 +7,26 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const dashboardController = require('../controllers/dashboardController');
 const notificationController = require('../controllers/notificationController');
 
+console.log('Loading routes...');
+
 // Importar rotas de módulos
-router.use('/auth', require('./auth'));
-router.use('/accounts', require('./accounts'));
-router.use('/users', require('./users'));
-// router.use('/transactions', require('./transactions'));
-router.use('/incomes', require('./incomes'));
-router.use('/expenses', require('./expenses'));
-router.use('/creditCards', require('./creditCards'));
-router.use('/budgets', require('./budgets'));
-router.use('/transfers', require('./transfers'));
-router.use('/analytics', require('./analytics'));
-router.use('/resumo', require('./resumo'));
+console.log('Loading auth routes...');
+const authRoutes = require('./auth');
+console.log('Auth routes loaded:', authRoutes);
+router.use('/auth', authRoutes);
+console.log('Auth routes mounted.');
+router.use('/accounts', authMiddleware, require('./accounts'));
+router.use('/users', authMiddleware, require('./users'));
+// router.use('/transactions', authMiddleware, require('./transactions'));
+router.use('/incomes', authMiddleware, require('./incomes'));
+router.use('/expenses', authMiddleware, require('./expenses'));
+router.use('/creditCards', authMiddleware, require('./creditCards'));
+router.use('/budgets', authMiddleware, require('./budgets'));
+router.use('/transfers', authMiddleware, require('./transfers'));
+router.use('/analytics', authMiddleware, require('./analytics'));
+router.use('/resumo', authMiddleware, require('./resumo'));
 console.log('Attempting to load exportRoutes');
-router.use('/export', require('./exportRoutes'));
+router.use('/export', authMiddleware, require('./exportRoutes'));
 console.log('Export routes loaded successfully.');
 
 router.get('/test-export', (req, res) => {
@@ -34,7 +42,7 @@ router.get('/protegida', authMiddleware, (req, res) => {
   res.json({ mensagem: `Olá, usuário ${req.user.id}! Esta rota é protegida.` });
 });
 
-router.get('/dashboard', authMiddleware, dashboardController.getDashboard);
+router.use('/dashboard', authMiddleware, require('./dashboard'));
 router.get('/notifications', authMiddleware, notificationController.list);
 router.patch('/notifications/:id/read', authMiddleware, notificationController.markAsRead);
 
