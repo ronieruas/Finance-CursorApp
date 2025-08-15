@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import '../styles/global.css';
 import { motion } from 'framer-motion';
-import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, LineChart, Line } from 'recharts';
 import Input from '../components/Input';
 import dayjs from 'dayjs';
 
@@ -29,12 +29,32 @@ function Dashboard({ token }) {
   const [period, setPeriod] = useState({ start: '', end: '' });
   const [periodInput, setPeriodInput] = useState({ start: '', end: '' });
   const [saldoEvolucao, setSaldoEvolucao] = useState([]);
+  const [monthlySummary, setMonthlySummary] = useState({
+    totalIncomes: 0,
+    totalExpenses: 0,
+    totalCreditCardBills: 0,
+    balance: 0,
+  });
 
   // Estrutura pronta para integração futura com backend
   useEffect(() => {
     fetchDashboard();
+    fetchMonthlySummary();
     // eslint-disable-next-line
   }, [token]);
+
+  const fetchMonthlySummary = async () => {
+    try {
+      const res = await fetch(`${API_URL}/dashboard/monthly-summary?timestamp=${new Date().getTime()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setMonthlySummary(data);
+    } catch (err) {
+      console.error('Erro ao carregar resumo mensal:', err);
+      alert('Erro ao carregar resumo mensal. Verifique sua conexão ou tente novamente.');
+    }
+  };
 
   const fetchDashboard = async (start, end) => {
     let url = `${API_URL}/dashboard`;
@@ -87,83 +107,88 @@ function Dashboard({ token }) {
   ];
 
   return (
-    <div className="main-content" style={{ marginLeft: 180, padding: 32 }}>
-      <h2 style={{ marginBottom: 24, fontWeight: 700, letterSpacing: '-0.01em' }}>Dashboard</h2>
-      <form onSubmit={handlePeriodSubmit} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 24, flexWrap: 'wrap' }}>
-        <div className="form-row" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <label>Período:</label>
-          <Input name="start" type="date" value={periodInput.start} onChange={handlePeriodChange} required />
-          <span>a</span>
-          <Input name="end" type="date" value={periodInput.end} onChange={handlePeriodChange} required />
-          <button type="submit" className="btn-primary">Filtrar</button>
+    <div className="main-content" style={{ marginLeft: 180, padding: 20 }}>
+      <h2 style={{ marginBottom: 16, fontWeight: 700, letterSpacing: '-0.01em', fontSize: '1.5rem' }}>Dashboard</h2>
+      <form onSubmit={handlePeriodSubmit} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+        <div className="form-row" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <label style={{ fontSize: '0.9rem' }}>Período:</label>
+          <Input name="start" type="date" value={periodInput.start} onChange={handlePeriodChange} required style={{ padding: '6px 10px', fontSize: '0.9rem' }} />
+          <span style={{ fontSize: '0.9rem' }}>a</span>
+          <Input name="end" type="date" value={periodInput.end} onChange={handlePeriodChange} required style={{ padding: '6px 10px', fontSize: '0.9rem' }} />
+          <button type="submit" className="btn-primary" style={{ padding: '6px 16px', fontSize: '0.9rem' }}>Filtrar</button>
         </div>
-        <span style={{ color: '#888', fontSize: 13, marginLeft: 8 }}>(padrão: mês atual)</span>
+        <span style={{ color: '#888', fontSize: 12, marginLeft: 6 }}>(padrão: mês atual)</span>
       </form>
       {/* Primeira linha: Resumo Mensal e Evolução do Saldo */}
-      <div className="dashboard-flex" style={{ display: 'flex', gap: 24, marginBottom: 24, flexWrap: 'wrap' }}>
-        <motion.div className="glass-card fade-in" style={{ flex: 1, minWidth: 320, maxWidth: '50%', padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+      <div className="dashboard-flex" style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+        <motion.div className="glass-card fade-in" style={{ flex: 1, minWidth: 320, padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           {/* Resumo Mensal */}
-          <h3 style={{ marginBottom: 16, alignSelf: 'flex-start' }}>Resumo Mensal</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 32, justifyContent: 'center', width: '100%' }}>
-            <ResponsiveContainer width={180} height={180}>
-              <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75}>
-                  {pieData.map((entry, idx) => <Cell key={entry.name} fill={entry.color} />)}
-                </Pie>
-                <Tooltip formatter={(v, name, props) => `${props.payload.name}: R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div>
-              <div style={{ fontSize: 15, marginBottom: 4 }}><span style={{ color: '#22c55e' }}>●</span> Receitas: R$ {(breakdown?.receitas || 0).toFixed(2)}</div>
-              <div style={{ fontSize: 15, marginBottom: 4 }}><span style={{ color: '#ef4444' }}>●</span> Despesas: R$ {(breakdown?.despesas || 0).toFixed(2)}</div>
-              <div style={{ fontSize: 15 }}><span style={{ color: '#8b5cf6' }}>●</span> Cartão: R$ {(breakdown?.cartao || 0).toFixed(2)}</div>
+          <h3 style={{ marginBottom: 8, alignSelf: 'flex-start', fontSize: '1.05rem' }}>Resumo Mensal</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600 }}>
+              <span>Receitas:</span>
+              <span style={{ color: '#22c55e' }}>R$ {Number(monthlySummary.totalIncomes).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600 }}>
+              <span>Despesas (mês):</span>
+              <span style={{ color: '#ef4444' }}>R$ {Number(monthlySummary.totalExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600 }}>
+              <span>Faturas Cartão:</span>
+              <span style={{ color: '#8b5cf6' }}>R$ {Number(monthlySummary.totalCreditCardBills).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            </div>
+            <div style={{ borderTop: '1px solid #eee', paddingTop: 2, marginTop: 2, display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 700 }}>
+              <span>Saldo:</span>
+              <span style={{ color: monthlySummary.balance >= 0 ? '#22c55e' : '#ef4444' }}>R$ {Number(monthlySummary.balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            </div>
+            <ResponsiveContainer width="100%" height={120}>
+              <BarChart data={[
+                { name: 'Receitas', Receitas: monthlySummary.totalIncomes, Despesas: 0 },
+                { name: 'Despesas', Receitas: 0, Despesas: monthlySummary.totalExpenses + monthlySummary.totalCreditCardBills }
+              ]} margin={{ left: 0, right: 0, top: 4, bottom: 0 }} barSize={35} barCategoryGap={-15}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="name" stroke="#888" fontSize={11} />
+                <YAxis stroke="#888" fontSize={11} />
+                <Tooltip formatter={v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
+                <Bar dataKey="Receitas" fill="#2563eb" />
+                <Bar dataKey="Despesas" fill="#ef4444" />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </motion.div>
-        <motion.div className="glass-card fade-in" style={{ flex: 1, minWidth: 320, maxWidth: '50%', padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+        <motion.div className="glass-card fade-in" style={{ flex: 2, minWidth: 280, padding: '16px 12px', background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           {/* Evolução do Saldo */}
-          <h3 style={{ marginBottom: 16, alignSelf: 'flex-start' }}>Evolução do Saldo</h3>
-          <ResponsiveContainer width="100%" height={180}>
-            <LineChart data={saldoEvolucao} margin={{ left: -20, right: 10, top: 10, bottom: 0 }}>
+          <h3 style={{ marginBottom: 8, alignSelf: 'flex-start', fontSize: '1.05rem' }}>Evolução do Saldo</h3>
+          <ResponsiveContainer width="100%" height={120}>
+            <LineChart data={saldoEvolucao} margin={{ left: -18, right: 8, top: 4, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="data" stroke="#888" fontSize={12} />
-              <YAxis stroke="#888" fontSize={12} />
+              <XAxis dataKey="data" stroke="#888" fontSize={11} />
+              <YAxis stroke="#888" fontSize={11} />
               <Tooltip formatter={v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
-              <Line type="monotone" dataKey="saldo" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="saldo" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </motion.div>
       </div>
       {/* Segunda linha: Alertas e Gastos por Cartão */}
-      <div className="dashboard-flex" style={{ display: 'flex', gap: 24, marginBottom: 24, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
-        <motion.div className="glass-card fade-in" style={{ flex: 1, minWidth: 320, maxWidth: '50%', padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-          {/* Alertas */}
-          <h3 style={{ marginBottom: 16 }}>Alertas</h3>
-          <ul style={{ padding: 0, listStyle: 'none', maxHeight: 120, overflowY: 'auto' }}>
-            {alertas?.length === 0 && <li style={{ color: '#888' }}>Nenhum alerta no momento.</li>}
-            {alertas?.slice(0, 4).map?.(a => (
-              <li key={a.id} style={{ color: a.cor, marginBottom: 8, fontWeight: 500 }}>{a.descricao}</li>
-            ))}
-          </ul>
-        </motion.div>
-        <motion.div className="glass-card fade-in" style={{ flex: 1, minWidth: 320, maxWidth: '50%', padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-          {/* Gastos por Cartão */}
-          <h3 style={{ marginBottom: 16 }}>Gastos por Cartão</h3>
+      <div className="dashboard-flex" style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+        <motion.div className="glass-card fade-in" style={{ flex: 1, minWidth: 280, padding: '16px 12px', background: 'linear-gradient(135deg, #f5f7fa 
+          <h3 style={{ marginBottom: 8, fontSize: '1.05rem' }}>Gastos por Cartão</h3>
           <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
             <thead>
               <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
-                <th style={{ padding: 8, textAlign: 'left' }}>Cartão</th>
-                <th style={{ padding: 8, textAlign: 'left' }}>Banco</th>
-                <th style={{ padding: 8, textAlign: 'left' }}>Total</th>
+                <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Cartão</th>
+                <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Banco</th>
+                <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Total</th>
               </tr>
             </thead>
             <tbody>
-              {gastosPorCartao?.length === 0 && <tr><td colSpan={3} style={{ color: '#888' }}>Nenhum gasto no período.</td></tr>}
+              {gastosPorCartao?.length === 0 && <tr><td colSpan={3} style={{ color: '#888', padding: '5px 3px', fontSize: '0.85rem' }}>Nenhum gasto no período.</td></tr>}
               {gastosPorCartao?.map?.(c => (
                 <tr key={c.card_id}>
-                  <td>{c.card_name}</td>
-                  <td>{c.card_bank}</td>
-                  <td style={{ color: 'var(--color-cartao)', fontWeight: 600 }}>R$ {Number(c.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td style={{ padding: '5px 3px', fontSize: '0.85rem' }}>{c.card_name}</td>
+                  <td style={{ padding: '5px 3px', fontSize: '0.85rem' }}>{c.card_bank}</td>
+                  <td style={{ color: 'var(--color-cartao)', fontWeight: 600, padding: '5px 3px', fontSize: '0.85rem' }}>R$ {Number(c.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                 </tr>
               ))}
             </tbody>
@@ -171,29 +196,29 @@ function Dashboard({ token }) {
         </motion.div>
       </div>
       {/* Terceira linha: Quadro de Orçamento ocupando 100% */}
-      <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <motion.div className="glass-card fade-in" style={{ width: '100%', minWidth: 320, maxWidth: 900, padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <motion.div className="glass-card fade-in" style={{ width: '100%', minWidth: 280, maxWidth: 900, padding: '16px 12px', background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
           {/* Quadro de Orçamento */}
-          <h3 style={{ marginBottom: 16 }}>Quadro de Orçamento</h3>
+          <h3 style={{ marginBottom: 8, fontSize: '1.05rem' }}>Quadro de Orçamento</h3>
           <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
             <thead>
               <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
-                <th style={{ padding: 8, textAlign: 'left' }}>Nome</th>
-                <th style={{ padding: 8, textAlign: 'left' }}>Tipo</th>
-                <th style={{ padding: 8, textAlign: 'left' }}>Período</th>
-                <th style={{ padding: 8, textAlign: 'left' }}>Planejado</th>
-                <th style={{ padding: 8, textAlign: 'left' }}>Utilizado</th>
+                <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Nome</th>
+                <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Tipo</th>
+                <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Período</th>
+                <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Planejado</th>
+                <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Utilizado</th>
               </tr>
             </thead>
             <tbody>
-              {budgets?.length === 0 && <tr><td colSpan={5} style={{ color: '#888' }}>Nenhum orçamento para o período.</td></tr>}
+              {budgets?.length === 0 && <tr><td colSpan={5} style={{ color: '#888', padding: '5px 3px', fontSize: '0.85rem' }}>Nenhum orçamento para o período.</td></tr>}
               {budgets?.map?.(b => (
                 <tr key={b.id}>
-                  <td>{b.name}</td>
-                  <td>{b.type === 'geral' ? 'Geral' : 'Cartão'}</td>
-                  <td>{b.period_start ? dayjs(b.period_start).format('DD/MM/YYYY') : ''} a {b.period_end ? dayjs(b.period_end).format('DD/MM/YYYY') : ''}</td>
-                  <td style={{ color: 'var(--color-primary)', fontWeight: 600 }}>R$ {Number(b.planned_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                  <td style={{ color: 'var(--color-despesa)', fontWeight: 600 }}>R$ {Number(b.utilizado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td style={{ padding: '5px 3px', fontSize: '0.85rem' }}>{b.name}</td>
+                  <td style={{ padding: '5px 3px', fontSize: '0.85rem' }}>{b.type === 'geral' ? 'Geral' : 'Cartão'}</td>
+                  <td style={{ padding: '5px 3px', fontSize: '0.85rem' }}>{b.period_start ? dayjs(b.period_start).format('DD/MM/YYYY') : ''} a {b.period_end ? dayjs(b.period_end).format('DD/MM/YYYY') : ''}</td>
+                  <td style={{ color: 'var(--color-primary)', fontWeight: 600, padding: '5px 3px', fontSize: '0.85rem' }}>R$ {Number(b.planned_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td style={{ color: 'var(--color-despesa)', fontWeight: 600, padding: '5px 3px', fontSize: '0.85rem' }}>R$ {Number(b.utilizado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                 </tr>
               ))}
             </tbody>
@@ -201,31 +226,31 @@ function Dashboard({ token }) {
         </motion.div>
       </div>
       {/* Transações Recentes permanece abaixo */}
-      <motion.div className="glass-card fade-in" style={{ padding: 32, background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', marginBottom: 32 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
-        <h3 style={{ marginBottom: 16 }}>Transações Recentes</h3>
+      <motion.div className="glass-card fade-in" style={{ padding: '16px 12px', background: 'linear-gradient(135deg, #f5f7fa 60%, #e0e7ff 100%)', borderRadius: 18, boxShadow: '0 4px 24px #0002', marginBottom: 16 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+        <h3 style={{ marginBottom: 8, fontSize: '1.05rem' }}>Transações Recentes</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
           <thead>
             <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
-              <th style={{ padding: 8, textAlign: 'left' }}>Data</th>
-              <th style={{ padding: 8, textAlign: 'left' }}>Descrição</th>
-              <th style={{ padding: 8, textAlign: 'left' }}>Valor</th>
-              <th style={{ padding: 8, textAlign: 'left' }}>Conta</th>
-              <th style={{ padding: 8, textAlign: 'left' }}>Tipo</th>
+              <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Data</th>
+              <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Descrição</th>
+              <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Valor</th>
+              <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Conta</th>
+              <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Tipo</th>
             </tr>
           </thead>
           <tbody>
             {recentes?.map?.((t, i) => (
               <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <td style={{ padding: 8, textAlign: 'left' }}>{t.data}</td>
-                <td style={{ padding: 8, textAlign: 'left' }}>{t.descricao}</td>
-                <td style={{ padding: 8, textAlign: 'left', color: t.tipo === 'receita' ? 'var(--color-receita)' : t.tipo === 'despesa' ? 'var(--color-despesa)' : 'var(--color-cartao)', fontWeight: 600 }}>
+                <td style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>{t.data}</td>
+                <td style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>{t.descricao}</td>
+                <td style={{ padding: '5px 3px', textAlign: 'left', color: t.tipo === 'receita' ? 'var(--color-receita)' : t.tipo === 'despesa' ? 'var(--color-despesa)' : 'var(--color-cartao)', fontWeight: 600, fontSize: '0.85rem' }}>
                   {t.tipo === 'despesa' ? '-' : ''}R$ {Number(t.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </td>
-                <td style={{ padding: 8, textAlign: 'left' }}>{t.conta_nome}</td>
-                <td style={{ padding: 8, textAlign: 'left' }}>
-                  {t.tipo === 'receita' && <span style={{ color: 'var(--color-receita)', fontWeight: 500 }}>Receita</span>}
-                  {t.tipo === 'despesa' && <span style={{ color: 'var(--color-despesa)', fontWeight: 500 }}>Despesa</span>}
-                  {t.tipo === 'cartao' && <span style={{ color: 'var(--color-cartao)', fontWeight: 500 }}>Cartão</span>}
+                <td style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>{t.conta_nome}</td>
+                <td style={{ padding: '5px 3px', textAlign: 'left' }}>
+                  {t.tipo === 'receita' && <span style={{ color: 'var(--color-receita)', fontWeight: 500, fontSize: '0.8rem' }}>Receita</span>}
+                  {t.tipo === 'despesa' && <span style={{ color: 'var(--color-despesa)', fontWeight: 500, fontSize: '0.8rem' }}>Despesa</span>}
+                  {t.tipo === 'cartao' && <span style={{ color: 'var(--color-cartao)', fontWeight: 500, fontSize: '0.8rem' }}>Cartão</span>}
                 </td>
               </tr>
             ))}
@@ -240,13 +265,13 @@ function KpiCard({ label, value, prefix, color, glass, fadeIn }) {
   return (
     <motion.div
       className={['glass-card', glass ? 'glass-card' : '', fadeIn ? 'fade-in' : ''].join(' ')}
-      style={{ background: color, minWidth: 160, textAlign: 'center', boxShadow: '0 2px 8px #0001', color: '#fff', marginBottom: 8, padding: 24, border: 'none', position: 'relative', overflow: 'hidden' }}
+      style={{ background: color, minWidth: 160, textAlign: 'center', boxShadow: '0 2px 8px #0001', color: '#fff', marginBottom: 6, padding: 20, border: 'none', position: 'relative', overflow: 'hidden' }}
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="kpi-label">{label}</div>
-      <div className="kpi-value">{prefix}{Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+      <div className="kpi-label" style={{ fontSize: '0.9rem', marginBottom: 4 }}>{label}</div>
+      <div className="kpi-value" style={{ fontSize: '1.8rem' }}>{prefix}{Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
     </motion.div>
   );
 }

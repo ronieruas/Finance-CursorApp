@@ -32,6 +32,11 @@ exports.login = async (req, res) => {
 
 exports.changePassword = async (req, res) => {
   try {
+    // Verificar se o usuário está autenticado
+    if (!req.user) {
+      return res.status(401).json({ error: 'Não autorizado.' });
+    }
+    
     const userId = req.user.id;
     const { currentPassword, newPassword } = req.body;
     const user = await User.findByPk(userId);

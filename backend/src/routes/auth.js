@@ -1,10 +1,27 @@
+console.log('Loading auth routes module...');
+
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
-const authMiddleware = require('../middlewares/authMiddleware');
 
-router.post('/register', authController.register);
-router.post('/login', authController.login);
-router.put('/change-password', authMiddleware, authController.changePassword);
+console.log('Setting up auth routes...');
+
+router.post('/register', (req, res, next) => {
+  console.log('Auth route: /register');
+  authController.register(req, res, next);
+});
+
+router.post('/login', (req, res, next) => {
+  console.log('Auth route: /login');
+  console.log('Login request body:', req.body);
+  authController.login(req, res, next);
+});
+
+router.put('/change-password', (req, res, next) => {
+  console.log('Auth route: /change-password');
+  authController.changePassword(req, res, next);
+});
+
+console.log('Auth routes setup complete.');
 
 module.exports = router; 

@@ -4,7 +4,6 @@ const sequelize = require('sequelize');
 const models = require('../models');
 
 
-
 exports.getDashboard = async (req, res) => {
   try {
     console.log('Dashboard: início da requisição');
@@ -340,5 +339,76 @@ exports.getDashboard = async (req, res) => {
   } catch (err) {
     console.error('Erro no dashboard:', err);
     res.status(500).json({ error: 'Erro ao buscar dados do dashboard', details: err.message, stack: err.stack });
+  }
+};
+
+exports.getMonthlySummary = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const today = new Date();
+    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const currentMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    // 1. Soma das Receitas do Mês vigente
+    const totalIncomes = await models.Income.sum('value', {
+      where: {
+        user_id: userId,
+        date: { [Op.between]: [currentMonthStart, currentMonthEnd] },
+      },
+    }) || 0;
+
+    // 2. Soma das Despesas do mês vigente (somente as com vencimento no mês vigente)
+    const totalExpenses = await models.Expense.sum('value', {
+      where: {
+        user_id: userId,
+        due_date: { [Op.between]: [currentMonthStart, currentMonthEnd] },
+        credit_card_id: null, // Excluir despesas de cartão de crédito
+      },
+    }) || 0;
+
+    // 3. Soma das faturas dos cartões de crédito que fecham ou já estão fechadas no mês vigente
+    let totalCreditCardBills = 0;
+    const creditCards = await models.CreditCard.findAll({ where: { user_id: userId, status: 'ativa' } });
+
+    for (const card of creditCards) {
+      // Calcular a data de fechamento da fatura para o mês atual
+      let closingDayThisMonth = new Date(today.getFullYear(), today.getMonth(), card.closing_day);
+      // Se o dia de fechamento já passou neste mês, a fatura é do próximo mês
+      if (today.getDate() > card.closing_day) {
+        closingDayThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, card.closing_day);
+      }
+
+      // A data de vencimento da fatura é geralmente um mês após o fechamento
+      const billDueDate = new Date(closingDayThisMonth.getFullYear(), closingDayThisMonth.getMonth() + 1, card.due_day);
+
+      // Considerar despesas com due_date no mês vigente da fatura
+      // O período da fatura vai do dia de fechamento do mês anterior até o dia de fechamento do mês atual
+      const previousMonthClosingDay = new Date(closingDayThisMonth.getFullYear(), closingDayThisMonth.getMonth() - 1, card.closing_day);
+      const billPeriodStart = new Date(previousMonthClosingDay.getFullYear(), previousMonthClosingDay.getMonth(), previousMonthClosingDay.getDate() + 1);
+      const billPeriodEnd = new Date(closingDayThisMonth.getFullYear(), closingDayThisMonth.getMonth(), closingDayThisMonth.getDate());
+
+      const cardExpenses = await models.Expense.sum('value', {
+        where: {
+          user_id: userId,
+          credit_card_id: card.id,
+          due_date: { [Op.between]: [billPeriodStart, billPeriodEnd] },
+          status: { [Op.ne]: 'paga' }, // Considerar apenas despesas não pagas para o cálculo da fatura
+        },
+      }) || 0;
+      totalCreditCardBills += cardExpenses;
+    }
+
+    // 4. Saldo
+    const balance = totalIncomes - (totalExpenses + totalCreditCardBills);
+
+    res.json({
+      totalIncomes,
+      totalExpenses,
+      totalCreditCardBills,
+      balance,
+    });
+  } catch (error) {
+    console.error('Erro ao buscar resumo mensal:', error);
+    res.status(500).json({ error: 'Erro ao buscar resumo mensal' });
   }
 };
