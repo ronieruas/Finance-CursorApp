@@ -172,7 +172,7 @@ function Dashboard({ token }) {
       </div>
       {/* Segunda linha: Alertas e Gastos por Cartão */}
       <div className="dashboard-flex" style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
-        <motion.div className="glass-card fade-in" style={{ flex: 1, minWidth: 280, padding: '16px 12px', background: 'linear-gradient(135deg, #f5f7fa 
+        <motion.div className="glass-card fade-in" style={{ flex: 1, minWidth: 280, padding: '16px 12px', background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
           <h3 style={{ marginBottom: 8, fontSize: '1.05rem' }}>Gastos por Cartão</h3>
           <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
             <thead>
