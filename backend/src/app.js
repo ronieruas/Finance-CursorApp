@@ -1,25 +1,16 @@
-console.log('Loading app module...');
-
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const routes = require('./routes');
-
-console.log('Loading app...');
+const authMiddleware = require('./middlewares/authMiddleware');
 
 const app = express();
-
-console.log('App loaded.');
 
 // Middleware de log para todas as requisições
 app.use((req, res, next) => {
   console.log(`Requisição recebida: ${req.method} ${req.url}`);
-  console.log(`Headers:`, req.headers);
-  console.log(`Original URL:`, req.originalUrl);
   next();
 });
-
-console.log('Routes loaded:', routes);
 
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
@@ -53,7 +44,7 @@ app.options('*', cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
-// Montar as rotas
+app.use(authMiddleware);
 app.use('/', routes);
 
 // Removido o trecho que servia o build do React e o fallback para index.html
