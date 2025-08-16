@@ -16,12 +16,26 @@ exports.register = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+    try {
+      console.log('--- AuthController: Tentativa de login recebida ---');
+      console.log('Request body:', req.body);
+      const { email, password } = req.body;
     const user = await User.findOne({ where: { email } });
-    if (!user) return res.status(401).json({ error: 'Credenciais inválidas.' });
+    if (!user) {
+      console.log('Login attempt failed: User not found for email:', email);
+      return res.status(401).json({ error: 'Credenciais inválidas.' });
+    }
+
+    console.log('User found:', user.toJSON()); // Log do usuário encontrado
+
     const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return res.status(401).json({ error: 'Credenciais inválidas.' });
+
+    console.log('Password validation result:', valid); // Log do resultado da comparação
+
+    if (!valid) {
+      console.log('Login attempt failed: Invalid password for user:', email);
+      return res.status(401).json({ error: 'Credenciais inválidas.' });
+    }
     const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch (err) {
@@ -50,4 +64,4 @@ exports.changePassword = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Erro ao trocar senha.' });
   }
-}; 
+};
