@@ -1,0 +1,60 @@
+{
+    "tendenciasMensais":  {
+                              "meses":  [
+                                            "ago. de 2025"
+                                        ],
+                              "receitas":  [
+                                               0
+                                           ],
+                              "despesas":  [
+                                               0
+                                           ],
+                              "saldos":  [
+                                             0
+                                         ]
+                          },
+    "analiseCategorias":  {
+                              "topDespesas":  [
+
+                                              ],
+                              "topReceitas":  [
+
+                                              ]
+                          },
+    "comparativoMensal":  [
+                              {
+                                  "mes":  "Mês -2",
+                                  "receitas":  0,
+                                  "despesas":  0,
+                                  "saldo":  0
+                              },
+                              {
+                                  "mes":  "Mês -1",
+                                  "receitas":  0,
+                                  "despesas":  0,
+                                  "saldo":  0
+                              },
+                              {
+                                  "mes":  "Mês Atual",
+                                  "receitas":  0,
+                                  "despesas":  0,
+                                  "saldo":  0
+                              }
+                          ],
+    "projecoes":  {
+                      "mediaReceitas":  0,
+                      "mediaDespesas":  0,
+                      "projecaoSaldo":  0,
+                      "proximoMes":  "setembro de 2025"
+                  },
+    "analiseCartoes":  [
+
+                       ],
+    "metas":  [
+
+              ],
+    "periodo":  {
+                    "start":  "2025-08-01T03:00:00.000Z",
+                    "end":  "2025-08-31T03:00:00.000Z"
+                }
+}

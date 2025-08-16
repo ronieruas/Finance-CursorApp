@@ -6,7 +6,7 @@ const models = require('../models');
 
 exports.getDashboard = async (req, res) => {
   try {
-    console.log('Dashboard: início da requisição');
+    console.log('Dashboard Controller: req.user', req.user);
     const userId = req.user.id;
     // Filtro de período
     let { start, end } = req.query;
@@ -92,15 +92,15 @@ exports.getDashboard = async (req, res) => {
 
     // Orçamentos do período: valor planejado e valor gasto até a data
     const budgets = await models.Budget.findAll({
-      where: {
-        user_id: userId,
-        period_start: { [Op.lte]: lastDay },
-        period_end: { [Op.gte]: firstDay },
-      },
-      include: [
-        { model: models.CreditCard, as: 'credit_card', attributes: ['name', 'bank'] }
-      ]
-    });
+       where: {
+         user_id: userId,
+         period_start: { [Op.lte]: lastDay },
+         period_end: { [Op.gte]: firstDay },
+       },
+       include: [
+         { model: models.CreditCard, as: 'credit_card', attributes: ['name', 'bank'], required: false }
+       ]
+     });
     const budgetsWithSpent = await Promise.all(budgets.map(async (budget) => {
       let utilizado = 0;
       if (budget.type === 'geral') {
@@ -123,11 +123,12 @@ exports.getDashboard = async (req, res) => {
         if (budget.credit_card_id) {
           whereClause.credit_card_id = budget.credit_card_id;
         }
-        
         utilizado = await models.Expense.sum('value', { where: whereClause });
       }
+      
       return {
         ...budget.toJSON(),
+        credit_card: budget.credit_card ? budget.credit_card.toJSON() : null,
         utilizado: utilizado || 0
       };
     }));
@@ -198,7 +199,6 @@ exports.getDashboard = async (req, res) => {
     // const receitasCartaoRecentes = receitasRecentes.filter(r => r.credit_card_id);
     // const receitasContaRecentes = receitasRecentes.filter(r => !r.credit_card_id);
     const recentesRaw = [
-
       ...receitasRecentes.map(r => ({
         tipo: 'receita',
         descricao: r.description || r.name || 'Receita',
@@ -248,9 +248,8 @@ exports.getDashboard = async (req, res) => {
           status: { [Op.ne]: 'paga' }, // Considerar apenas despesas não pagas
         },
       }) || 0;
-
-
     }
+    
     const recentes = recentesRaw
       .sort((a, b) => {
         const [da, ma, aa] = a.data.split('/');
@@ -283,7 +282,7 @@ exports.getDashboard = async (req, res) => {
     });
     // 3. Fatura alta
     for (const card of creditCards) {
-      const totalFatura = await Expense.sum('value', {
+      const totalFatura = await models.Expense.sum('value', {
         where: {
           user_id: userId,
           due_date: { [Op.between]: [firstDay, lastDay] },
@@ -302,7 +301,7 @@ exports.getDashboard = async (req, res) => {
     const hoje = new Date();
     const daqui7 = new Date();
     daqui7.setDate(hoje.getDate() + 7);
-    const proximosVencimentos = await Expense.findAll({
+    const proximosVencimentos = await models.Expense.findAll({
       where: {
         user_id: userId,
         due_date: { [Op.between]: [hoje, daqui7] },
@@ -324,10 +323,10 @@ exports.getDashboard = async (req, res) => {
     let saldoEvolucao = [];
     let saldoAnterior = 0;
     // Buscar todas as contas em reais
-    const contasReais = await Account.findAll({ where: { user_id: userId, status: 'ativa', currency: { [Op.or]: [null, 'BRL'] } } });
+    const contasReais = await models.Account.findAll({ where: { user_id: userId, status: 'ativa', currency: { [Op.or]: [null, 'BRL'] } } });
     // Buscar todas as receitas e despesas do período
-    const receitas = await Income.findAll({ where: { user_id: userId, date: { [Op.between]: [firstDay, lastDay] } } });
-    const despesas = await Expense.findAll({ where: { user_id: userId, due_date: { [Op.between]: [firstDay, lastDay] } } });
+    const receitas = await models.Income.findAll({ where: { user_id: userId, date: { [Op.between]: [firstDay, lastDay] } } });
+    const despesas = await models.Expense.findAll({ where: { user_id: userId, due_date: { [Op.between]: [firstDay, lastDay] } } });
     // Saldo inicial (antes do período)
     const saldoInicial = contasReais.reduce((sum, acc) => sum + parseFloat(acc.balance), 0);
     // Montar mapa de receitas/despesas por dia
@@ -363,17 +362,17 @@ exports.getDashboard = async (req, res) => {
       gastosPorCartao,
       budgets: budgetsWithSpent,
       breakdown,
-      recentes: recentesFormatadas,
-      receitasMesVigente,
-      despesasMesVigente,
-      faturasCartaoMesVigente,
+      recentes: recentes,
+      alertas,
+      saldoEvolucao,
       receitasMesVigente,
       despesasMesVigente,
       faturasCartaoMesVigente,
     });
-  } catch (error) {
-    console.error('Erro ao buscar dados do dashboard:', error);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+
+  } catch (err) {
+    console.error('Erro no Dashboard Controller:', err);
+    res.status(500).json({ error: err.message });
   }
 };
 

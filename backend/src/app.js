@@ -62,6 +62,11 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(morgan('dev'));
 
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] Antes das rotas: ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 app.use('/', routes);
 
 // Log para requisições que chegam às rotas
