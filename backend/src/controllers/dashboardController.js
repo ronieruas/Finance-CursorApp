@@ -199,6 +199,28 @@ exports.getDashboard = async (req, res) => {
     // const receitasContaRecentes = receitasRecentes.filter(r => !r.credit_card_id);
     const recentesRaw = [
 
+      ...receitasRecentes.map(r => ({
+        tipo: 'receita',
+        descricao: r.description || r.name || 'Receita',
+        valor: r.value,
+        data: formatDateBR(r.date),
+        conta: r.account_id,
+        conta_nome: contasMap[r.account_id] || '',
+        cartao_id: null,
+        cartao_nome: '',
+      })),
+      ...despesasRecentes.map(d => ({
+        tipo: d.credit_card_id ? 'cartao' : 'despesa',
+        descricao: d.description || d.name || 'Despesa',
+        valor: d.value,
+        data: formatDateBR(d.due_date),
+        conta: d.account_id || d.credit_card_id,
+        conta_nome: d.credit_card_id ? (cartoesMap[d.credit_card_id] || '') : (contasMap[d.account_id] || ''),
+        cartao_id: d.credit_card_id || null,
+        cartao_nome: d.credit_card_id ? (cartoesMap[d.credit_card_id] || '') : '',
+      })),
+    ];
+
     // Soma das receitas do mês vigente
     const receitasMesVigente = await models.Income.sum('value', {
       where: {
@@ -226,29 +248,9 @@ exports.getDashboard = async (req, res) => {
           status: { [Op.ne]: 'paga' }, // Considerar apenas despesas não pagas
         },
       }) || 0;
-    }
 
-      ...receitasRecentes.map(r => ({
-        tipo: 'receita',
-        descricao: r.description || r.name || 'Receita',
-        valor: r.value,
-        data: formatDateBR(r.date),
-        conta: r.account_id,
-        conta_nome: contasMap[r.account_id] || '',
-        cartao_id: null,
-        cartao_nome: '',
-      })),
-      ...despesasRecentes.map(d => ({
-        tipo: d.credit_card_id ? 'cartao' : 'despesa',
-        descricao: d.description || d.name || 'Despesa',
-        valor: d.value,
-        data: formatDateBR(d.due_date),
-        conta: d.account_id || d.credit_card_id,
-        conta_nome: d.credit_card_id ? (cartoesMap[d.credit_card_id] || '') : (contasMap[d.account_id] || ''),
-        cartao_id: d.credit_card_id || null,
-        cartao_nome: d.credit_card_id ? (cartoesMap[d.credit_card_id] || '') : '',
-      })),
-    ];
+
+    }
     const recentes = recentesRaw
       .sort((a, b) => {
         const [da, ma, aa] = a.data.split('/');
@@ -362,6 +364,9 @@ exports.getDashboard = async (req, res) => {
       budgets: budgetsWithSpent,
       breakdown,
       recentes: recentesFormatadas,
+      receitasMesVigente,
+      despesasMesVigente,
+      faturasCartaoMesVigente,
       receitasMesVigente,
       despesasMesVigente,
       faturasCartaoMesVigente,
