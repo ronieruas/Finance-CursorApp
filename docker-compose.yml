@@ -33,6 +33,7 @@ services:
       # Adicione outras variáveis conforme necessário
     ports:
       - "3001:3001"
+    command: ["sh", "-c", "npm run migrate && npm start"]
     depends_on:
       - db
 
