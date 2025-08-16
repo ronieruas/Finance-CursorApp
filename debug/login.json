@@ -1,0 +1,15 @@
+﻿{
+    "ok":  true,
+    "status":  200,
+    "url":  "http://localhost:3001/auth/login",
+    "token":  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzU1Mzc1MzczLCJleHAiOjE3NTU0NjE3NzN9.2A39Zsb-oaCHQuXe2oi11IZXoK38LeuMPAYKyuxZsDM",
+    "raw":  {
+                "token":  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzU1Mzc1MzczLCJleHAiOjE3NTU0NjE3NzN9.2A39Zsb-oaCHQuXe2oi11IZXoK38LeuMPAYKyuxZsDM",
+                "user":  {
+                             "id":  1,
+                             "name":  "Default User",
+                             "email":  "user@example.com",
+                             "role":  "admin"
+                         }
+            }
+}

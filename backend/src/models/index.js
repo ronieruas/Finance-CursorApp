@@ -38,7 +38,7 @@ CreditCard.hasMany(Expense, { foreignKey: 'credit_card_id', as: 'expenses' });
 Expense.belongsTo(CreditCard, { foreignKey: 'credit_card_id', as: 'credit_card' });
 
 CreditCard.hasMany(Budget, { foreignKey: 'credit_card_id', as: 'budgets' });
-Budget.belongsTo(CreditCard, { foreignKey: 'credit_card_id', as: 'credit_card' });
+Budget.belongsTo(CreditCard, { foreignKey: 'credit_card_id', as: 'credit_card', required: false });
 
 const syncDb = async () => {
   await sequelize.sync();

@@ -1,0 +1,156 @@
+{
+    "saldoTotalReais":  0,
+    "receitasPorConta":  [
+
+                         ],
+    "despesasConta":  0,
+    "despesasCartao":  0,
+    "despesasMesTotal":  0,
+    "faturaCartaoMes":  0,
+    "gastosPorCartao":  [
+
+                        ],
+    "budgets":  [
+
+                ],
+    "breakdown":  {
+                      "receitas":  0,
+                      "despesas":  0,
+                      "cartao":  0
+                  },
+    "recentes":  [
+
+                 ],
+    "alertas":  [
+
+                ],
+    "saldoEvolucao":  [
+                          {
+                              "data":  "2025-08-01",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-02",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-03",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-04",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-05",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-06",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-07",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-08",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-09",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-10",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-11",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-12",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-13",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-14",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-15",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-16",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-17",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-18",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-19",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-20",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-21",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-22",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-23",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-24",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-25",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-26",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-27",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-28",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-29",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-30",
+                              "saldo":  0
+                          },
+                          {
+                              "data":  "2025-08-31",
+                              "saldo":  0
+                          }
+                      ],
+    "receitasMesVigente":  0,
+    "despesasMesVigente":  0,
+    "faturasCartaoMesVigente":  0
+}

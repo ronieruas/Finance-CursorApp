@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+console.log('Index Routes: Arquivo carregado');
 
 const authMiddleware = require('../middlewares/authMiddleware');
 const dashboardController = require('../controllers/dashboardController');

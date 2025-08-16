@@ -2,17 +2,11 @@ const jwt = require('jsonwebtoken');
 
 module.exports = (req, res, next) => {
   const authHeader = req.headers.authorization;
+  console.log('AuthMiddleware: authHeader:', authHeader);
   if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
 
-  // Log para verificar se o middleware está sendo atingido e o conteúdo de req.user
-  console.log('AuthMiddleware: Request received.');
-  if (req.user) {
-    console.log('AuthMiddleware: req.user exists. User ID:', req.user.id);
-  } else {
-    console.log('AuthMiddleware: req.user does not exist.');
-  }
-
-  const [, token] = authHeader.split(' ');
+  [, token] = authHeader.split(' ');
+  console.log('AuthMiddleware: token:', token);
   if (!token) return res.status(401).json({ error: 'Token mal formatado.' });
 
   try {
@@ -20,7 +14,7 @@ module.exports = (req, res, next) => {
     req.user = decoded;
     next();
   } catch (err) {
-    console.error('[authMiddleware] Erro ao verificar token:', err);
+    console.error('AuthMiddleware: JWT verification error:', err);
     return res.status(401).json({ error: 'Token inválido.' });
   }
 };
