@@ -80,7 +80,7 @@ exports.getDashboard = async (req, res) => {
             status: { [Op.ne]: 'paga' }, // Excluir despesas já pagas
           },
         }) || 0;
-        // const totalReceitas = await Income.sum('value', { ... })
+        // const totalReceitas = await models.Income.sum('value', { ... })
         gastosPorCartao.push({
           card_id: card.id,
           card_name: card.name,
@@ -98,7 +98,7 @@ exports.getDashboard = async (req, res) => {
         period_end: { [Op.gte]: firstDay },
       },
       include: [
-        { model: CreditCard, as: 'credit_card', attributes: ['name', 'bank'] }
+        { model: models.CreditCard, as: 'credit_card', attributes: ['name', 'bank'] }
       ]
     });
     const budgetsWithSpent = await Promise.all(budgets.map(async (budget) => {
@@ -198,6 +198,36 @@ exports.getDashboard = async (req, res) => {
     // const receitasCartaoRecentes = receitasRecentes.filter(r => r.credit_card_id);
     // const receitasContaRecentes = receitasRecentes.filter(r => !r.credit_card_id);
     const recentesRaw = [
+
+    // Soma das receitas do mês vigente
+    const receitasMesVigente = await models.Income.sum('value', {
+      where: {
+        user_id: userId,
+        date: { [Op.between]: [firstDay, lastDay] },
+      },
+    }) || 0;
+
+    // Soma das despesas do mês vigente (com vencimento no mês)
+    const despesasMesVigente = await models.Expense.sum('value', {
+      where: {
+        user_id: userId,
+        due_date: { [Op.between]: [firstDay, lastDay] },
+      },
+    }) || 0;
+
+    // Soma das faturas de cartões de crédito fechadas ou a fechar no mês vigente
+    let faturasCartaoMesVigente = 0;
+    if (cardIds.length > 0) {
+      faturasCartaoMesVigente = await models.Expense.sum('value', {
+        where: {
+          user_id: userId,
+          due_date: { [Op.between]: [firstDay, lastDay] },
+          credit_card_id: { [Op.in]: cardIds },
+          status: { [Op.ne]: 'paga' }, // Considerar apenas despesas não pagas
+        },
+      }) || 0;
+    }
+
       ...receitasRecentes.map(r => ({
         tipo: 'receita',
         descricao: r.description || r.name || 'Receita',
@@ -330,15 +360,15 @@ exports.getDashboard = async (req, res) => {
       faturaCartaoMes: faturaCartaoMes || 0,
       gastosPorCartao,
       budgets: budgetsWithSpent,
-      periodo: { start: firstDay, end: lastDay },
       breakdown,
-      saldoEvolucao,
-      recentes,
-      alertas
+      recentes: recentesFormatadas,
+      receitasMesVigente,
+      despesasMesVigente,
+      faturasCartaoMesVigente,
     });
-  } catch (err) {
-    console.error('Erro no dashboard:', err);
-    res.status(500).json({ error: 'Erro ao buscar dados do dashboard', details: err.message, stack: err.stack });
+  } catch (error) {
+    console.error('Erro ao buscar dados do dashboard:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
   }
 };
 

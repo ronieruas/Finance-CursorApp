@@ -36,6 +36,10 @@ function Dashboard({ token }) {
     balance: 0,
   });
 
+  const [receitasMesVigente, setReceitasMesVigente] = useState(0);
+  const [despesasMesVigente, setDespesasMesVigente] = useState(0);
+  const [faturasCartaoMesVigente, setFaturasCartaoMesVigente] = useState(0);
+
   // Estrutura pronta para integração futura com backend
   useEffect(() => {
     fetchDashboard();
@@ -83,6 +87,9 @@ function Dashboard({ token }) {
       setRecentes(data.recentes || []);
       setAlertas(data.alertas || []);
       setSaldoEvolucao(data.saldoEvolucao || []);
+      setReceitasMesVigente(data.receitasMesVigente || 0);
+      setDespesasMesVigente(data.despesasMesVigente || 0);
+      setFaturasCartaoMesVigente(data.faturasCartaoMesVigente || 0);
     } catch (err) {
       // Exibir erro, não usar mock
       alert('Erro ao carregar dashboard. Verifique sua conexão ou tente novamente.');
@@ -127,24 +134,24 @@ function Dashboard({ token }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600 }}>
               <span>Receitas:</span>
-              <span style={{ color: '#22c55e' }}>R$ {Number(monthlySummary.totalIncomes).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <span style={{ color: '#22c55e' }}>R$ {Number(receitasMesVigente).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600 }}>
               <span>Despesas (mês):</span>
-              <span style={{ color: '#ef4444' }}>R$ {Number(monthlySummary.totalExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <span style={{ color: '#ef4444' }}>R$ {Number(despesasMesVigente).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600 }}>
               <span>Faturas Cartão:</span>
-              <span style={{ color: '#8b5cf6' }}>R$ {Number(monthlySummary.totalCreditCardBills).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <span style={{ color: '#8b5cf6' }}>R$ {Number(faturasCartaoMesVigente).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
             <div style={{ borderTop: '1px solid #eee', paddingTop: 2, marginTop: 2, display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 700 }}>
               <span>Saldo:</span>
-              <span style={{ color: monthlySummary.balance >= 0 ? '#22c55e' : '#ef4444' }}>R$ {Number(monthlySummary.balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <span style={{ color: (receitasMesVigente - despesasMesVigente - faturasCartaoMesVigente) >= 0 ? '#22c55e' : '#ef4444' }}>R$ {Number(receitasMesVigente - despesasMesVigente - faturasCartaoMesVigente).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
             <ResponsiveContainer width="100%" height={120}>
               <BarChart data={[
-                { name: 'Receitas', Receitas: monthlySummary.totalIncomes, Despesas: 0 },
-                { name: 'Despesas', Receitas: 0, Despesas: monthlySummary.totalExpenses + monthlySummary.totalCreditCardBills }
+                { name: 'Receitas', Receitas: receitasMesVigente, Despesas: 0 },
+                { name: 'Despesas', Receitas: 0, Despesas: despesasMesVigente + faturasCartaoMesVigente }
               ]} margin={{ left: 0, right: 0, top: 4, bottom: 0 }} barSize={35} barCategoryGap={-15}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="name" stroke="#888" fontSize={11} />
