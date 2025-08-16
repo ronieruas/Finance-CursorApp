@@ -44,7 +44,6 @@ app.options('*', cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
-app.use(authMiddleware);
 app.use('/', routes);
 
 // Removido o trecho que servia o build do React e o fallback para index.html
