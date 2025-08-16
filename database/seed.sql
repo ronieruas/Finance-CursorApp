@@ -1,8 +1,9 @@
 -- Dados iniciais para o sistema financeiro
 
--- Usuário admin
+-- Usuários padrão
 INSERT INTO users (name, email, password, role) VALUES
-  ('Admin', 'admin@admin.com', '$2b$10$hashdeexemplo', 'admin')
+  ('Admin', 'admin@admin.com', '$2b$10$hashdeexemplo', 'admin'),
+  ('Default User', 'user@example.com', '$2a$10$hashdeexemplo', 'user')
 ON CONFLICT (email) DO NOTHING;
 
 -- Contas exemplo
@@ -31,4 +32,4 @@ ON CONFLICT DO NOTHING;
 -- Orçamento exemplo
 INSERT INTO budgets (user_id, name, type, period_start, period_end, planned_value) VALUES
   (1, 'Orçamento Mensal', 'geral', CURRENT_DATE, CURRENT_DATE + INTERVAL '30 days', 4000.00)
-ON CONFLICT DO NOTHING; 
+ON CONFLICT DO NOTHING;

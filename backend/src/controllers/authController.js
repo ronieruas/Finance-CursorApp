@@ -36,7 +36,13 @@ exports.login = async (req, res) => {
       console.log('Login attempt failed: Invalid password for user:', email);
       return res.status(401).json({ error: 'Credenciais inválidas.' });
     }
-    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const jwtSecret = process.env.JWT_SECRET;
+    console.log('JWT_SECRET usado para assinar o token:', jwtSecret);
+    if (!jwtSecret) {
+      console.error('JWT_SECRET não está definido ao assinar o token!');
+      return res.status(500).json({ error: 'Erro interno do servidor: JWT_SECRET não configurado.' });
+    }
+    const token = jwt.sign({ id: user.id, role: user.role }, jwtSecret, { expiresIn: '1d' });
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch (err) {
     console.error(err);

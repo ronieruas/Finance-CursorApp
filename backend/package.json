@@ -10,6 +10,7 @@
     "migrate": "npx sequelize db:migrate",
     "migrate:undo": "npx sequelize db:migrate:undo",
     "migrate:undo:all": "npx sequelize db:migrate:undo:all",
+    "seed": "npx sequelize db:seed:all",
     "db:backup": "node src/scripts/backup.js",
     "db:restore": "node src/scripts/restore.js"
   },
