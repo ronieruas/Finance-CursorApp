@@ -13,8 +13,8 @@ services:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
-     # - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-     # - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
 
   backend:
     build:
@@ -34,7 +34,7 @@ services:
       # Adicione outras variáveis conforme necessário
     ports:
       - "3001:3001"
-    command: ["sh", "-c", "npm run migrate && npm start"]
+    command: ["sh", "-c", "npm run migrate && npm run seed && npm start"]
     depends_on:
       - db
 
