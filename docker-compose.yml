@@ -30,6 +30,7 @@ services:
       DB_PASSWORD: finance123
       DB_PASS: finance123
       DB_NAME: finance
+      JWT_SECRET: your_super_secret_key # Adicione um segredo forte aqui
       # Adicione outras variáveis conforme necessário
     ports:
       - "3001:3001"
