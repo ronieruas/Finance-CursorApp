@@ -11,8 +11,15 @@
     "migrate:undo": "npx sequelize db:migrate:undo",
     "migrate:undo:all": "npx sequelize db:migrate:undo:all",
     "seed": "npx sequelize db:seed:all",
+    "seed:undo:all": "npx sequelize db:seed:undo:all",
+    "clear-data": "npx sequelize db:seed --seed 20240816000000-clear-all-data.js",
     "db:backup": "node src/scripts/backup.js",
-    "db:restore": "node src/scripts/restore.js"
+    "db:restore": "node src/scripts/restore.js",
+    "db:drop-all": "npx sequelize db:drop",
+    "db:create-all": "npx sequelize db:create",
+    "db:migrate-all": "npx sequelize db:migrate",
+    "db:seed-all": "npx sequelize db:seed:all",
+    "reset-db": "npm run db:drop-all && npm run db:create-all && npm run db:migrate-all && npm run db:seed-all"
   },
   "dependencies": {
     "bcrypt": "^5.1.0",
