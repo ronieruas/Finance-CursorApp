@@ -2,76 +2,103 @@
 
 Sistema completo de gestão financeira pessoal com dashboard, controle de receitas, despesas, cartões de crédito e relatórios.
 
-## 🚀 Instalação em Nova Máquina
+## 🚀 Instalação Rápida
 
-### Opção 1: Instalação Rápida (Recomendada)
+### Desenvolvimento Local
 
 ```bash
 # Clone o repositório
 git clone <URL_DO_REPOSITORIO>
 cd finance
 
-# Execute o script de instalação automática
-./install.sh
+# Configurar variáveis de ambiente para desenvolvimento
+export JWT_SECRET="your-super-strong-jwt-secret-here"
+export TZ="America/Sao_Paulo"  # opcional
+
+# Executar com Docker Compose
+docker compose up -d --build
 ```
 
-### Opção 2: Instalação Manual
+**Acesso**: http://localhost/ (porta 80)
 
-#### Pré-requisitos
+### Produção com Domínio Próprio
 
-- Docker e Docker Compose instalados
-- Git instalado
-- Pelo menos 2GB de espaço livre em disco
-
-### Passo a Passo
-
-1. **Clone o repositório**
 ```bash
+# Clone o repositório no servidor
 git clone <URL_DO_REPOSITORIO>
 cd finance
+
+# Configurar variáveis de ambiente obrigatórias
+export JWT_SECRET="your-production-jwt-secret-256-bits"
+export TZ="America/Sao_Paulo"  # opcional, padrão: America/Sao_Paulo
+
+# Ajustar frontend para usar domínio próprio
+echo "REACT_APP_API_URL=/api" > frontend/.env
+
+# Executar em produção
+docker compose up -d --build
 ```
 
-2. **Verifique se o Docker está rodando**
+**Configuração DNS/Proxy**:
+- Cloudflare: DNS proxied (nuvem laranja) → IP do servidor porta 80
+- SSL/TLS: Full ou Full (strict) no Cloudflare
+
+## ⚙️ Variáveis de Ambiente Obrigatórias
+
+### Para Produção
+
+| Variável | Obrigatória | Descrição | Exemplo |
+|----------|-------------|-----------|---------|
+| `JWT_SECRET` | ✅ Sim | Chave secreta para tokens JWT (256+ bits) | `"abcd1234...256chars"` |
+| `TZ` | ❌ Não | Fuso horário do servidor | `"America/Sao_Paulo"` |
+
+### Configuração Frontend
+
+Arquivo: `frontend/.env`
+
 ```bash
-docker --version
-docker-compose --version
+# Para desenvolvimento local
+REACT_APP_API_URL=http://localhost:3001
+
+# Para produção com domínio próprio
+REACT_APP_API_URL=/api
 ```
 
-3. **Build e inicialização**
+## 🔧 Pré-requisitos
+
+- **Docker** 20.10+ e **Docker Compose** 2.0+
+- **Git** instalado
+- **2GB** de espaço livre em disco
+- **1GB RAM** disponível
+
+### Verificar Pré-requisitos
+
 ```bash
-# Build das imagens (primeira vez pode demorar)
-docker-compose build --no-cache
-
-# Iniciar todos os serviços
-docker-compose up -d
+docker --version          # Docker 20.10+
+docker compose version    # Docker Compose 2.0+
+git --version            # Git instalado
+df -h                    # Espaço em disco
+free -h                  # Memória disponível
 ```
 
-4. **Verificar status dos serviços**
-```bash
-docker-compose ps
-```
+## 🎯 Acesso à Aplicação
 
-5. **Verificar logs (opcional)**
-```bash
-# Logs de todos os serviços
-docker-compose logs
-
-# Logs específicos
-docker-compose logs backend
-docker-compose logs frontend
-docker-compose logs db
-```
-
-### 🎯 Acesso à Aplicação
-
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:3001
+### Desenvolvimento
+- **Frontend**: http://localhost/
+- **API Backend**: http://localhost/api/
+- **Backend Direto**: http://localhost:3001 (debug)
 - **Banco de dados**: localhost:5432
+
+### Produção
+- **Site**: https://seudominio.com/
+- **API**: https://seudominio.com/api/
 
 ### 📊 Credenciais Padrão
 
 - **Usuário**: admin@finance.com
 - **Senha**: admin123
+
+**⚠️ IMPORTANTE**: Altere essas credenciais após primeiro login em produção!
 
 ## 🔧 Comandos Úteis
 
@@ -79,29 +106,33 @@ docker-compose logs db
 
 ```bash
 # Parar todos os serviços
-docker-compose down
+docker compose down
 
 # Parar e remover volumes (cuidado: apaga dados)
-docker-compose down -v
+docker compose down -v
 
 # Reiniciar serviços
-docker-compose restart
+docker compose restart
 
 # Ver logs em tempo real
-docker-compose logs -f
+docker compose logs -f
 ```
 
 ### Rebuild e Atualizações
 
 ```bash
 # Rebuild completo (recomendado após mudanças)
-docker-compose down
-docker-compose build --no-cache
-docker-compose up -d
+docker compose down
+docker compose build --no-cache
+docker compose up -d
 
 # Rebuild apenas backend
-docker-compose build --no-cache backend
-docker-compose up -d backend
+docker compose build --no-cache backend
+docker compose up -d backend
+
+# Rebuild apenas frontend
+docker compose build --no-cache frontend
+docker compose up -d --no-deps frontend
 ```
 
 ### Limpeza de Sistema
@@ -196,7 +227,7 @@ docker system prune -a
 ### Problema: Containers não iniciam
 ```bash
 # Verificar logs
-docker-compose logs
+docker compose logs
 
 # Verificar espaço em disco
 df -h
@@ -208,10 +239,10 @@ docker system df
 ### Problema: Banco não conecta
 ```bash
 # Verificar se o banco está rodando
-docker-compose ps db
+docker compose ps db
 
 # Verificar logs do banco
-docker-compose logs db
+docker compose logs db
 
 # Testar conexão
 docker exec finance-db pg_isready -U finance
@@ -224,6 +255,18 @@ docker exec finance-backend npx sequelize db:migrate
 
 # Verificar status das migrações
 docker exec finance-backend npx sequelize db:migrate:status
+```
+
+### Problema: 502 Bad Gateway no domínio (Cloudflare)
+```bash
+# Teste local no host
+curl -I http://localhost/
+curl -I http://localhost/api/
+
+# Se local OK (200) e domínio 502, verifique no Cloudflare:
+# - DNS proxied (nuvem laranja) -> IP do host
+# - SSL/TLS: Full ou Full (strict)
+# - Exponha a porta 80 no host (docker compose publica 80:80)
 ```
 
 ## 📝 Logs Importantes
