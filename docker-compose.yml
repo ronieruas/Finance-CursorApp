@@ -38,7 +38,7 @@ services:
       TZ: ${TZ:-America/Sao_Paulo}
     ports:
       - "3001:3001"
-    command: ["sh", "-c", "npm run migrate && npm run seed && npm start"]
+    command: ["sh", "-c", "npm run migrate && npm start"]
     depends_on:
       db:
         condition: service_healthy

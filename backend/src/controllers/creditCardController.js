@@ -34,18 +34,26 @@ function getBillPeriods(closingDay, dueDay, refDate = new Date()) {
 }
 
 function getBillPeriodForMonth(closingDay, dueDay, year, month) {
-  // month é 0-11 (JavaScript) e representa o MÊS DE VENCIMENTO da fatura
-  // Regra correta: a fatura que vence em agosto (month=7) inclui despesas 
-  // de 28/junho a 27/julho, que é do dia 'closingDay' do mês (month-2) até o dia (closingDay-1) do mês (month-1)
+  // month é 0-11 e representa o MÊS DE VENCIMENTO da fatura
   const vencimento = new Date(year, month, dueDay);
 
-  // start = dia 'closingDay' do mês (month-2)
-  const start = new Date(year, month - 2, closingDay);
-  start.setHours(0, 0, 0, 0);
-
-  // end = dia (closingDay-1) do mês (month-1) 
-  const end = new Date(year, month - 1, closingDay - 1);
-  end.setHours(23, 59, 59, 999);
+  let start;
+  let end;
+  if (closingDay > dueDay) {
+    // Fechamento ocorre no mês anterior ao vencimento
+    // Ex.: vence em agosto (month=7), período: closingDay de (junho, month-2) até (closingDay-1) de (julho, month-1)
+    start = new Date(year, month - 2, closingDay);
+    start.setHours(0, 0, 0, 0);
+    end = new Date(year, month - 1, closingDay - 1);
+    end.setHours(23, 59, 59, 999);
+  } else {
+    // Fechamento ocorre no mesmo mês do vencimento
+    // Ex.: vence em agosto (month=7), período: closingDay de (julho, month-1) até (closingDay-1) de (agosto, month)
+    start = new Date(year, month - 1, closingDay);
+    start.setHours(0, 0, 0, 0);
+    end = new Date(year, month, closingDay - 1);
+    end.setHours(23, 59, 59, 999);
+  }
 
   return { start, end, vencimento };
 }
