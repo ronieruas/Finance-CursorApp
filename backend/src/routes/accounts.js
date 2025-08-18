@@ -269,6 +269,7 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
       ...pagamentosCartao.map(p => ({
         tipo: 'pagamento_cartao',
         id: p.id,
+        // Descrição do pagamento de fatura (mantida única origem: CreditCardPayment)
         descricao: `Fatura Cartão ${cartoesMap[p.card_id] || 'Desconhecido'}`,
         valor: -Number(p.value),
         data: formatDateBR(p.payment_date),
@@ -289,4 +290,4 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;

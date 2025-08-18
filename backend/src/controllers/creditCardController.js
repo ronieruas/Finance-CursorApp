@@ -47,15 +47,19 @@ function getBillPeriods(closingDay, dueDay, refDate = new Date()) {
   // Período da fatura atual: do fechamento anterior até o dia anterior ao fechamento atual
   const faturaAtualStart = new Date(fechamentoAtual);
   faturaAtualStart.setMonth(fechamentoAtual.getMonth() - 1);
+  faturaAtualStart.setHours(0, 0, 0, 0);
   
   const faturaAtualEnd = new Date(fechamentoAtual);
   faturaAtualEnd.setDate(fechamentoAtual.getDate() - 1);
+  faturaAtualEnd.setHours(23, 59, 59, 999);
   
   // Período da próxima fatura: do fechamento atual até o dia anterior ao próximo fechamento
   const faturaProximaStart = new Date(fechamentoAtual);
+  faturaProximaStart.setHours(0, 0, 0, 0);
   
   const faturaProximaEnd = new Date(fechamentoProxima);
   faturaProximaEnd.setDate(fechamentoProxima.getDate() - 1);
+  faturaProximaEnd.setHours(23, 59, 59, 999);
   
   return {
     atual: { 
@@ -91,9 +95,11 @@ function getBillPeriodForMonth(closingDay, dueDay, year, month) {
   // Período da fatura: do fechamento do mês anterior até o dia anterior ao fechamento atual
   const start = new Date(fechamento);
   start.setMonth(fechamento.getMonth() - 1);
+  start.setHours(0, 0, 0, 0);
   
   const end = new Date(fechamento);
   end.setDate(fechamento.getDate() - 1);
+  end.setHours(23, 59, 59, 999);
   
   return { start, end, vencimento };
 }
@@ -177,7 +183,8 @@ exports.getBill = async (req, res) => {
       where: {
         user_id: req.user.id,
         credit_card_id: card.id,
-        due_date: { [Op.gte]: periods.atual.start, [Op.lt]: periods.atual.end },
+        // Usar data de lançamento (createdAt) para período da fatura
+        createdAt: { [Op.between]: [periods.atual.start, periods.atual.end] },
         status: { [Op.ne]: 'paga' }, // Só despesas em aberto
       },
     });
@@ -187,7 +194,7 @@ exports.getBill = async (req, res) => {
       where: {
         user_id: req.user.id,
         credit_card_id: card.id,
-        due_date: { [Op.gte]: periods.proxima.start, [Op.lt]: periods.proxima.end },
+        createdAt: { [Op.between]: [periods.proxima.start, periods.proxima.end] },
       },
     });
     console.log('[getBill] Despesas próxima fatura:', proxima);
@@ -251,12 +258,18 @@ exports.pay = async (req, res) => {
         where: {
           user_id: userId,
           credit_card_id: card.id,
-          due_date: { [Op.gte]: periodoFatura.start, [Op.lt]: periodoFatura.end },
+          // Usar data de lançamento (createdAt) dentro do período inclusivo
+          createdAt: { [Op.between]: [periodoFatura.start, periodoFatura.end] },
+          status: { [Op.ne]: 'paga' },
         },
       });
-      console.log('[PAGAMENTO] Despesas encontradas para pagamento:', despesasFatura.map(d => ({ id: d.id, due_date: d.due_date, status: d.status, valor: d.value })));
+      console.log('[PAGAMENTO] Despesas encontradas para pagamento:', despesasFatura.map(d => ({ id: d.id, createdAt: d.createdAt, status: d.status, valor: d.value })));
       valorPagamento = despesasFatura.reduce((acc, d) => acc + Number(d.value), 0);
       console.log('[PAGAMENTO] Valor total calculado para pagamento:', valorPagamento);
+    }
+    // Impedir pagamento com valor inválido ou zero
+    if (!isFinite(valorPagamento) || Number(valorPagamento) <= 0) {
+      return res.status(400).json({ error: 'Não há despesas a pagar no período selecionado ou valor inválido.' });
     }
     // Debita valor da conta
     if (account.balance < valorPagamento) {
@@ -264,7 +277,7 @@ exports.pay = async (req, res) => {
     }
     await account.update({ balance: account.balance - valorPagamento });
     
-    // Registra pagamento
+    // Registra pagamento (somente em CreditCardPayment; não criar Expense para evitar duplicação no extrato)
     const payment = await CreditCardPayment.create({
       card_id: card.id,
       user_id: userId,
@@ -273,18 +286,6 @@ exports.pay = async (req, res) => {
       payment_date: payment_date || new Date(),
       is_full_payment: !!is_full_payment,
       auto_debit: !!auto_debit,
-    });
-    
-    // Registra despesa no extrato da conta para pagamento do cartão
-    await Expense.create({
-      user_id: userId,
-      account_id,
-      description: `Fatura Cartão ${card.name}`,
-      value: valorPagamento,
-      due_date: payment_date || new Date(),
-      category: 'Cartão de Crédito',
-      status: 'paga',
-      paid_at: payment_date || new Date(),
     });
     
     // Atualiza despesas do período como pagas
