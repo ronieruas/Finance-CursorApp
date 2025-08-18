@@ -349,34 +349,29 @@ function CreditCards({ token }) {
       return { start: null, end: null, fechamento: null, vencimento: null };
     }
 
-    let vencimento = dayjs(`${year}-${String(m).padStart(2, '0')}-${String(dueDay).padStart(2, '0')}`);
-    let fechamento = dayjs(`${year}-${String(m).padStart(2, '0')}-${String(closingDay).padStart(2, '0')}`);
+    // month (m) representa o MÊS DE VENCIMENTO
+    const vencimento = dayjs(`${year}-${String(m).padStart(2, '0')}-${String(dueDay).padStart(2, '0')}`);
 
-    if (closingDay > dueDay) { // Fatura fecha num mês e vence no outro
-      if (fechamento.isAfter(vencimento)) {
-        // O fechamento já ocorreu ou está no mês correto em relação ao vencimento.
-      } else {
-        vencimento = vencimento.add(1, 'month');
-      }
-    } else { // Vencimento e fechamento no mesmo mês
-       // Se a data de fechamento for maior que a de vencimento, a fatura se refere ao vencimento do próximo mês
-    }
+    // Fechamento desta fatura: se closingDay > dueDay, fechamento acontece no mês anterior ao vencimento; caso contrário, no mesmo mês
+    const fechamentoMonth = closingDay > dueDay ? (m - 1) : m; // 1-12 possivelmente 0 (deixa o Date/Dayjs ajustar abaixo)
+    const fechamento = dayjs(new Date(year, fechamentoMonth - 1, closingDay));
 
-    // O fechamento de uma fatura que vence em `vencimento` é `fechamento`.
-    // O período de compras para esta fatura é do dia seguinte ao fechamento anterior até o dia do fechamento atual.
-    const end = fechamento.endOf('day');
-    const start = fechamento.subtract(1, 'month').date(closingDay + 1).startOf('day');
-    
+    // Período de compras desta fatura (INCLUSIVO):
+    // start = dia 'closingDay' de (m-2)
+    // end = dia anterior ao 'closingDay' de (m-1)
+    const start = dayjs(new Date(year, (m - 1) - 2, closingDay)).startOf('day');
+    const end = dayjs(new Date(year, (m - 1) - 1, closingDay)).subtract(1, 'day').endOf('day');
+
     return { start, end, fechamento, vencimento };
   }
 
-  // Função para determinar o mês da fatura em aberto (considerando fechamento)
+  // Função para determinar o mês da fatura em aberto (considerando vencimento)
   function getOpenBillMonth(card) {
     if (!card) return dayjs().format('YYYY-MM');
     const today = dayjs();
-    const closing = dayjs().date(card.closing_day);
-    // Se hoje é igual ou após o fechamento, fatura em aberto é do próximo mês
-    if (today.isSameOrAfter(closing, 'day')) {
+    const dueThisMonth = dayjs().date(Number(card.due_day));
+    // Se já passou do dia de vencimento deste mês, a fatura "atual" é a que vence no próximo mês
+    if (today.isAfter(dueThisMonth, 'day')) {
       return today.add(1, 'month').format('YYYY-MM');
     }
     return today.format('YYYY-MM');
