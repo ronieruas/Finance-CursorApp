@@ -1,4 +1,4 @@
-const { Expense, Income, CreditCard, Account, Transfer } = require('../models');
+const { Expense, Income, CreditCard, Account, Transfer, CreditCardPayment } = require('../models');
 const { Op } = require('sequelize');
 const dayjs = require('dayjs');
 const { Parser } = require('json2csv');
@@ -49,14 +49,37 @@ exports.exportAccountStatement = async (req, res) => {
       order: [['date', 'ASC']]
     });
 
+    // Novos: transferências envolvendo a conta e pagamentos de fatura do cartão
+    const transfers = await Transfer.findAll({
+      where: {
+        [Op.or]: [
+          { from_account_id: accountId },
+          { to_account_id: accountId }
+        ],
+        date: { [Op.between]: [start, end] }
+      },
+      order: [['date', 'ASC']]
+    });
+
+    const ccPayments = await CreditCardPayment.findAll({
+      where: {
+        account_id: accountId,
+        payment_date: { [Op.between]: [start, end] }
+      },
+      include: [{ model: CreditCard, as: 'card', attributes: ['name'] }],
+      order: [['payment_date', 'ASC']]
+    });
+
     console.log('exportAccountStatement: Found expenses:', expenses.length);
     console.log('exportAccountStatement: Found incomes:', incomes.length);
+    console.log('exportAccountStatement: Found transfers:', transfers.length);
+    console.log('exportAccountStatement: Found credit card payments:', ccPayments.length);
 
-    // Combinar e ordenar por data
-    const allTransactions = [...expenses, ...incomes].sort((a, b) => {
-      const dateA = a.due_date || a.date;
-      const dateB = b.due_date || b.date;
-      return new Date(dateA) - new Date(dateB);
+    // Combinar e ordenar por data (considera due_date, date e payment_date)
+    const allTransactions = [...expenses, ...incomes, ...transfers, ...ccPayments].sort((a, b) => {
+      const dateA = new Date(a.due_date || a.date || a.payment_date);
+      const dateB = new Date(b.due_date || b.date || b.payment_date);
+      return dateA - dateB;
     });
     
     console.log('exportAccountStatement: Combined transactions:', allTransactions.length);
@@ -68,20 +91,61 @@ exports.exportAccountStatement = async (req, res) => {
 
     // Preparar dados para CSV
     const csvData = allTransactions.map(item => {
-      const isExpense = item.constructor.name === 'Expense';
+      const modelName = item.constructor?.name;
+      let tipo = '';
+      let descricao = item.description || '';
+      let direcao = 'Entrada';
+      let nomeCartao = '';
+
+      // accountId pode vir como string
+      const accountIdNum = Number(accountId);
+
+      if (modelName === 'Expense') {
+        tipo = 'Despesa';
+        direcao = 'Saída';
+      } else if (modelName === 'Income') {
+        tipo = 'Receita';
+        direcao = 'Entrada';
+      } else if (modelName === 'Transfer') {
+        tipo = 'Transferência';
+        // Saída se a conta for a origem; Entrada se a conta for o destino
+        if (item.from_account_id == accountIdNum) {
+          direcao = 'Saída';
+        } else if (item.to_account_id == accountIdNum) {
+          direcao = 'Entrada';
+        }
+      } else if (modelName === 'CreditCardPayment') {
+        tipo = 'Pagamento Fatura';
+        direcao = 'Saída'; // pagamento debita a conta
+        if (item.card && item.card.name) {
+          nomeCartao = item.card.name;
+          descricao = `Pagamento Fatura ${item.card.name}`;
+        } else if (!descricao) {
+          descricao = 'Pagamento Fatura';
+        }
+      }
+
+      const dataTransacao = dayjs(item.due_date || item.date || item.payment_date).format('DD/MM/YYYY');
+
+      // Valor com sinal: Saída negativo, Entrada positivo
+      const rawValue = Number(item.value) || 0;
+      const signedValue = direcao === 'Saída' ? -Math.abs(rawValue) : Math.abs(rawValue);
+
       return {
-        'Data': dayjs(item.due_date || item.date).format('DD/MM/YYYY'),
-        'Descrição': item.description,
+        'Data': dataTransacao,
+        'Descrição': descricao,
         'Categoria': item.category || '',
-        'Tipo': isExpense ? 'Despesa' : 'Receita',
-        'Valor': Number(item.value).toFixed(2).replace('.', ',')
+        'Tipo': tipo,
+        'Direção': direcao,
+        'Nome do Cartão': nomeCartao,
+        'Valor': signedValue.toFixed(2).replace('.', ',')
       };
     });
 
     console.log('exportAccountStatement: Prepared CSV data:', csvData.length, 'rows');
 
     // Converter para CSV
-    const fields = ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor'];
+    const fields = ['Data', 'Descrição', 'Categoria', 'Tipo', 'Direção', 'Nome do Cartão', 'Valor'];
     const json2csvParser = new Parser({ fields, delimiter: ';' });
     const csv = json2csvParser.parse(csvData);
 
@@ -130,11 +194,14 @@ exports.exportExpenses = async (req, res) => {
         if (accountId) {
             where.account_id = accountId;
         } else {
-            // Garante que seja despesa de conta
             where.account_id = { [Op.ne]: null };
         }
 
-        const expenses = await Expense.findAll({ where });
+        const expenses = await Expense.findAll({ 
+            where,
+            include: [{ model: Account, as: 'account', attributes: ['name'] }],
+            order: [['due_date', 'ASC']]
+        });
 
         console.log('exportExpenses: Found expenses:', expenses.length);
 
@@ -143,13 +210,14 @@ exports.exportExpenses = async (req, res) => {
             'Data': dayjs(expense.due_date).format('DD/MM/YYYY'),
             'Descrição': expense.description,
             'Categoria': expense.category || '',
+            'Conta': expense.account?.name || '',
             'Valor': Number(expense.value).toFixed(2).replace('.', ',')
         }));
 
         console.log('exportExpenses: Prepared CSV data:', csvData.length, 'rows');
 
         // Converter para CSV
-        const fields = ['Data', 'Descrição', 'Categoria', 'Valor'];
+        const fields = ['Data', 'Descrição', 'Categoria', 'Conta', 'Valor'];
         const json2csvParser = new Parser({ fields, delimiter: ';' });
         const csv = json2csvParser.parse(csvData);
 
