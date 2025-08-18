@@ -111,21 +111,37 @@ exports.update = async (req, res) => {
     const expense = await Expense.findOne({ where: { id: req.params.id, user_id: req.user.id } });
     if (!expense) return res.status(404).json({ error: 'Despesa não encontrada' });
     
-    const originalValue = expense.value;
+    const originalValue = Number(expense.value);
+    const newValue = Number(value);
+    const originalStatus = expense.status;
+    const newStatus = status;
 
     // Ajustar saldo da conta se for despesa de conta
     if (expense.account_id) {
       const account = await Account.findOne({ where: { id: expense.account_id, user_id: req.user.id } });
       if (account) {
-        // Se a despesa estava paga, devolve o valor antigo
-        if (expense.status === 'paga') {
-          account.balance = Number(account.balance) + Number(expense.value);
+        let balanceAdjustment = 0;
+
+        // Se estava paga e agora não está mais paga (pendente), devolve o valor original
+        if (originalStatus === 'paga' && newStatus !== 'paga') {
+          balanceAdjustment += originalValue;
         }
-        // Se a nova despesa será paga, deduz o novo valor
-        if (status === 'paga') {
-          account.balance = Number(account.balance) - Number(value);
+        
+        // Se não estava paga e agora está paga, deduz o novo valor
+        if (originalStatus !== 'paga' && newStatus === 'paga') {
+          balanceAdjustment -= newValue;
         }
-        await account.save();
+        
+        // Se estava paga e continua paga, mas o valor mudou
+        if (originalStatus === 'paga' && newStatus === 'paga') {
+          balanceAdjustment += originalValue - newValue; // devolve o antigo e deduz o novo
+        }
+
+        if (balanceAdjustment !== 0) {
+          account.balance = Number(account.balance) + balanceAdjustment;
+          await account.save();
+          console.log(`[UPDATE EXPENSE] Ajuste de saldo da conta ${account.id}: ${balanceAdjustment > 0 ? '+' : ''}${balanceAdjustment}`);
+        }
       }
     }
 
@@ -133,13 +149,13 @@ exports.update = async (req, res) => {
     if (expense.credit_card_id) {
       const card = await CreditCard.findOne({ where: { id: expense.credit_card_id, user_id: req.user.id } });
       if (card) {
-        const valueDifference = Number(value) - Number(originalValue);
+        const valueDifference = newValue - originalValue;
         card.used_limit = (Number(card.used_limit) || 0) + valueDifference;
         await card.save();
       }
     }
     
-    await expense.update({ description, value, due_date, category, status, is_recurring, auto_debit, paid_at });
+    await expense.update({ description, value: newValue, due_date, category, status: newStatus, is_recurring, auto_debit, paid_at });
     res.json(expense);
   } catch (err) {
     console.error('Erro ao editar despesa:', err);
@@ -150,8 +166,8 @@ exports.update = async (req, res) => {
 exports.remove = async (req, res) => {
   const expense = await Expense.findOne({ where: { id: req.params.id, user_id: req.user.id } });
   if (!expense) return res.status(404).json({ error: 'Despesa não encontrada' });
-  // Devolver valor ao saldo da conta se for despesa de conta e estiver paga
-  // Devolver valor ao saldo da conta se for despesa de conta e estiver paga
+
+  // Se for despesa de conta paga, estorna o valor para a conta
   if (expense.account_id && expense.status === 'paga') {
     const account = await Account.findOne({ where: { id: expense.account_id, user_id: req.user.id } });
     if (account) {
@@ -160,7 +176,7 @@ exports.remove = async (req, res) => {
     }
   }
 
-  // Devolver valor ao limite do cartão se for despesa de cartão
+  // Se for despesa de cartão, devolve o valor ao limite utilizado
   if (expense.credit_card_id) {
     const card = await CreditCard.findOne({ where: { id: expense.credit_card_id, user_id: req.user.id } });
     if (card) {
@@ -168,6 +184,7 @@ exports.remove = async (req, res) => {
       await card.save();
     }
   }
+
   await expense.destroy();
   res.json({ success: true });
 };
