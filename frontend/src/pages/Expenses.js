@@ -79,14 +79,10 @@ function Expenses({ token }) {
         newForm = { ...newForm, credit_card_id: '', installment_type: 'avista', installment_total: 1 };
       }
     }
-    // Corrige formato do paid_at para o input
+    // Normaliza paid_at para conter apenas a data (AAAA-MM-DD)
     if (name === 'paid_at' && value) {
-      // Garante formato yyyy-MM-ddThh:mm
-      const dt = new Date(value);
-      if (!isNaN(dt.getTime())) {
-        const local = dt.toISOString().slice(0,16);
-        newForm.paid_at = local;
-      }
+      const onlyDate = value.length > 10 ? value.slice(0,10) : value;
+      newForm.paid_at = onlyDate;
     }
     setForm(newForm);
   };
@@ -316,7 +312,7 @@ function Expenses({ token }) {
             <option value="paga">Paga</option>
             <option value="atrasada">Atrasada</option>
           </select>
-          <Input name="paid_at" label="Pago em" type="datetime-local" value={form.paid_at ? form.paid_at.slice(0,16) : ''} onChange={handleChange} 
+          <Input name="paid_at" label="Pago em" type="date" value={form.paid_at ? form.paid_at.slice(0,10) : ''} onChange={handleChange} 
             required={form.status === 'paga'}
           />
           <Input name="category" label="Categoria" value={form.category} onChange={handleChange} />
@@ -407,7 +403,7 @@ function Expenses({ token }) {
                           <span>-</span>
                         )}
                       </td>
-                      <td><Input name="paid_at" type="datetime-local" value={editForm.paid_at || ''} onChange={handleEditChange} style={{ width: '100%' }} /></td>
+                      <td><Input name="paid_at" type="date" value={editForm.paid_at ? editForm.paid_at.slice(0,10) : ''} onChange={handleEditChange} style={{ width: '100%' }} /></td>
                       <td style={{ display: 'flex', gap: 8 }}>
                         <Button variant="primary" onClick={handleEditSubmit} loading={loading}>Salvar</Button>
                         <Button variant="secondary" onClick={() => setEditingId(null)}>Cancelar</Button>
@@ -425,7 +421,7 @@ function Expenses({ token }) {
                       <td style={{ textAlign: 'left' }}>{exp.is_recurring ? 'Sim' : 'Não'}</td>
                       <td style={{ textAlign: 'left' }}>{exp.auto_debit ? 'Sim' : 'Não'}</td>
                       <td style={{ textAlign: 'left' }}>{exp.installment_total > 1 ? `${exp.installment_number}/${exp.installment_total}` : '-'}</td>
-                      <td style={{ textAlign: 'left' }}>{exp.paid_at ? dayjs(exp.paid_at).format('DD/MM/YYYY HH:mm') : '-'}</td>
+                      <td style={{ textAlign: 'left' }}>{exp.paid_at ? dayjs(exp.paid_at).format('DD/MM/YYYY') : '-'}</td>
                       <td style={{ textAlign: 'left' }}>
                         <Button variant="secondary" onClick={() => handleEdit(exp)}>Editar</Button>
                         <Button variant="danger" onClick={() => handleDelete(exp.id)}>Excluir</Button>
