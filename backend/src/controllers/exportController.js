@@ -118,7 +118,9 @@ exports.exportExpenses = async (req, res) => {
         const where = {
             due_date: {
                 [Op.between]: [start, end]
-            }
+            },
+            // Exportação da aba Despesa: somente despesas de CONTA (excluir cartão de crédito)
+            credit_card_id: null,
         };
         
         if (category) {
@@ -127,6 +129,9 @@ exports.exportExpenses = async (req, res) => {
 
         if (accountId) {
             where.account_id = accountId;
+        } else {
+            // Garante que seja despesa de conta
+            where.account_id = { [Op.ne]: null };
         }
 
         const expenses = await Expense.findAll({ where });
@@ -171,11 +176,39 @@ exports.exportCreditCardExpenses = async (req, res) => {
     }
     
     try {
-        const [year, month] = billMonth.split('-');
-        const startDate = dayjs(`${year}-${month}-01`).startOf('month').format('YYYY-MM-DD');
-        const endDate = dayjs(startDate).endOf('month').format('YYYY-MM-DD');
+        // Buscar cartão para obter fechamento e vencimento
+        const card = await CreditCard.findByPk(cardId);
+        if (!card) {
+          return res.status(404).send('Cartão não encontrado');
+        }
 
-        console.log('exportCreditCardExpenses: Calculated period:', startDate, 'to', endDate);
+        // Função utilitária (mesma regra usada no creditCardController)
+        function getBillPeriodForMonth(closingDay, dueDay, year, month) {
+          let start, end;
+          if (closingDay > dueDay) {
+            // Fechamento no mês anterior ao vencimento
+            start = new Date(year, month - 2, closingDay);
+            start.setHours(0, 0, 0, 0);
+            end = new Date(year, month - 1, closingDay - 1);
+            end.setHours(23, 59, 59, 999);
+          } else {
+            // Fechamento no mesmo mês do vencimento
+            start = new Date(year, month - 1, closingDay);
+            start.setHours(0, 0, 0, 0);
+            end = new Date(year, month, closingDay - 1);
+            end.setHours(23, 59, 59, 999);
+          }
+          return { start, end };
+        }
+
+        const [yearStr, monthStr] = billMonth.split('-');
+        const year = Number(yearStr);
+        const month = Number(monthStr); // 1-12 (mês de vencimento)
+        const period = getBillPeriodForMonth(card.closing_day, card.due_day, year, month - 1);
+        const startDate = dayjs(period.start).format('YYYY-MM-DD');
+        const endDate = dayjs(period.end).format('YYYY-MM-DD');
+
+        console.log('exportCreditCardExpenses: Calculated bill period:', startDate, 'to', endDate);
 
         const expenses = await Expense.findAll({
             where: {
@@ -189,13 +222,16 @@ exports.exportCreditCardExpenses = async (req, res) => {
         console.log('exportCreditCardExpenses: Found expenses:', expenses.length);
 
         // Preparar dados para CSV
-        const csvData = expenses.map(expense => ({
-            'Data da Compra': dayjs(expense.date).format('DD/MM/YYYY'),
-            'Data de Vencimento': dayjs(expense.due_date).format('DD/MM/YYYY'),
-            'Descrição': expense.description,
-            'Categoria': expense.category || '',
-            'Valor': Number(expense.value).toFixed(2).replace('.', ',')
-        }));
+        const csvData = expenses.map(expense => {
+            const purchaseDate = expense.date || expense.createdAt || expense.due_date; // fallback
+            return {
+              'Data da Compra': dayjs(purchaseDate).format('DD/MM/YYYY'),
+              'Data de Vencimento': dayjs(expense.due_date).format('DD/MM/YYYY'),
+              'Descrição': expense.description,
+              'Categoria': expense.category || '',
+              'Valor': Number(expense.value).toFixed(2).replace('.', ',')
+            };
+        });
 
         console.log('exportCreditCardExpenses: Prepared CSV data:', csvData.length, 'rows');
 
@@ -205,7 +241,7 @@ exports.exportCreditCardExpenses = async (req, res) => {
         const csv = json2csvParser.parse(csvData);
 
         res.header('Content-Type', 'text/csv; charset=utf-8');
-        res.attachment(`fatura_cartao_${cardId}_${month}_${year}.csv`);
+        res.attachment(`fatura_cartao_${cardId}_${String(month).padStart(2, '0')}_${year}.csv`);
         return res.send('\uFEFF' + csv); // BOM para Excel
 
     } catch (error) {
