@@ -352,15 +352,26 @@ function CreditCards({ token }) {
     // month (m) representa o MÊS DE VENCIMENTO
     const vencimento = dayjs(`${year}-${String(m).padStart(2, '0')}-${String(dueDay).padStart(2, '0')}`);
 
-    // Fechamento desta fatura: se closingDay > dueDay, fechamento acontece no mês anterior ao vencimento; caso contrário, no mesmo mês
-    const fechamentoMonth = closingDay > dueDay ? (m - 1) : m; // 1-12 possivelmente 0 (deixa o Date/Dayjs ajustar abaixo)
-    const fechamento = dayjs(new Date(year, fechamentoMonth - 1, closingDay));
-
-    // Período de compras desta fatura (INCLUSIVO):
-    // start = dia 'closingDay' de (m-2)
-    // end = dia anterior ao 'closingDay' de (m-1)
-    const start = dayjs(new Date(year, (m - 1) - 2, closingDay)).startOf('day');
-    const end = dayjs(new Date(year, (m - 1) - 1, closingDay)).subtract(1, 'day').endOf('day');
+    let start;
+    let end;
+    let fechamento;
+    if (closingDay > dueDay) {
+      // Fechamento ocorre no mês anterior ao vencimento
+      // start = dia 'closingDay' de (m-2)
+      start = dayjs(new Date(year, (m - 1) - 2, closingDay)).startOf('day');
+      // end = dia (closingDay-1) de (m-1)
+      end = dayjs(new Date(year, (m - 1) - 1, closingDay - 1)).endOf('day');
+      // fechamento nesse caso é em (m-1)
+      fechamento = dayjs(new Date(year, (m - 1) - 1, closingDay));
+    } else {
+      // Fechamento ocorre no mesmo mês do vencimento
+      // start = dia 'closingDay' de (m-1)
+      start = dayjs(new Date(year, (m - 1) - 1, closingDay)).startOf('day');
+      // end = dia (closingDay-1) de (m)
+      end = dayjs(new Date(year, (m - 1) - 0, closingDay - 1)).endOf('day');
+      // fechamento nesse caso é em (m)
+      fechamento = dayjs(new Date(year, (m - 1) - 0, closingDay));
+    }
 
     return { start, end, fechamento, vencimento };
   }
