@@ -183,8 +183,8 @@ exports.getBill = async (req, res) => {
       where: {
         user_id: req.user.id,
         credit_card_id: card.id,
-        // Usar data de lançamento (createdAt) para período da fatura
-        createdAt: { [Op.between]: [periods.atual.start, periods.atual.end] },
+        // Usar data da compra (due_date) para período da fatura
+        due_date: { [Op.between]: [periods.atual.start, periods.atual.end] },
         status: { [Op.ne]: 'paga' }, // Só despesas em aberto
       },
     });
@@ -194,7 +194,8 @@ exports.getBill = async (req, res) => {
       where: {
         user_id: req.user.id,
         credit_card_id: card.id,
-        createdAt: { [Op.between]: [periods.proxima.start, periods.proxima.end] },
+        // Usar data da compra (due_date) para próxima fatura
+        due_date: { [Op.between]: [periods.proxima.start, periods.proxima.end] },
       },
     });
     console.log('[getBill] Despesas próxima fatura:', proxima);
@@ -254,16 +255,50 @@ exports.pay = async (req, res) => {
         end: periodoFatura.end,
         bill_month
       });
+      console.log('[PAGAMENTO] Período da fatura:', {
+        start: periodoFatura.start.toISOString(),
+        end: periodoFatura.end.toISOString(),
+        bill_month
+      });
+      
+      // PRIMEIRO: Verificar se há despesas em geral para o cartão (sem filtro de data)
+      const todasDespesas = await Expense.findAll({
+        where: {
+          user_id: userId,
+          credit_card_id: card.id,
+        },
+      });
+      console.log('[PAGAMENTO] Total de despesas do cartão (sem filtro):', todasDespesas.length);
+      todasDespesas.forEach(d => console.log('  ', {
+        id: d.id,
+        description: d.description,
+        createdAt: d.createdAt,
+        created_at: d.dataValues.created_at || 'n/a',
+        status: d.status,
+        valor: d.value
+      }));
+      
+      // Buscar despesas do período
       despesasFatura = await Expense.findAll({
         where: {
           user_id: userId,
           credit_card_id: card.id,
-          // Usar data de lançamento (createdAt) dentro do período inclusivo
-          createdAt: { [Op.between]: [periodoFatura.start, periodoFatura.end] },
+          // Usar data da compra (due_date) dentro do período inclusivo
+          due_date: { [Op.between]: [periodoFatura.start, periodoFatura.end] },
           status: { [Op.ne]: 'paga' },
         },
       });
-      console.log('[PAGAMENTO] Despesas encontradas para pagamento:', despesasFatura.map(d => ({ id: d.id, createdAt: d.createdAt, status: d.status, valor: d.value })));
+      
+      console.log('[PAGAMENTO] Despesas encontradas no período para pagamento:', despesasFatura.length);
+      despesasFatura.forEach(d => console.log('  ', {
+        id: d.id,
+        description: d.description,
+        createdAt: d.createdAt,
+        created_at: d.dataValues.created_at || 'n/a',
+        status: d.status,
+        valor: d.value
+      }));
+      
       valorPagamento = despesasFatura.reduce((acc, d) => acc + Number(d.value), 0);
       console.log('[PAGAMENTO] Valor total calculado para pagamento:', valorPagamento);
     }
