@@ -172,14 +172,15 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
       order: [['date', 'ASC']],
     });
 
-    // Despesas da conta
-    const despesas = await Expense.findAll({
+    // Despesas da conta: somente pagas, filtradas por paid_at
+    const despesasPagas = await Expense.findAll({
       where: {
         user_id: userId,
         account_id: accountId,
-        due_date: { [Op.gte]: firstDay, [Op.lte]: lastDay },
+        status: 'paga',
+        paid_at: { [Op.gte]: firstDay, [Op.lte]: lastDay },
       },
-      order: [['due_date', 'ASC']],
+      order: [['paid_at', 'ASC']],
     });
 
     // Transferências de saída (débito)
@@ -242,12 +243,12 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
         data: formatDateBR(r.date),
         categoria: r.category,
       })),
-      ...despesas.map(d => ({
+      ...despesasPagas.map(d => ({
         tipo: 'despesa',
         id: d.id,
         descricao: d.description,
         valor: -Number(d.value),
-        data: formatDateBR(d.due_date),
+        data: formatDateBR(d.paid_at),
         categoria: d.category,
       })),
       ...transferenciasSaida.map(t => ({

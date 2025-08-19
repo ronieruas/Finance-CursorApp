@@ -28,15 +28,17 @@ exports.exportAccountStatement = async (req, res) => {
   }
 
   try {
-    // Buscar despesas e receitas do período
+    // Buscar apenas MOVIMENTAÇÕES REALIZADAS no período
+    // Despesas: somente pagas e filtradas por paid_at
     const expenses = await Expense.findAll({
       where: {
         account_id: accountId,
-        due_date: {
+        status: 'paga',
+        paid_at: {
           [Op.between]: [start, end]
         }
       },
-      order: [['due_date', 'ASC']]
+      order: [['paid_at', 'ASC']]
     });
 
     const incomes = await Income.findAll({
@@ -49,7 +51,7 @@ exports.exportAccountStatement = async (req, res) => {
       order: [['date', 'ASC']]
     });
 
-    // Novos: transferências envolvendo a conta e pagamentos de fatura do cartão
+    // Transferências envolvendo a conta
     const transfers = await Transfer.findAll({
       where: {
         [Op.or]: [
@@ -70,17 +72,23 @@ exports.exportAccountStatement = async (req, res) => {
       order: [['payment_date', 'ASC']]
     });
 
-    console.log('exportAccountStatement: Found expenses:', expenses.length);
+    console.log('exportAccountStatement: Found expenses (paid):', expenses.length);
     console.log('exportAccountStatement: Found incomes:', incomes.length);
     console.log('exportAccountStatement: Found transfers:', transfers.length);
     console.log('exportAccountStatement: Found credit card payments:', ccPayments.length);
 
-    // Combinar e ordenar por data (considera due_date, date e payment_date)
-    const allTransactions = [...expenses, ...incomes, ...transfers, ...ccPayments].sort((a, b) => {
-      const dateA = new Date(a.due_date || a.date || a.payment_date);
-      const dateB = new Date(b.due_date || b.date || b.payment_date);
-      return dateA - dateB;
-    });
+    // Combinar e ordenar por data REAL da transação
+    const getTransactionDate = (item) => {
+      const modelName = item.constructor?.name;
+      if (modelName === 'Expense') return item.paid_at;
+      if (modelName === 'Income') return item.date;
+      if (modelName === 'Transfer') return item.date;
+      if (modelName === 'CreditCardPayment') return item.payment_date;
+      return item.due_date || item.date || item.payment_date;
+    };
+
+    const allTransactions = [...expenses, ...incomes, ...transfers, ...ccPayments]
+      .sort((a, b) => new Date(getTransactionDate(a)) - new Date(getTransactionDate(b)));
     
     console.log('exportAccountStatement: Combined transactions:', allTransactions.length);
 
@@ -125,7 +133,8 @@ exports.exportAccountStatement = async (req, res) => {
         }
       }
 
-      const dataTransacao = dayjs(item.due_date || item.date || item.payment_date).format('DD/MM/YYYY');
+      const dataReal = getTransactionDate(item);
+      const dataTransacao = dayjs(dataReal).format('DD/MM/YYYY');
 
       // Valor com sinal: Saída negativo, Entrada positivo
       const rawValue = Number(item.value) || 0;
