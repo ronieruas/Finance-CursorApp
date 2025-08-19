@@ -6,17 +6,26 @@ async function processExpenses() {
   try {
     console.log('Iniciando processamento de despesas automáticas...');
     
-    // 1. Processar despesas pendentes com data de pagamento futura que chegou
+    // 1. Processar despesas pendentes cuja data de pagamento chegou
     const today = new Date();
     const pendingExpenses = await Expense.findAll({
       where: {
         status: 'pendente',
-        paid_at: {
-          [Op.lte]: today
-        },
         account_id: {
           [Op.ne]: null
-        }
+        },
+        [Op.or]: [
+          // Agendadas explicitamente via paid_at
+          { paid_at: { [Op.lte]: today } },
+          // Não agendadas (paid_at nulo), mas com vencimento atingido (não débito automático)
+          {
+            [Op.and]: [
+              { paid_at: { [Op.is]: null } },
+              { due_date: { [Op.lte]: today } },
+              { [Op.or]: [ { auto_debit: false }, { auto_debit: { [Op.is]: null } } ] }
+            ]
+          }
+        ]
       }
     });
 

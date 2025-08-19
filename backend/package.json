@@ -21,7 +21,8 @@
     "db:seed-all": "npx sequelize db:seed:all",
     "reset-db": "npm run db:drop-all && npm run db:create-all && npm run db:migrate-all && npm run db:seed-all",
     "normalize:paid_at": "node scripts/normalize_paid_at.js",
-    "normalize:paid_at:apply": "node scripts/normalize_paid_at.js --apply"
+    "normalize:paid_at:apply": "node scripts/normalize_paid_at.js --apply",
+    "process-expenses": "node src/scripts/processExpenses.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.0",
