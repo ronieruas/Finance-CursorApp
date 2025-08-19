@@ -1,3 +1,5 @@
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const { Expense, Account } = require('../models');
 const { Op } = require('sequelize');
 const dayjs = require('dayjs');
