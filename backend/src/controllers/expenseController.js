@@ -1,5 +1,12 @@
 const { Expense, CreditCard, Account } = require('../models');
 
+// Utilidades para tratar datas "date-only" vindas do front (YYYY-MM-DD)
+const isDateOnly = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+const toLocalDate = (s) => {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d); // constrói no fuso local (evita voltar 1 dia)
+};
+
 exports.list = async (req, res) => {
   const { start, end, type, account_id, credit_card_id, category, status } = req.query;
   const where = { user_id: req.user.id };
@@ -43,10 +50,15 @@ exports.create = async (req, res) => {
       const valorParcela = Number(value) / totalParcelas;
       let despesas = [];
       for (let i = 1; i <= totalParcelas; i++) {
-        const dataParcela = new Date(due_date);
+        // Construir data base no fuso local para evitar deslocamento
+        const base = isDateOnly(due_date) ? toLocalDate(due_date) : new Date(due_date);
+        const dataParcela = new Date(base);
         dataParcela.setMonth(dataParcela.getMonth() + (i - 1));
         const safeStatus = typeof status !== 'undefined' && status !== null ? status : 'pendente';
-        const safePaidAt = typeof paid_at !== 'undefined' ? paid_at : null;
+        let safePaidAt = typeof paid_at !== 'undefined' ? paid_at : null;
+        if (safePaidAt && isDateOnly(safePaidAt)) {
+          safePaidAt = toLocalDate(safePaidAt);
+        }
         const expense = await Expense.create({
           user_id: req.user.id,
           credit_card_id,
@@ -73,6 +85,10 @@ exports.create = async (req, res) => {
       return res.status(201).json(despesas);
     } else {
       // Lançamento em conta normal
+      let normalizedPaidAt = typeof paid_at !== 'undefined' ? paid_at : null;
+      if (normalizedPaidAt && isDateOnly(normalizedPaidAt)) {
+        normalizedPaidAt = toLocalDate(normalizedPaidAt);
+      }
       const expense = await Expense.create({
         user_id: req.user.id,
         account_id,
@@ -83,7 +99,7 @@ exports.create = async (req, res) => {
         status,
         is_recurring: !!is_recurring,
         auto_debit: !!auto_debit,
-        paid_at
+        paid_at: normalizedPaidAt
       });
       // Deduzir valor do saldo da conta apenas se estiver paga
       if (account_id && status === 'paga') {
@@ -155,7 +171,13 @@ exports.update = async (req, res) => {
       }
     }
     
-    await expense.update({ description, value: newValue, due_date, category, status: newStatus, is_recurring, auto_debit, paid_at });
+    // Normalizar paid_at para data local quando vier como YYYY-MM-DD
+    let normalizedPaidAt = paid_at;
+    if (normalizedPaidAt && isDateOnly(normalizedPaidAt)) {
+      normalizedPaidAt = toLocalDate(normalizedPaidAt);
+    }
+    
+    await expense.update({ description, value: newValue, due_date, category, status: newStatus, is_recurring, auto_debit, paid_at: normalizedPaidAt });
     res.json(expense);
   } catch (err) {
     console.error('Erro ao editar despesa:', err);
