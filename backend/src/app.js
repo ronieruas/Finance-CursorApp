@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const routes = require('./routes');
-console.log('JWT_SECRET na inicialização:', process.env.JWT_SECRET);
+console.log('JWT_SECRET presente:', Boolean(process.env.JWT_SECRET));
 const authMiddleware = require('./middlewares/authMiddleware');
 
 const app = express();

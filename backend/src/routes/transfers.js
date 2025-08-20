@@ -21,8 +21,9 @@ router.get('/', authMiddleware, async (req, res) => {
 // Criar transferência
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    console.log('Dados recebidos para transferência:', req.body);
-    const { from_account_id, to_account_id, value, description, date, is_third_party } = req.body;
+-    console.log('Dados recebidos para transferência:', req.body);
++    // console.log('Dados recebidos para transferência: [REDACTED]');
+     const { from_account_id, to_account_id, value, description, date, is_third_party } = req.body;
     if (!value || !date) return res.status(400).json({ error: 'Dados obrigatórios.' });
     
     // Para transferência para terceiros, to_account_id pode ser null
@@ -39,10 +40,10 @@ router.post('/', authMiddleware, async (req, res) => {
       console.log('Criando transferência de terceiros para conta:', to_account_id);
       const to = await Account.findOne({ where: { id: to_account_id, user_id: req.user.id } });
       if (!to) return res.status(404).json({ error: 'Conta de destino não encontrada.' });
-      console.log('Conta de destino encontrada:', to.id, 'Saldo atual:', to.balance);
+      console.log('Conta de destino encontrada:', to.id);
       to.balance = Number(to.balance) + Number(value);
       await to.save();
-      console.log('Saldo atualizado para:', to.balance);
+      // saldo atualizado (omitido dos logs)
       transfer = await Transfer.create({ user_id: req.user.id, from_account_id: null, to_account_id, value, description, date });
       console.log('Transferência criada:', transfer.id);
     } else if (!to_account_id) {
@@ -52,10 +53,10 @@ router.post('/', authMiddleware, async (req, res) => {
       if (!from) return res.status(404).json({ error: 'Conta de origem não encontrada.' });
       if (Number(from.balance) < Number(value)) return res.status(400).json({ error: 'Saldo insuficiente.' });
       
-      console.log('Conta de origem encontrada:', from.id, 'Saldo atual:', from.balance);
+      console.log('Conta de origem encontrada:', from.id);
       from.balance = Number(from.balance) - Number(value);
       await from.save();
-      console.log('Saldo atualizado para:', from.balance);
+      // saldo atualizado (omitido dos logs)
       transfer = await Transfer.create({ user_id: req.user.id, from_account_id, to_account_id: null, value, description, date });
       console.log('Transferência criada:', transfer.id);
     } else {
@@ -68,8 +69,8 @@ router.post('/', authMiddleware, async (req, res) => {
       const to = await Account.findOne({ where: { id: to_account_id, user_id: req.user.id } });
       if (!to) return res.status(404).json({ error: 'Conta de destino não encontrada.' });
       
-      console.log('Conta de origem:', from.id, 'Saldo atual:', from.balance);
-      console.log('Conta de destino:', to.id, 'Saldo atual:', to.balance);
+      console.log('Conta de origem:', from.id);
+      console.log('Conta de destino:', to.id);
       
       // Debita da origem
       from.balance = Number(from.balance) - Number(value);
@@ -176,4 +177,4 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;

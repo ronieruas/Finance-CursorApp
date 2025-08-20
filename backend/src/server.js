@@ -68,16 +68,22 @@ server.on('error', (err) => {
 });
 
 // Adicionar um log para verificar se o servidor está realmente iniciando
-setTimeout(() => {
-  console.log('Server timeout check');
-}, 5000);
+// Evitar logs excessivos em produção
+const ENV = process.env.NODE_ENV || 'development';
+if (ENV !== 'development') {
+  // Remover interval/timeouts ruidosos em produção
+  // (manteremos apenas logs de start e erro)
+}
+// setTimeout(() => {
+//   console.log('Server timeout check');
+// }, 5000);
 
 console.log('Server started.');
 
 // Adicionar um log para verificar se o servidor está realmente iniciando
-setInterval(() => {
-  console.log('Server interval check');
-}, 10000);
+// setInterval(() => {
+//   console.log('Server interval check');
+// }, 10000);
 
 // Adicionar um log para verificar se o servidor está realmente iniciando
 app.get('/server-test', (req, res) => {
