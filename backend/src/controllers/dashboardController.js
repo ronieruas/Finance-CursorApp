@@ -238,25 +238,19 @@ exports.getDashboard = async (req, res) => {
       },
     }) || 0;
 
-    // Soma das faturas de cartões de crédito fechadas ou a fechar no mês vigente
+    // Faturas dos cartões que VENCEM no mês vigente (ciclo: período com base em fechamento/vencimento de cada cartão)
     let faturasCartaoMesVigente = 0;
-    if (cardIds.length > 0) {
-      // Base para determinar a fatura que VENCE no mês vigente (usa o fim do período atual)
-      const baseDateFatura = lastDay;
+    if (creditCards && creditCards.length > 0) {
+      const baseDateFatura = lastDay; // mês vigente do Dashboard (vencimento)
+      const vencimentoYear = baseDateFatura.getFullYear();
+      const vencimentoMonth = baseDateFatura.getMonth(); // 0-11
       for (const card of creditCards) {
-        // Fechamento do mês PASSADO (fatura que vence neste mês)
-        const closingPrevMonth = new Date(baseDateFatura.getFullYear(), baseDateFatura.getMonth() - 1, card.closing_day);
-        const closingTwoMonthsAgo = new Date(baseDateFatura.getFullYear(), baseDateFatura.getMonth() - 2, card.closing_day);
-        // Período da fatura que vence neste mês
-        const billPeriodStart = new Date(closingTwoMonthsAgo.getFullYear(), closingTwoMonthsAgo.getMonth(), closingTwoMonthsAgo.getDate() + 1);
-        const billPeriodEnd = new Date(closingPrevMonth.getFullYear(), closingPrevMonth.getMonth(), closingPrevMonth.getDate());
-
+        const { start: billPeriodStart, end: billPeriodEnd } = getBillPeriodForMonth(card.closing_day, card.due_day, vencimentoYear, vencimentoMonth);
         const totalDoCartao = await models.Expense.sum('value', {
           where: {
             user_id: userId,
             credit_card_id: card.id,
             due_date: { [Op.between]: [billPeriodStart, billPeriodEnd] },
-            // incluir despesas pagas e a pagar
           },
         }) || 0;
         faturasCartaoMesVigente += totalDoCartao;
@@ -426,33 +420,18 @@ exports.getMonthlySummary = async (req, res) => {
       },
     }) || 0;
 
-    // 3. Soma das faturas dos cartões de crédito que fecham ou já estão fechadas no mês vigente
+    // 3. Soma das faturas de cartões de crédito que VENCEM no mês vigente (ciclo de cartão)
     let totalCreditCardBills = 0;
     const creditCards = await models.CreditCard.findAll({ where: { user_id: userId, status: 'ativa' } });
-
+    const vencimentoYear = baseDate.getFullYear();
+    const vencimentoMonth = baseDate.getMonth();
     for (const card of creditCards) {
-      // Calcular a data de fechamento da fatura para o mês atual (baseado em baseDate)
-      let closingDayThisMonth = new Date(baseDate.getFullYear(), baseDate.getMonth(), card.closing_day);
-      // Se o dia de fechamento já passou neste mês, a fatura é do próximo mês
-      if (baseDate.getDate() > card.closing_day) {
-        closingDayThisMonth = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, card.closing_day);
-      }
-
-      // A data de vencimento da fatura é geralmente um mês após o fechamento
-      const billDueDate = new Date(closingDayThisMonth.getFullYear(), closingDayThisMonth.getMonth() + 1, card.due_day);
-
-      // Considerar despesas com due_date no mês vigente da fatura
-      // O período da fatura vai do dia de fechamento do mês anterior até o dia de fechamento do mês atual
-      const previousMonthClosingDay = new Date(closingDayThisMonth.getFullYear(), closingDayThisMonth.getMonth() - 1, card.closing_day);
-      const billPeriodStart = new Date(previousMonthClosingDay.getFullYear(), previousMonthClosingDay.getMonth(), previousMonthClosingDay.getDate() + 1);
-      const billPeriodEnd = new Date(closingDayThisMonth.getFullYear(), closingDayThisMonth.getMonth(), closingDayThisMonth.getDate());
-
+      const { start: billPeriodStart, end: billPeriodEnd } = getBillPeriodForMonth(card.closing_day, card.due_day, vencimentoYear, vencimentoMonth);
       const cardExpenses = await models.Expense.sum('value', {
         where: {
           user_id: userId,
           credit_card_id: card.id,
           due_date: { [Op.between]: [billPeriodStart, billPeriodEnd] },
-          // status: { [Op.ne]: 'paga' }, // Removido: devemos considerar pagas e a pagar
         },
       }) || 0;
       totalCreditCardBills += cardExpenses;
@@ -471,4 +450,22 @@ exports.getMonthlySummary = async (req, res) => {
     console.error('Erro ao buscar resumo mensal:', error);
     res.status(500).json({ error: 'Erro ao buscar resumo mensal' });
   }
+};
+const getBillPeriodForMonth = (closingDay, dueDay, year, month) => {
+  // month 0-11 representa o MÊS DE VENCIMENTO da fatura
+  let start, end;
+  if (closingDay > dueDay) {
+    // Fechamento ocorre logicamente dois meses antes do vencimento (janela se inicia em M-2 e termina em M-1)
+    start = new Date(year, month - 2, closingDay);
+    start.setHours(0, 0, 0, 0);
+    end = new Date(year, month - 1, closingDay - 1);
+    end.setHours(23, 59, 59, 999);
+  } else {
+    // Fechamento ocorre no mês anterior ou no próprio mês do vencimento (janela M-1 .. M)
+    start = new Date(year, month - 1, closingDay);
+    start.setHours(0, 0, 0, 0);
+    end = new Date(year, month, closingDay - 1);
+    end.setHours(23, 59, 59, 999);
+  }
+  return { start, end };
 };
