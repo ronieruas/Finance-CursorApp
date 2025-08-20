@@ -378,27 +378,23 @@ exports.getDashboard = async (req, res) => {
 
 exports.getMonthlySummary = async (req, res) => {
   try {
--    const userId = req.user.id;
--    const today = new Date();
--    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
--    const currentMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-+    const userId = req.user.id;
-+    // Permitir filtrar por timestamp (ms ou data ISO). Se inválido ou ausente, usar hoje.
-+    const { timestamp } = req.query || {};
-+    let baseDate = null;
-+    if (timestamp) {
-+      const asNumber = Number(timestamp);
-+      if (!Number.isNaN(asNumber) && isFinite(asNumber)) {
-+        baseDate = new Date(asNumber);
-+      } else {
-+        const parsed = new Date(timestamp);
-+        if (!isNaN(parsed.getTime())) baseDate = parsed;
-+      }
-+    }
-+    if (!baseDate) baseDate = new Date();
-+
-+    const currentMonthStart = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
-+    const currentMonthEnd = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
+    const userId = req.user.id;
+    // Permitir filtrar por timestamp (ms ou data ISO). Se inválido ou ausente, usar hoje.
+    const { timestamp } = req.query || {};
+    let baseDate = null;
+    if (timestamp) {
+      const asNumber = Number(timestamp);
+      if (!Number.isNaN(asNumber) && isFinite(asNumber)) {
+        baseDate = new Date(asNumber);
+      } else {
+        const parsed = new Date(timestamp);
+        if (!isNaN(parsed.getTime())) baseDate = parsed;
+      }
+    }
+    if (!baseDate) baseDate = new Date();
+
+    const currentMonthStart = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+    const currentMonthEnd = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
 
     // 1. Soma das Receitas do Mês vigente
     const totalIncomes = await models.Income.sum('value', {
@@ -423,20 +419,14 @@ exports.getMonthlySummary = async (req, res) => {
 
     for (const card of creditCards) {
       // Calcular a data de fechamento da fatura para o mês atual (baseado em baseDate)
--      let closingDayThisMonth = new Date(today.getFullYear(), today.getMonth(), card.closing_day);
--      // Se o dia de fechamento já passou neste mês, a fatura é do próximo mês
--      if (today.getDate() > card.closing_day) {
--        closingDayThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, card.closing_day);
--      }
-+      let closingDayThisMonth = new Date(baseDate.getFullYear(), baseDate.getMonth(), card.closing_day);
-+      // Se o dia de fechamento já passou neste mês, a fatura é do próximo mês
-+      if (baseDate.getDate() > card.closing_day) {
-+        closingDayThisMonth = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, card.closing_day);
-+      }
+      let closingDayThisMonth = new Date(baseDate.getFullYear(), baseDate.getMonth(), card.closing_day);
+      // Se o dia de fechamento já passou neste mês, a fatura é do próximo mês
+      if (baseDate.getDate() > card.closing_day) {
+        closingDayThisMonth = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, card.closing_day);
+      }
 
       // A data de vencimento da fatura é geralmente um mês após o fechamento
--      const billDueDate = new Date(closingDayThisMonth.getFullYear(), closingDayThisMonth.getMonth() + 1, card.due_day);
-+      const billDueDate = new Date(closingDayThisMonth.getFullYear(), closingDayThisMonth.getMonth() + 1, card.due_day);
+      const billDueDate = new Date(closingDayThisMonth.getFullYear(), closingDayThisMonth.getMonth() + 1, card.due_day);
 
       // Considerar despesas com due_date no mês vigente da fatura
       // O período da fatura vai do dia de fechamento do mês anterior até o dia de fechamento do mês atual
