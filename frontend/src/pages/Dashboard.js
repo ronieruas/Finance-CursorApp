@@ -40,6 +40,10 @@ function Dashboard({ token }) {
   const [despesasMesVigente, setDespesasMesVigente] = useState(0);
   const [faturasCartaoMesVigente, setFaturasCartaoMesVigente] = useState(0);
 
+  // Cálculos derivados para o Resumo Mensal
+  const despesasTotais = Number(despesasMesVigente) + Number(faturasCartaoMesVigente);
+  const saldoMensal = Number(receitasMesVigente) - despesasTotais;
+
   // Estrutura pronta para integração futura com backend
   useEffect(() => {
     fetchDashboard();
@@ -137,28 +141,38 @@ function Dashboard({ token }) {
               <span style={{ color: '#22c55e' }}>R$ {Number(receitasMesVigente).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600 }}>
-              <span>Despesas (mês):</span>
+              <span>Despesas gerais:</span>
               <span style={{ color: '#ef4444' }}>R$ {Number(despesasMesVigente).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600 }}>
-              <span>Faturas Cartão:</span>
+              <span>Faturas dos Cartões:</span>
               <span style={{ color: '#8b5cf6' }}>R$ {Number(faturasCartaoMesVigente).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 700 }}>
+              <span>Despesas totais:</span>
+              <span style={{ color: '#ef4444' }}>R$ {Number(despesasTotais).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
             <div style={{ borderTop: '1px solid #eee', paddingTop: 2, marginTop: 2, display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 700 }}>
               <span>Saldo:</span>
-              <span style={{ color: (receitasMesVigente - despesasMesVigente - faturasCartaoMesVigente) >= 0 ? '#22c55e' : '#ef4444' }}>R$ {Number(receitasMesVigente - despesasMesVigente - faturasCartaoMesVigente).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <span style={{ color: saldoMensal >= 0 ? '#22c55e' : '#ef4444' }}>R$ {Number(saldoMensal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
-            <ResponsiveContainer width="100%" height={120}>
-              <BarChart data={[
-                { name: 'Receitas', Receitas: receitasMesVigente, Despesas: 0 },
-                { name: 'Despesas', Receitas: 0, Despesas: despesasMesVigente + faturasCartaoMesVigente }
-              ]} margin={{ left: 0, right: 0, top: 4, bottom: 0 }} barSize={35} barCategoryGap={-15}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="name" stroke="#888" fontSize={11} />
-                <YAxis stroke="#888" fontSize={11} />
+            <ResponsiveContainer width="100%" height={140}>
+              <BarChart
+                layout="vertical"
+                data={[
+                  { name: 'Receitas', Receitas: Number(receitasMesVigente), DespesasTotais: 0 },
+                  { name: 'Despesas totais', Receitas: 0, DespesasTotais: Number(despesasTotais) },
+                ]}
+                margin={{ left: 8, right: 8, top: 6, bottom: 6 }}
+                barSize={22}
+                barCategoryGap={12}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal vertical={false} />
+                <XAxis type="number" stroke="#888" fontSize={11} />
+                <YAxis type="category" dataKey="name" stroke="#888" fontSize={11} width={110} />
                 <Tooltip formatter={v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
-                <Bar dataKey="Receitas" fill="#2563eb" />
-                <Bar dataKey="Despesas" fill="#ef4444" />
+                <Bar dataKey="Receitas" fill="#2563eb" radius={[4, 4, 4, 4]} />
+                <Bar dataKey="DespesasTotais" fill="#ef4444" radius={[4, 4, 4, 4]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
