@@ -21,9 +21,8 @@ router.get('/', authMiddleware, async (req, res) => {
 // Criar transferência
 router.post('/', authMiddleware, async (req, res) => {
   try {
--    console.log('Dados recebidos para transferência:', req.body);
-+    // console.log('Dados recebidos para transferência: [REDACTED]');
-     const { from_account_id, to_account_id, value, description, date, is_third_party } = req.body;
+    // console.log('Dados recebidos para transferência: [REDACTED]');
+    const { from_account_id, to_account_id, value, description, date, is_third_party } = req.body;
     if (!value || !date) return res.status(400).json({ error: 'Dados obrigatórios.' });
     
     // Para transferência para terceiros, to_account_id pode ser null
