@@ -18,26 +18,26 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
     try {
       console.log('--- AuthController: Tentativa de login recebida ---');
-      console.log('Request body:', req.body);
+      // console.log('Request body:', '[REDACTED]');
       const { email, password } = req.body;
     const user = await User.findOne({ where: { email } });
     if (!user) {
-      console.log('Login attempt failed: User not found for email:', email);
+      console.log('Login failed: invalid credentials');
       return res.status(401).json({ error: 'Credenciais inválidas.' });
     }
 
-    console.log('User found:', user.toJSON()); // Log do usuário encontrado
+    console.log('Usuário encontrado:', user.id);
 
     const valid = await bcrypt.compare(password, user.password);
 
     console.log('Password validation result:', valid); // Log do resultado da comparação
 
     if (!valid) {
-      console.log('Login attempt failed: Invalid password for user:', email);
+      console.log('Login failed: invalid credentials');
       return res.status(401).json({ error: 'Credenciais inválidas.' });
     }
     const jwtSecret = process.env.JWT_SECRET;
-    console.log('JWT_SECRET usado para assinar o token:', jwtSecret);
+    // [sanitized] Não logar o valor de JWT_SECRET aqui
     if (!jwtSecret) {
       console.error('JWT_SECRET não está definido ao assinar o token!');
       return res.status(500).json({ error: 'Erro interno do servidor: JWT_SECRET não configurado.' });

@@ -2,11 +2,11 @@ const jwt = require('jsonwebtoken');
 
 module.exports = (req, res, next) => {
   const authHeader = req.headers.authorization;
-  console.log('AuthMiddleware: authHeader:', authHeader);
+  console.log('AuthMiddleware: auth header presente:', Boolean(authHeader));
   if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
 
   [, token] = authHeader.split(' ');
-  console.log('AuthMiddleware: token:', token);
+  console.log('AuthMiddleware: token presente:', Boolean(token));
   if (!token) return res.status(401).json({ error: 'Token mal formatado.' });
 
   try {
