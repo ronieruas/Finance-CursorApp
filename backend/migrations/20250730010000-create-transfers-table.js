@@ -31,7 +31,7 @@ module.exports = {
       },
       to_account_id: {
         type: Sequelize.INTEGER,
-        allowNull: false,
+        allowNull: true,
         references: {
           model: 'accounts',
           key: 'id'
@@ -73,4 +73,4 @@ module.exports = {
   down: async (queryInterface, Sequelize) => {
     await queryInterface.dropTable('transfers');
   }
-}; 
+};
