@@ -43,6 +43,8 @@ function Dashboard({ token }) {
   // Cálculos derivados para o Resumo Mensal
   const despesasTotais = Number(despesasMesVigente) + Number(faturasCartaoMesVigente);
   const saldoMensal = Number(receitasMesVigente) - despesasTotais;
+  const maxComparativo = Math.max(Number(receitasMesVigente) || 0, Number(despesasTotais) || 0);
+  const domainMax = maxComparativo > 0 ? Math.ceil(maxComparativo * 1.1) : 100;
 
   // Estrutura pronta para integração futura com backend
   useEffect(() => {
@@ -160,16 +162,16 @@ function Dashboard({ token }) {
               <BarChart
                 layout="vertical"
                 data={[
-                  { name: 'Receitas', Receitas: Number(receitasMesVigente), DespesasTotais: 0 },
-                  { name: 'Despesas totais', Receitas: 0, DespesasTotais: Number(despesasTotais) },
+                  { name: 'Mês', Receitas: Number(receitasMesVigente), DespesasTotais: Number(despesasTotais) },
                 ]}
                 margin={{ left: 8, right: 8, top: 6, bottom: 6 }}
                 barSize={22}
-                barCategoryGap={12}
+                barGap={8}
+                barCategoryGap={16}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal vertical={false} />
-                <XAxis type="number" stroke="#888" fontSize={11} />
-                <YAxis type="category" dataKey="name" stroke="#888" fontSize={11} width={110} />
+                <XAxis type="number" stroke="#888" fontSize={11} domain={[0, domainMax]} />
+                <YAxis type="category" dataKey="name" stroke="#888" fontSize={11} width={60} />
                 <Tooltip formatter={v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
                 <Bar dataKey="Receitas" fill="#2563eb" radius={[4, 4, 4, 4]} />
                 <Bar dataKey="DespesasTotais" fill="#ef4444" radius={[4, 4, 4, 4]} />

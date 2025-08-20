@@ -234,20 +234,33 @@ exports.getDashboard = async (req, res) => {
       where: {
         user_id: userId,
         due_date: { [Op.between]: [firstDay, lastDay] },
+        credit_card_id: null, // Excluir despesas de cartão de crédito — apenas despesas gerais
       },
     }) || 0;
 
     // Soma das faturas de cartões de crédito fechadas ou a fechar no mês vigente
     let faturasCartaoMesVigente = 0;
     if (cardIds.length > 0) {
-      faturasCartaoMesVigente = await models.Expense.sum('value', {
-        where: {
-          user_id: userId,
-          due_date: { [Op.between]: [firstDay, lastDay] },
-          credit_card_id: { [Op.in]: cardIds },
-          status: { [Op.ne]: 'paga' }, // Considerar apenas despesas não pagas
-        },
-      }) || 0;
+      // Base para determinar a fatura que VENCE no mês vigente (usa o fim do período atual)
+      const baseDateFatura = lastDay;
+      for (const card of creditCards) {
+        // Fechamento do mês PASSADO (fatura que vence neste mês)
+        const closingPrevMonth = new Date(baseDateFatura.getFullYear(), baseDateFatura.getMonth() - 1, card.closing_day);
+        const closingTwoMonthsAgo = new Date(baseDateFatura.getFullYear(), baseDateFatura.getMonth() - 2, card.closing_day);
+        // Período da fatura que vence neste mês
+        const billPeriodStart = new Date(closingTwoMonthsAgo.getFullYear(), closingTwoMonthsAgo.getMonth(), closingTwoMonthsAgo.getDate() + 1);
+        const billPeriodEnd = new Date(closingPrevMonth.getFullYear(), closingPrevMonth.getMonth(), closingPrevMonth.getDate());
+
+        const totalDoCartao = await models.Expense.sum('value', {
+          where: {
+            user_id: userId,
+            credit_card_id: card.id,
+            due_date: { [Op.between]: [billPeriodStart, billPeriodEnd] },
+            // incluir despesas pagas e a pagar
+          },
+        }) || 0;
+        faturasCartaoMesVigente += totalDoCartao;
+      }
     }
     
     const recentes = recentesRaw
@@ -439,7 +452,7 @@ exports.getMonthlySummary = async (req, res) => {
           user_id: userId,
           credit_card_id: card.id,
           due_date: { [Op.between]: [billPeriodStart, billPeriodEnd] },
-          status: { [Op.ne]: 'paga' }, // Considerar apenas despesas não pagas para o cálculo da fatura
+          // status: { [Op.ne]: 'paga' }, // Removido: devemos considerar pagas e a pagar
         },
       }) || 0;
       totalCreditCardBills += cardExpenses;
