@@ -7,7 +7,6 @@ COPY backend/package*.json ./
 
 # Instalar dependências com otimizações
 RUN apk update && apk add --no-cache curl tzdata && npm install --only=production --no-audit --no-fund
-RUN npm install json2csv
 RUN npm install --save-dev sequelize-cli --no-audit --no-fund
 
 # Copiar código fonte
