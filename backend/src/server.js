@@ -4,6 +4,44 @@ require('dotenv').config();
 
 console.log('Loading dotenv...');
 
+// Inicialização automática do JWT_SECRET se não estiver definido
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+
+function ensureJwtSecret() {
+  try {
+    if (!process.env.JWT_SECRET) {
+      const secretFile = path.join(__dirname, '..', '.jwt_secret');
+      let secret = '';
+      if (fs.existsSync(secretFile)) {
+        try {
+          secret = (fs.readFileSync(secretFile, 'utf8') || '').trim();
+        } catch (readErr) {
+          console.warn('Falha ao ler .jwt_secret:', readErr.message);
+        }
+      }
+      if (!secret) {
+        secret = crypto.randomBytes(64).toString('hex');
+        try {
+          fs.writeFileSync(secretFile, secret, { encoding: 'utf8', mode: 0o600 });
+          console.log('JWT_SECRET gerado automaticamente e salvo em backend/.jwt_secret');
+        } catch (writeErr) {
+          console.warn('Falha ao salvar .jwt_secret, o segredo será efêmero:', writeErr.message);
+        }
+      } else {
+        console.log('JWT_SECRET carregado de backend/.jwt_secret');
+      }
+      process.env.JWT_SECRET = secret;
+    }
+  } catch (e) {
+    console.warn('Não foi possível garantir JWT_SECRET, gerando segredo efêmero:', e.message);
+    process.env.JWT_SECRET = crypto.randomBytes(64).toString('hex');
+  }
+}
+
+ensureJwtSecret();
+
 // Importar cron job para processamento automático
 require('./scripts/cron');
 
