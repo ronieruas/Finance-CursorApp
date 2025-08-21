@@ -129,11 +129,10 @@ exports.getDashboard = async (req, res) => {
           },
         }) || 0
 
-        // Períodos de fatura com base na data de referência (lastDay)
+        // Períodos de fatura baseados NA DATA ATUAL, para alinhar com a aba "Cartões"
+        const refDateBills = new Date()
         const periods = getBillPeriodsFromRef(card.closing_day, card.due_day, refDateBills)
-        // Determinar período ABERTO (em andamento)
-        const isRefInAtual = periods.atual.start <= refDateBills && refDateBills <= periods.atual.end
-        const openPeriod = isRefInAtual ? periods.atual : periods.proxima
+        const openPeriod = periods.atual
 
         // Fatura atual (valor em aberto): despesas não pagas dentro do período aberto
         const faturaAtualValor = await models.Expense.sum('value', {
@@ -141,7 +140,6 @@ exports.getDashboard = async (req, res) => {
             user_id: userId,
             credit_card_id: card.id,
             due_date: { [Op.between]: [formatDateOnly(openPeriod.start), formatDateOnly(openPeriod.end)] },
-            status: { [Op.ne]: 'paga' },
           },
         }) || 0
 
@@ -470,11 +468,17 @@ exports.getDashboard = async (req, res) => {
       saldoEvolucao.push({ data: dataStr, saldo: saldo })
     }
 
-    // Quadro separado: Poupança e Investimentos
-    const contasPoupInv = await models.Account.findAll({ where: { user_id: userId, status: 'ativa', currency: { [Op.or]: [null, 'BRL'] }, type: { [Op.in]: ['poupanca', 'investimento'] } } })
+    // Quadro separado: Poupança e Investimentos (com totais por moeda)
+    const contasPoupInv = await models.Account.findAll({ where: { user_id: userId, status: 'ativa', type: { [Op.in]: ['poupanca', 'investimento'] } } })
+    const totalsByCurrency = {}
+    contasPoupInv.forEach(acc => {
+      const cur = acc.currency || 'BRL'
+      totalsByCurrency[cur] = (totalsByCurrency[cur] || 0) + parseFloat(acc.balance)
+    })
     const poupancaInvestimentos = {
-      total: contasPoupInv.reduce((sum, acc) => sum + parseFloat(acc.balance), 0),
-      contas: contasPoupInv.map(acc => ({ id: acc.id, name: acc.name, type: acc.type, balance: Number(acc.balance) }))
+      total: Number(totalsByCurrency['BRL'] || 0), // somente BRL aqui
+      totais_por_moeda: Object.fromEntries(Object.entries(totalsByCurrency).map(([k, v]) => [k, Number(v)])),
+      contas: contasPoupInv.map(acc => ({ id: acc.id, name: acc.name, type: acc.type, currency: acc.currency || 'BRL', balance: Number(acc.balance) }))
     }
 
     res.json({
