@@ -93,12 +93,51 @@ free -h                  # Memória disponível
 - **Site**: https://seudominio.com/
 - **API**: https://seudominio.com/api/
 
-### 📊 Credenciais Padrão
+### 🔐 Usuários e Senhas
 
-- **Usuário**: admin@finance.com
-- **Senha**: admin123
+- Produção: por segurança, não existe um usuário padrão habilitado automaticamente.
+- Administrador (opcional): para criar/atualizar rapidamente um usuário admin, execute dentro do container do backend:
+  
+  ```bash
+  docker exec finance-backend node src/scripts/seedAdmin.js
+  ```
+  
+  - Você pode informar e-mail e senha apenas para este comando usando variáveis de ambiente:
+    
+    ```bash
+    docker exec -e ADMIN_EMAIL="admin@seudominio.com" -e ADMIN_PASS="SenhaForte#2025" \
+      finance-backend node src/scripts/seedAdmin.js
+    ```
+  - Se não informar variáveis, serão usados os valores padrão do script:
+    - Email: `admin@admin.com`
+    - Senha: `admin123`
+  - Alternativamente, defina `ADMIN_EMAIL` e `ADMIN_PASS` fixos na seção `environment` do serviço `backend` no `docker-compose.yml` e rode o comando acima.
 
-**⚠️ IMPORTANTE**: Altere essas credenciais após primeiro login em produção!
+- Usuário de exemplo (opcional, para desenvolvimento): para criar `user@example.com` com senha `password123`, rode a seed específica:
+  
+  ```bash
+  docker exec -it finance-backend npx sequelize db:seed --seed 20240101000000-create-default-user.js
+  ```
+
+- Recomendações:
+  - Altere imediatamente qualquer credencial padrão criada via seed/script.
+  - Utilize senhas fortes e únicas para cada usuário.
+
+### Política de força de senha
+
+As APIs de registro, troca de senha e criação de usuário exigem senhas que atendam aos critérios abaixo:
+- Mínimo de 8 caracteres
+- Pelo menos 1 letra maiúscula (A–Z)
+- Pelo menos 1 letra minúscula (a–z)
+- Pelo menos 1 número (0–9)
+- Pelo menos 1 caractere especial (por exemplo: !@#$%^&*...)
+
+Se a regra não for atendida, a API responde com erro no formato: `Senha fraca: inclua ...`.
+
+### Armazenamento e segurança de senhas
+
+- As senhas são armazenadas de forma segura utilizando hash com `bcryptjs` (fator de custo 10) antes de serem salvas no banco de dados.
+- Ao alterar a senha, o sistema atualiza o campo de auditoria `password_changed_at`; com isso, tokens JWT emitidos antes dessa data são invalidados automaticamente, exigindo novo login.
 
 ## 🔧 Comandos Úteis
 

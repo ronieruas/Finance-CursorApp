@@ -90,6 +90,43 @@ docker compose build --no-cache backend && docker compose up -d backend
 - Altere senhas padrão do banco, se aplicável
 - Restrinja acesso ao host e habilite firewall quando possível
 
+## Usuários e Senhas
+
+1) Criar/atualizar usuário administrador (produção)
+
+- Por padrão, nenhum administrador é criado automaticamente no ambiente Docker. Para criar ou atualizar o admin, execute dentro do container do backend:
+
+```bash
+docker exec finance-backend node src/scripts/seedAdmin.js
+```
+
+- Para definir e-mail e senha do admin via variáveis de ambiente no momento da execução do script:
+
+```bash
+docker exec -e ADMIN_EMAIL=admin@seu-dominio.com -e "ADMIN_PASS=SuaSenhaForte!123" finance-backend node src/scripts/seedAdmin.js
+```
+
+- Dica: você também pode definir `ADMIN_EMAIL` e `ADMIN_PASS` na seção `environment` do serviço `backend` no arquivo `docker-compose.yml` para reutilizar os mesmos valores sempre que necessário.
+
+2) Usuário de exemplo para desenvolvimento
+
+- Existe um seeder opcional que cria o usuário `user@example.com` com a senha `password123`. Em produção via Docker esse seeder NÃO é executado automaticamente.
+- Utilize apenas em ambientes de desenvolvimento quando necessário (não recomendado em produção).
+
+3) Política de força de senha
+
+- Mínimo de 8 caracteres
+- Pelo menos uma letra maiúscula, uma minúscula, um número e um caractere especial
+- Senhas fracas são rejeitadas com a mensagem de erro informando os requisitos faltantes
+
+4) Armazenamento de senhas
+
+- As senhas são armazenadas usando `bcryptjs` com fator de custo 10.
+
+5) Segurança dos tokens após troca de senha
+
+- O backend mantém o campo `password_changed_at` e invalida automaticamente tokens JWT emitidos antes da última alteração de senha. Após alterar a senha, faça login novamente para obter um novo token.
+
 ## Upgrade de versão / Rollback
 
 ### Upgrade seguro (com backup automático)
