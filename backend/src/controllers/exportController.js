@@ -150,7 +150,7 @@ exports.exportAccountStatement = async (req, res) => {
 };
 
 exports.exportExpenses = async (req, res) => {
-  const { startDate, endDate, category, accountId } = req.query;
+  const { startDate, endDate, category, accountId, status } = req.query;
 
   try {
     // Se não fornecer datas, usar o mês atual
@@ -165,58 +165,47 @@ exports.exportExpenses = async (req, res) => {
       end = dayjs(lastDay).format('YYYY-MM-DD');
     }
 
-    const where = { status: 'paga', paid_at: { [Op.between]: [start, end] } };
+    // Replicar filtros da Aba Despesas (type=conta)
+    const where = {
+      user_id: req.user.id,
+      due_date: { [Op.between]: [start, end] },
+      account_id: { [Op.ne]: null },
+      credit_card_id: null,
+    };
     if (category) where.category = category;
     if (accountId) where.account_id = accountId;
+    if (status) where.status = status;
 
     const expenses = await Expense.findAll({
       where,
       include: [{ model: Account, as: 'account', attributes: ['name', 'id'] }],
-      order: [['paid_at', 'ASC']],
+      order: [['due_date', 'ASC']],
     });
 
-    // Novo: incluir pagamentos de fatura de cartões (CreditCardPayment) como despesas
-    const ccPaymentWhere = { payment_date: { [Op.between]: [start, end] } };
-    if (accountId) ccPaymentWhere.account_id = accountId;
-    const ccPayments = await CreditCardPayment.findAll({
-      where: ccPaymentWhere,
-      include: [
-        { model: CreditCard, as: 'card', attributes: ['name'] },
-      ],
-      order: [['payment_date', 'ASC']],
-    });
+    // Não incluir pagamentos de fatura de cartão na exportação de despesas
+    // const ccPayments = await CreditCardPayment.findAll({ where: { user_id: req.user.id, payment_date: { [Op.between]: [start, end] } } });
+    const ccPayments = [];
 
-    // Mapear contas envolvidas para obter nomes (para pagamentos de cartão)
+    // Mapear contas envolvidas para obter nomes
     const accountIds = new Set();
     expenses.forEach(e => { if (e.account_id) accountIds.add(e.account_id); });
     ccPayments.forEach(p => { if (p.account_id) accountIds.add(p.account_id); });
     let accountMap = {};
     if (accountIds.size > 0) {
-      const accounts = await Account.findAll({ where: { id: Array.from(accountIds) }, attributes: ['id', 'name'] });
+      const accounts = await Account.findAll({ where: { id: Array.from(accountIds), user_id: req.user.id }, attributes: ['id', 'name'] });
       accountMap = accounts.reduce((acc, a) => { acc[a.id] = a.name; return acc; }, {});
     }
 
     const rows = [];
 
-    // Despesas de conta
+    // Despesas de conta (tipo conta)
     for (const expense of expenses) {
       rows.push({
-        date: expense.paid_at,
+        date: expense.due_date,
         description: expense.description,
         category: expense.category || '',
         accountName: expense.account?.name || (expense.account_id ? accountMap[expense.account_id] : '') || '',
         value: -Number(expense.value),
-      });
-    }
-
-    // Pagamentos de fatura de cartão (como saída)
-    for (const p of ccPayments) {
-      rows.push({
-        date: p.payment_date,
-        description: `Pagamento fatura Cartão${p.card?.name ? ` - ${p.card.name}` : ''}`,
-        category: 'Cartão de Crédito',
-        accountName: (p.account_id ? accountMap[p.account_id] : '') || '',
-        value: -Number(p.value || 0), // evita NaN
       });
     }
 
@@ -254,15 +243,18 @@ exports.exportCreditCardExpenses = async (req, res) => {
       return res.status(404).send('Cartão não encontrado');
     }
 
-    // Função utilitária: período da fatura de um mês/ano
-    function getBillPeriodForMonth(closingDay, dueDay, year, month) {
+    // Função utilitária (mês 0-11): período da fatura de um mês/ano
+    function getBillPeriodForMonth(closingDay, dueDay, year, month /* 0-11, mês de vencimento */) {
+      // Fechamento ocorre antes do vencimento?
       let start, end;
       if (closingDay > dueDay) {
+        // Período: closingDay de (month-2) até (closingDay-1) de (month-1)
         start = new Date(year, month - 2, closingDay);
         start.setHours(0, 0, 0, 0);
         end = new Date(year, month - 1, closingDay - 1);
         end.setHours(23, 59, 59, 999);
       } else {
+        // Período: closingDay de (month-1) até (closingDay-1) de (month)
         start = new Date(year, month - 1, closingDay);
         start.setHours(0, 0, 0, 0);
         end = new Date(year, month, closingDay - 1);
@@ -273,12 +265,13 @@ exports.exportCreditCardExpenses = async (req, res) => {
 
     const [yearStr, monthStr] = billMonth.split('-');
     const year = parseInt(yearStr, 10);
-    const month = parseInt(monthStr, 10);
+    const monthZeroBased = parseInt(monthStr, 10) - 1; // converter YYYY-MM para 0-11
 
-    const { start, end } = getBillPeriodForMonth(card.closing_day, card.due_day, year, month);
+    const { start, end } = getBillPeriodForMonth(card.closing_day, card.due_day, year, monthZeroBased);
 
     const expenses = await Expense.findAll({
       where: {
+        user_id: req.user.id,
         credit_card_id: cardId,
         // Para fatura, considerar a data de compra (due_date) dentro do período de fechamento
         due_date: { [Op.between]: [dayjs(start).format('YYYY-MM-DD'), dayjs(end).format('YYYY-MM-DD')] }
