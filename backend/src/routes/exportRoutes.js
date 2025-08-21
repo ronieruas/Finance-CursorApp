@@ -7,8 +7,8 @@ const authMiddleware = require('../middlewares/authMiddleware');
 router.get('/statement', (req, res, next) => {
   console.log('Request to /export/statement received.');
   next();
-}, exportController.exportAccountStatement);
+}, authMiddleware, exportController.exportAccountStatement);
 router.get('/expenses', authMiddleware, exportController.exportExpenses);
-router.get('/credit-card-expenses', exportController.exportCreditCardExpenses);
+router.get('/credit-card-expenses', authMiddleware, exportController.exportCreditCardExpenses);
 
 module.exports = router;
