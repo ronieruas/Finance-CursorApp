@@ -1,14 +1,26 @@
 const { Expense, Income, CreditCard, Account, Transfer, CreditCardPayment } = require('../models');
 const { Op } = require('sequelize');
 const dayjs = require('dayjs');
-const { Parser } = require('json2csv');
+// Removido import estático de json2csv; usar helper com fallback
+
+// Helper robusto para geração de CSV com fallback
+async function toCSV(csvData, fields) {
+  try {
+    const { Parser } = require('json2csv');
+    const parser = new Parser({ fields, delimiter: ';' });
+    return parser.parse(csvData);
+  } catch (e) {
+    try {
+      const { json2csvAsync } = require('json-2-csv');
+      return await json2csvAsync(csvData, { keys: fields, delimiter: { field: ';' } });
+    } catch (e2) {
+      throw new Error('CSV conversion failed: ' + (e2.message || e.message));
+    }
+  }
+}
 
 exports.exportAccountStatement = async (req, res) => {
   const { accountId, startDate, endDate } = req.query;
-
-  console.log('exportAccountStatement: accountId:', accountId);
-  console.log('exportAccountStatement: startDate:', startDate);
-  console.log('exportAccountStatement: endDate:', endDate);
 
   // Validação de parâmetros
   if (!accountId) {
@@ -21,142 +33,111 @@ exports.exportAccountStatement = async (req, res) => {
   
   if (!start || !end) {
     const today = new Date();
-    start = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-    end = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
-    
-    console.log('exportAccountStatement: Using default period:', start, 'to', end);
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    start = dayjs(firstDay).format('YYYY-MM-DD');
+    end = dayjs(lastDay).format('YYYY-MM-DD');
   }
 
   try {
-    // Buscar apenas MOVIMENTAÇÕES REALIZADAS no período
-    // Despesas: somente pagas e filtradas por paid_at
-    const expenses = await Expense.findAll({
-      where: {
-        account_id: accountId,
-        status: 'paga',
-        paid_at: {
-          [Op.between]: [start, end]
-        }
-      },
-      order: [['paid_at', 'ASC']]
-    });
-
-    const incomes = await Income.findAll({
-      where: {
-        account_id: accountId,
-        date: {
-          [Op.between]: [start, end]
-        }
-      },
-      order: [['date', 'ASC']]
-    });
-
-    // Transferências envolvendo a conta
-    const transfers = await Transfer.findAll({
-      where: {
-        [Op.or]: [
-          { from_account_id: accountId },
-          { to_account_id: accountId }
-        ],
-        date: { [Op.between]: [start, end] }
-      },
-      order: [['date', 'ASC']]
-    });
-
-    const ccPayments = await CreditCardPayment.findAll({
-      where: {
-        account_id: accountId,
-        payment_date: { [Op.between]: [start, end] }
-      },
-      include: [{ model: CreditCard, as: 'card', attributes: ['name'] }],
-      order: [['payment_date', 'ASC']]
-    });
-
-    console.log('exportAccountStatement: Found expenses (paid):', expenses.length);
-    console.log('exportAccountStatement: Found incomes:', incomes.length);
-    console.log('exportAccountStatement: Found transfers:', transfers.length);
-    console.log('exportAccountStatement: Found credit card payments:', ccPayments.length);
-
-    // Combinar e ordenar por data REAL da transação
-    const getTransactionDate = (item) => {
-      const modelName = item.constructor?.name;
-      if (modelName === 'Expense') return item.paid_at;
-      if (modelName === 'Income') return item.date;
-      if (modelName === 'Transfer') return item.date;
-      if (modelName === 'CreditCardPayment') return item.payment_date;
-      return item.due_date || item.date || item.payment_date;
-    };
-
-    const allTransactions = [...expenses, ...incomes, ...transfers, ...ccPayments]
-      .sort((a, b) => new Date(getTransactionDate(a)) - new Date(getTransactionDate(b)));
-    
-    console.log('exportAccountStatement: Combined transactions:', allTransactions.length);
-
-    if (allTransactions.length === 0) {
-      console.log('exportAccountStatement: No transactions found for the given criteria.');
-      return res.status(404).send('No transactions found for the given criteria.');
+    // Buscar conta e validar existência
+    const account = await Account.findByPk(accountId);
+    if (!account) {
+      return res.status(404).send('Conta não encontrada');
     }
 
-    // Preparar dados para CSV
-    const csvData = allTransactions.map(item => {
-      const modelName = item.constructor?.name;
-      let tipo = '';
-      let descricao = item.description || '';
-      let direcao = 'Entrada';
-      let nomeCartao = '';
+    // Buscar transações relevantes (incomes, expenses pagas, transfers e pagamentos de cartão)
+    const [incomes, expenses, transfersFrom, transfersTo, ccPayments] = await Promise.all([
+      Income.findAll({ where: { account_id: accountId, date: { [Op.between]: [start, end] } } }),
+      Expense.findAll({ where: { account_id: accountId, paid_at: { [Op.between]: [start, end] } } }),
+      Transfer.findAll({ where: { from_account_id: accountId, date: { [Op.between]: [start, end] } } }),
+      Transfer.findAll({ where: { to_account_id: accountId, date: { [Op.between]: [start, end] } } }),
+      CreditCardPayment.findAll({ where: { account_id: accountId, payment_date: { [Op.between]: [start, end] } } }),
+    ]);
 
-      // accountId pode vir como string
-      const accountIdNum = Number(accountId);
+    // Consolidar e mapear para CSV
+    const rows = [];
 
-      if (modelName === 'Expense') {
-        tipo = 'Despesa';
-        direcao = 'Saída';
-      } else if (modelName === 'Income') {
-        tipo = 'Receita';
-        direcao = 'Entrada';
-      } else if (modelName === 'Transfer') {
-        tipo = 'Transferência';
-        // Saída se a conta for a origem; Entrada se a conta for o destino
-        if (item.from_account_id == accountIdNum) {
-          direcao = 'Saída';
-        } else if (item.to_account_id == accountIdNum) {
-          direcao = 'Entrada';
-        }
-      } else if (modelName === 'CreditCardPayment') {
-        tipo = 'Pagamento Fatura';
-        direcao = 'Saída'; // pagamento debita a conta
-        if (item.card && item.card.name) {
-          nomeCartao = item.card.name;
-          descricao = `Pagamento Fatura ${item.card.name}`;
-        } else if (!descricao) {
-          descricao = 'Pagamento Fatura';
-        }
-      }
+    for (const inc of incomes) {
+      rows.push({
+        date: inc.date,
+        description: inc.description || 'Receita',
+        category: inc.category || '',
+        type: 'Receita',
+        direction: 'Entrada',
+        cardName: '',
+        value: Number(inc.value),
+      });
+    }
 
-      const dataReal = getTransactionDate(item);
-      const dataTransacao = dayjs(dataReal).format('DD/MM/YYYY');
+    for (const exp of expenses) {
+      rows.push({
+        date: exp.paid_at,
+        description: exp.description || 'Despesa',
+        category: exp.category || '',
+        type: 'Despesa',
+        direction: 'Saída',
+        cardName: '',
+        value: -Number(exp.value),
+      });
+    }
 
-      // Valor com sinal: Saída negativo, Entrada positivo
-      const rawValue = Number(item.value) || 0;
-      const signedValue = direcao === 'Saída' ? -Math.abs(rawValue) : Math.abs(rawValue);
+    for (const t of transfersFrom) {
+      rows.push({
+        date: t.date,
+        description: t.description || 'Transferência (saída)',
+        category: 'Transferência',
+        type: 'Transferência',
+        direction: 'Saída',
+        cardName: '',
+        value: -Number(t.value),
+      });
+    }
 
+    for (const t of transfersTo) {
+      rows.push({
+        date: t.date,
+        description: t.description || 'Transferência (entrada)',
+        category: 'Transferência',
+        type: 'Transferência',
+        direction: 'Entrada',
+        cardName: '',
+        value: Number(t.value),
+      });
+    }
+
+    for (const p of ccPayments) {
+      rows.push({
+        date: p.payment_date,
+        description: 'Pagamento de Fatura de Cartão',
+        category: 'Cartão de Crédito',
+        type: 'Pagamento Cartão',
+        direction: 'Saída',
+        cardName: '',
+        value: -Number(p.amount),
+      });
+    }
+
+    // Ordenar por data real
+    rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Preparar dados para CSV de forma consistente
+    const csvData = rows.map((item) => {
+      const dataTransacao = dayjs(item.date).isValid() ? dayjs(item.date).format('DD/MM/YYYY') : '';
       return {
         'Data': dataTransacao,
-        'Descrição': descricao,
-        'Categoria': item.category || '',
-        'Tipo': tipo,
-        'Direção': direcao,
-        'Nome do Cartão': nomeCartao,
-        'Valor': signedValue.toFixed(2).replace('.', ',')
+        'Descrição': item.description,
+        'Categoria': item.category,
+        'Tipo': item.type,
+        'Direção': item.direction,
+        'Nome do Cartão': item.cardName,
+        'Valor': Number(item.value).toFixed(2).replace('.', ',')
       };
     });
 
-    console.log('exportAccountStatement: Prepared CSV data:', csvData.length, 'rows');
-
-    // Converter para CSV
+    // Converter para CSV (com fallback)
     const fields = ['Data', 'Descrição', 'Categoria', 'Tipo', 'Direção', 'Nome do Cartão', 'Valor'];
-    const json2csvParser = new Parser({ fields, delimiter: ';' });
-    const csv = json2csvParser.parse(csvData);
+    const csv = await toCSV(csvData, fields);
 
     res.header('Content-Type', 'text/csv; charset=utf-8');
     res.attachment(`extrato_conta_${accountId}_${start}_${end}.csv`);
@@ -168,161 +149,110 @@ exports.exportAccountStatement = async (req, res) => {
 };
 
 exports.exportExpenses = async (req, res) => {
-    const { startDate, endDate, category, accountId } = req.query;
+  const { startDate, endDate, category, accountId } = req.query;
+
+  try {
+    // Se não fornecer datas, usar o mês atual
+    let start = startDate;
+    let end = endDate;
     
-    console.log('exportExpenses: startDate:', startDate);
-    console.log('exportExpenses: endDate:', endDate);
-    console.log('exportExpenses: category:', category);
-    console.log('exportExpenses: accountId:', accountId);
-    
-    try {
-        // Se não fornecer datas, usar o mês atual
-        let start = startDate;
-        let end = endDate;
-        
-        if (!start || !end) {
-            const today = new Date();
-            start = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-            end = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
-            
-            console.log('exportExpenses: Using default period:', start, 'to', end);
-        }
-        
-        const where = {
-            due_date: {
-                [Op.between]: [start, end]
-            },
-            // Exportação da aba Despesa: somente despesas de CONTA (excluir cartão de crédito)
-            credit_card_id: null,
-        };
-        
-        if (category) {
-            where.category = category;
-        }
-
-        if (accountId) {
-            where.account_id = accountId;
-        } else {
-            where.account_id = { [Op.ne]: null };
-        }
-
-        const expenses = await Expense.findAll({ 
-            where,
-            include: [{ model: Account, as: 'account', attributes: ['name'] }],
-            order: [['due_date', 'ASC']]
-        });
-
-        console.log('exportExpenses: Found expenses:', expenses.length);
-
-        // Preparar dados para CSV
-        const csvData = expenses.map(expense => ({
-            'Data': dayjs(expense.due_date).format('DD/MM/YYYY'),
-            'Descrição': expense.description,
-            'Categoria': expense.category || '',
-            'Conta': expense.account?.name || '',
-            'Valor': Number(expense.value).toFixed(2).replace('.', ',')
-        }));
-
-        console.log('exportExpenses: Prepared CSV data:', csvData.length, 'rows');
-
-        // Converter para CSV
-        const fields = ['Data', 'Descrição', 'Categoria', 'Conta', 'Valor'];
-        const json2csvParser = new Parser({ fields, delimiter: ';' });
-        const csv = json2csvParser.parse(csvData);
-
-        res.header('Content-Type', 'text/csv; charset=utf-8');
-        res.attachment(`despesas_${start}_${end}.csv`);
-        return res.send('\uFEFF' + csv); // BOM para Excel
-
-    } catch (error) {
-        console.error('Error exporting expenses:', error);
-        res.status(500).send('Error exporting expenses: ' + error.message);
+    if (!start || !end) {
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      start = dayjs(firstDay).format('YYYY-MM-DD');
+      end = dayjs(lastDay).format('YYYY-MM-DD');
     }
+
+    const where = { paid_at: { [Op.between]: [start, end] } };
+    if (category) where.category = category;
+    if (accountId) where.account_id = accountId;
+
+    const expenses = await Expense.findAll({
+      where,
+      include: [{ model: Account, as: 'account', attributes: ['name'] }],
+      order: [['paid_at', 'ASC']],
+    });
+
+    const csvData = expenses.map((expense) => ({
+      'Data': dayjs(expense.paid_at).format('DD/MM/YYYY'),
+      'Descrição': expense.description,
+      'Categoria': expense.category || '',
+      'Conta': expense.account?.name || '',
+      'Valor': Number(expense.value).toFixed(2).replace('.', ',')
+    }));
+
+    const fields = ['Data', 'Descrição', 'Categoria', 'Conta', 'Valor'];
+    const csv = await toCSV(csvData, fields);
+
+    res.header('Content-Type', 'text/csv; charset=utf-8');
+    res.attachment(`despesas_${start}_${end}.csv`);
+    return res.send('\uFEFF' + csv);
+  } catch (error) {
+    console.error('Error exporting expenses:', error);
+    res.status(500).send('Error exporting expenses: ' + error.message);
+  }
 };
 
 exports.exportCreditCardExpenses = async (req, res) => {
-    console.log('exportCreditCardExpenses controller atingido!');
+  const { cardId, billMonth } = req.query;
 
-    const { cardId, billMonth } = req.query;
-    
-    console.log('exportCreditCardExpenses: cardId:', cardId);
-    console.log('exportCreditCardExpenses: billMonth:', billMonth);
-    
-    if (!cardId || !billMonth) {
-      return res.status(400).send('cardId and billMonth are required');
+  if (!cardId || !billMonth) {
+    return res.status(400).send('cardId and billMonth are required');
+  }
+
+  try {
+    const card = await CreditCard.findByPk(cardId);
+    if (!card) {
+      return res.status(404).send('Cartão não encontrado');
     }
-    
-    try {
-        // Buscar cartão para obter fechamento e vencimento
-        const card = await CreditCard.findByPk(cardId);
-        if (!card) {
-          return res.status(404).send('Cartão não encontrado');
-        }
 
-        // Função utilitária (mesma regra usada no creditCardController)
-        function getBillPeriodForMonth(closingDay, dueDay, year, month) {
-          let start, end;
-          if (closingDay > dueDay) {
-            // Fechamento no mês anterior ao vencimento
-            start = new Date(year, month - 2, closingDay);
-            start.setHours(0, 0, 0, 0);
-            end = new Date(year, month - 1, closingDay - 1);
-            end.setHours(23, 59, 59, 999);
-          } else {
-            // Fechamento no mesmo mês do vencimento
-            start = new Date(year, month - 1, closingDay);
-            start.setHours(0, 0, 0, 0);
-            end = new Date(year, month, closingDay - 1);
-            end.setHours(23, 59, 59, 999);
-          }
-          return { start, end };
-        }
-
-        const [yearStr, monthStr] = billMonth.split('-');
-        const year = Number(yearStr);
-        const month = Number(monthStr); // 1-12 (mês de vencimento)
-        const period = getBillPeriodForMonth(card.closing_day, card.due_day, year, month - 1);
-        const startDate = dayjs(period.start).format('YYYY-MM-DD');
-        const endDate = dayjs(period.end).format('YYYY-MM-DD');
-
-        console.log('exportCreditCardExpenses: Calculated bill period:', startDate, 'to', endDate);
-
-        const expenses = await Expense.findAll({
-            where: {
-                credit_card_id: cardId,
-                due_date: {
-                    [Op.between]: [startDate, endDate]
-                }
-            }
-        });
-
-        console.log('exportCreditCardExpenses: Found expenses:', expenses.length);
-
-        // Preparar dados para CSV
-        const csvData = expenses.map(expense => {
-            const purchaseDate = expense.date || expense.createdAt || expense.due_date; // fallback
-            return {
-              'Data da Compra': dayjs(purchaseDate).format('DD/MM/YYYY'),
-              'Data de Vencimento': dayjs(expense.due_date).format('DD/MM/YYYY'),
-              'Descrição': expense.description,
-              'Categoria': expense.category || '',
-              'Valor': Number(expense.value).toFixed(2).replace('.', ',')
-            };
-        });
-
-        console.log('exportCreditCardExpenses: Prepared CSV data:', csvData.length, 'rows');
-
-        // Converter para CSV
-        const fields = ['Data da Compra', 'Data de Vencimento', 'Descrição', 'Categoria', 'Valor'];
-        const json2csvParser = new Parser({ fields, delimiter: ';' });
-        const csv = json2csvParser.parse(csvData);
-
-        res.header('Content-Type', 'text/csv; charset=utf-8');
-        res.attachment(`fatura_cartao_${cardId}_${String(month).padStart(2, '0')}_${year}.csv`);
-        return res.send('\uFEFF' + csv); // BOM para Excel
-
-    } catch (error) {
-        console.error('Error exporting credit card expenses:', error.message, error.stack);
-        res.status(500).send('Error exporting credit card expenses: ' + error.message);
+    // Função utilitária: período da fatura de um mês/ano
+    function getBillPeriodForMonth(closingDay, dueDay, year, month) {
+      let start, end;
+      if (closingDay > dueDay) {
+        start = new Date(year, month - 2, closingDay);
+        start.setHours(0, 0, 0, 0);
+        end = new Date(year, month - 1, closingDay - 1);
+        end.setHours(23, 59, 59, 999);
+      } else {
+        start = new Date(year, month - 1, closingDay);
+        start.setHours(0, 0, 0, 0);
+        end = new Date(year, month, closingDay - 1);
+        end.setHours(23, 59, 59, 999);
+      }
+      return { start, end };
     }
+
+    const [yearStr, monthStr] = billMonth.split('-');
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10);
+
+    const { start, end } = getBillPeriodForMonth(card.closing_day, card.due_day, year, month);
+
+    const expenses = await Expense.findAll({
+      where: {
+        credit_card_id: cardId,
+        paid_at: { [Op.between]: [dayjs(start).format('YYYY-MM-DD'), dayjs(end).format('YYYY-MM-DD')] }
+      },
+      order: [['paid_at', 'ASC']],
+    });
+
+    const csvData = expenses.map((expense) => ({
+      'Data': dayjs(expense.paid_at).format('DD/MM/YYYY'),
+      'Descrição': expense.description,
+      'Categoria': expense.category || '',
+      'Valor': Number(expense.value).toFixed(2).replace('.', ',')
+    }));
+
+    const fields = ['Data', 'Descrição', 'Categoria', 'Valor'];
+    const csv = await toCSV(csvData, fields);
+
+    res.header('Content-Type', 'text/csv; charset=utf-8');
+    res.attachment(`cartao_${cardId}_fatura_${billMonth}.csv`);
+    return res.send('\uFEFF' + csv);
+  } catch (error) {
+    console.error('Error exporting credit card expenses:', error);
+    res.status(500).send('Error exporting credit card expenses: ' + error.message);
+  }
 };

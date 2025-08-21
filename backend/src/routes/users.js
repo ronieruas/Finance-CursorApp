@@ -9,6 +9,17 @@ function isAdmin(req, res, next) {
   next();
 }
 
+// Validação de força de senha (mesma regra do authController)
+function validatePasswordStrength(pwd) {
+  const errors = [];
+  if (!pwd || pwd.length < 8) errors.push('mínimo de 8 caracteres');
+  if (!/[A-Z]/.test(pwd)) errors.push('uma letra maiúscula');
+  if (!/[a-z]/.test(pwd)) errors.push('uma letra minúscula');
+  if (!/[0-9]/.test(pwd)) errors.push('um número');
+  if (!/[!@#$%^&*(),.?":{}|<>\[\]\\/;'`~_+=-]/.test(pwd)) errors.push('um caractere especial');
+  return { ok: errors.length === 0, errors };
+}
+
 // Listar usuários
 router.get('/', authMiddleware, isAdmin, async (req, res) => {
   const users = await User.findAll({ attributes: ['id', 'name', 'email', 'role'] });
@@ -20,6 +31,10 @@ router.post('/', authMiddleware, isAdmin, async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
     if (!name || !email || !password || !role) return res.status(400).json({ error: 'Dados obrigatórios.' });
+    const strength = validatePasswordStrength(password);
+    if (!strength.ok) {
+      return res.status(400).json({ error: `Senha fraca: inclua ${strength.errors.join(', ')}.` });
+    }
     const existing = await User.findOne({ where: { email } });
     if (existing) return res.status(400).json({ error: 'E-mail já cadastrado.' });
     const bcrypt = require('bcryptjs');
@@ -39,4 +54,4 @@ router.delete('/:id', authMiddleware, isAdmin, async (req, res) => {
   res.json({ success: true });
 });
 
-module.exports = router; 
+module.exports = router;
