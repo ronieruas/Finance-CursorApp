@@ -49,10 +49,11 @@ exports.exportAccountStatement = async (req, res) => {
     // Buscar transações relevantes (incomes, expenses pagas, transfers e pagamentos de cartão)
     const [incomes, expenses, transfersFrom, transfersTo, ccPayments] = await Promise.all([
       Income.findAll({ where: { account_id: accountId, date: { [Op.between]: [start, end] } } }),
-      Expense.findAll({ where: { account_id: accountId, paid_at: { [Op.between]: [start, end] } } }),
+      // Apenas despesas pagas dentro do período
+      Expense.findAll({ where: { account_id: accountId, status: 'paga', paid_at: { [Op.between]: [start, end] } } }),
       Transfer.findAll({ where: { from_account_id: accountId, date: { [Op.between]: [start, end] } } }),
       Transfer.findAll({ where: { to_account_id: accountId, date: { [Op.between]: [start, end] } } }),
-      CreditCardPayment.findAll({ where: { account_id: accountId, payment_date: { [Op.between]: [start, end] } } }),
+      CreditCardPayment.findAll({ where: { account_id: accountId, payment_date: { [Op.between]: [start, end] } }, include: [{ model: CreditCard, as: 'card', attributes: ['name'] }] }),
     ]);
 
     // Consolidar e mapear para CSV
@@ -109,12 +110,12 @@ exports.exportAccountStatement = async (req, res) => {
     for (const p of ccPayments) {
       rows.push({
         date: p.payment_date,
-        description: 'Pagamento de Fatura de Cartão',
+        description: `Pagamento de Fatura de Cartão${p.card?.name ? ` - ${p.card.name}` : ''}`,
         category: 'Cartão de Crédito',
         type: 'Pagamento Cartão',
         direction: 'Saída',
-        cardName: '',
-        value: -Number(p.amount),
+        cardName: p.card?.name || '',
+        value: -Number(p.value || 0),
       });
     }
 
@@ -164,22 +165,68 @@ exports.exportExpenses = async (req, res) => {
       end = dayjs(lastDay).format('YYYY-MM-DD');
     }
 
-    const where = { paid_at: { [Op.between]: [start, end] } };
+    const where = { status: 'paga', paid_at: { [Op.between]: [start, end] } };
     if (category) where.category = category;
     if (accountId) where.account_id = accountId;
 
     const expenses = await Expense.findAll({
       where,
-      include: [{ model: Account, as: 'account', attributes: ['name'] }],
+      include: [{ model: Account, as: 'account', attributes: ['name', 'id'] }],
       order: [['paid_at', 'ASC']],
     });
 
-    const csvData = expenses.map((expense) => ({
-      'Data': dayjs(expense.paid_at).format('DD/MM/YYYY'),
-      'Descrição': expense.description,
-      'Categoria': expense.category || '',
-      'Conta': expense.account?.name || '',
-      'Valor': Number(expense.value).toFixed(2).replace('.', ',')
+    // Novo: incluir pagamentos de fatura de cartões (CreditCardPayment) como despesas
+    const ccPaymentWhere = { payment_date: { [Op.between]: [start, end] } };
+    if (accountId) ccPaymentWhere.account_id = accountId;
+    const ccPayments = await CreditCardPayment.findAll({
+      where: ccPaymentWhere,
+      include: [
+        { model: CreditCard, as: 'card', attributes: ['name'] },
+      ],
+      order: [['payment_date', 'ASC']],
+    });
+
+    // Mapear contas envolvidas para obter nomes (para pagamentos de cartão)
+    const accountIds = new Set();
+    expenses.forEach(e => { if (e.account_id) accountIds.add(e.account_id); });
+    ccPayments.forEach(p => { if (p.account_id) accountIds.add(p.account_id); });
+    let accountMap = {};
+    if (accountIds.size > 0) {
+      const accounts = await Account.findAll({ where: { id: Array.from(accountIds) }, attributes: ['id', 'name'] });
+      accountMap = accounts.reduce((acc, a) => { acc[a.id] = a.name; return acc; }, {});
+    }
+
+    const rows = [];
+
+    // Despesas de conta
+    for (const expense of expenses) {
+      rows.push({
+        date: expense.paid_at,
+        description: expense.description,
+        category: expense.category || '',
+        accountName: expense.account?.name || (expense.account_id ? accountMap[expense.account_id] : '') || '',
+        value: -Number(expense.value),
+      });
+    }
+
+    // Pagamentos de fatura de cartão (como saída)
+    for (const p of ccPayments) {
+      rows.push({
+        date: p.payment_date,
+        description: `Pagamento fatura Cartão${p.card?.name ? ` - ${p.card.name}` : ''}`,
+        category: 'Cartão de Crédito',
+        accountName: (p.account_id ? accountMap[p.account_id] : '') || '',
+        value: -Number(p.value || 0), // evita NaN
+      });
+    }
+
+    // Converter para CSV com as mesmas colunas
+    const csvData = rows.map((item) => ({
+      'Data': dayjs(item.date).isValid() ? dayjs(item.date).format('DD/MM/YYYY') : '',
+      'Descrição': item.description,
+      'Categoria': item.category,
+      'Conta': item.accountName,
+      'Valor': Number(item.value).toFixed(2).replace('.', ',')
     }));
 
     const fields = ['Data', 'Descrição', 'Categoria', 'Conta', 'Valor'];
@@ -233,13 +280,14 @@ exports.exportCreditCardExpenses = async (req, res) => {
     const expenses = await Expense.findAll({
       where: {
         credit_card_id: cardId,
-        paid_at: { [Op.between]: [dayjs(start).format('YYYY-MM-DD'), dayjs(end).format('YYYY-MM-DD')] }
+        // Para fatura, considerar a data de compra (due_date) dentro do período de fechamento
+        due_date: { [Op.between]: [dayjs(start).format('YYYY-MM-DD'), dayjs(end).format('YYYY-MM-DD')] }
       },
-      order: [['paid_at', 'ASC']],
+      order: [['due_date', 'ASC']],
     });
 
     const csvData = expenses.map((expense) => ({
-      'Data': dayjs(expense.paid_at).format('DD/MM/YYYY'),
+      'Data': dayjs(expense.due_date).format('DD/MM/YYYY'),
       'Descrição': expense.description,
       'Categoria': expense.category || '',
       'Valor': Number(expense.value).toFixed(2).replace('.', ',')
