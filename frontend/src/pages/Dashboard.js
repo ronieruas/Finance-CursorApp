@@ -39,6 +39,7 @@ function Dashboard({ token }) {
   const [receitasMesVigente, setReceitasMesVigente] = useState(0);
   const [despesasMesVigente, setDespesasMesVigente] = useState(0);
   const [faturasCartaoMesVigente, setFaturasCartaoMesVigente] = useState(0);
+  const [poupancaInvestimentos, setPoupancaInvestimentos] = useState({ total: 0, contas: [] });
 
   // Cálculos derivados para o Resumo Mensal
   const despesasTotais = Number(despesasMesVigente) + Number(faturasCartaoMesVigente);
@@ -96,6 +97,7 @@ function Dashboard({ token }) {
       setReceitasMesVigente(data.receitasMesVigente || 0);
       setDespesasMesVigente(data.despesasMesVigente || 0);
       setFaturasCartaoMesVigente(data.faturasCartaoMesVigente || 0);
+      setPoupancaInvestimentos(data.poupancaInvestimentos || { total: 0, contas: [] });
     } catch (err) {
       // Exibir erro, não usar mock
       alert('Erro ao carregar dashboard. Verifique sua conexão ou tente novamente.');
@@ -193,7 +195,7 @@ function Dashboard({ token }) {
           </ResponsiveContainer>
         </motion.div>
       </div>
-      {/* Segunda linha: Alertas e Gastos por Cartão */}
+      {/* Segunda linha: Alertas e Gastos por Cartão + Poupança/Investimentos */}
       <div className="dashboard-flex" style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
         <motion.div className="glass-card fade-in" style={{ flex: 1, minWidth: 280, padding: '16px 12px', background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
           <h3 style={{ marginBottom: 8, fontSize: '1.05rem' }}>Gastos por Cartão</h3>
@@ -201,17 +203,54 @@ function Dashboard({ token }) {
             <thead>
               <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
                 <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Cartão</th>
-                <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Banco</th>
-                <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Total</th>
+                <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Gastos do mês</th>
+                <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Fatura atual</th>
+                <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Faturas fechadas</th>
               </tr>
             </thead>
             <tbody>
-              {gastosPorCartao?.length === 0 && <tr><td colSpan={3} style={{ color: '#888', padding: '5px 3px', fontSize: '0.85rem' }}>Nenhum gasto no período.</td></tr>}
+              {gastosPorCartao?.length === 0 && <tr><td colSpan={4} style={{ color: '#888', padding: '5px 3px', fontSize: '0.85rem' }}>Nenhum gasto no período.</td></tr>}
               {gastosPorCartao?.map?.(c => (
                 <tr key={c.card_id}>
                   <td style={{ padding: '5px 3px', fontSize: '0.85rem' }}>{c.card_name}</td>
-                  <td style={{ padding: '5px 3px', fontSize: '0.85rem' }}>{c.card_bank}</td>
-                  <td style={{ color: 'var(--color-cartao)', fontWeight: 600, padding: '5px 3px', fontSize: '0.85rem' }}>R$ {Number(c.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td style={{ color: 'var(--color-cartao)', fontWeight: 600, padding: '5px 3px', fontSize: '0.85rem' }}>R$ {Number(c.gastos_mes || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td style={{ color: '#8b5cf6', fontWeight: 600, padding: '5px 3px', fontSize: '0.85rem' }}>R$ {Number(c.fatura_atual || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td style={{ padding: '5px 3px', fontSize: '0.85rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 600 }}>R$ {Number(c.fatura_fechada_valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                      <span style={{ fontSize: 12, color: c.fatura_fechada_status === 'paga' ? '#22c55e' : c.fatura_fechada_status === 'atrasada' ? '#ef4444' : '#2563eb', fontWeight: 700 }}>
+                        {c.fatura_fechada_status?.toUpperCase?.()}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </motion.div>
+        <motion.div className="glass-card fade-in" style={{ flex: 1, minWidth: 280, padding: '16px 12px', background: 'linear-gradient(135deg, #f5f7fa 0%, #d1fae5 100%)' }}>
+          <h3 style={{ marginBottom: 8, fontSize: '1.05rem' }}>Poupança e Investimentos</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 700, marginBottom: 8 }}>
+            <span>Total:</span>
+            <span style={{ color: '#10b981' }}>R$ {Number(poupancaInvestimentos.total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>
+            <thead>
+              <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
+                <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Conta</th>
+                <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Tipo</th>
+                <th style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(!poupancaInvestimentos?.contas || poupancaInvestimentos.contas.length === 0) && (
+                <tr><td colSpan={3} style={{ color: '#888', padding: '5px 3px', fontSize: '0.85rem' }}>Nenhuma conta de poupança/investimento.</td></tr>
+              )}
+              {poupancaInvestimentos?.contas?.map?.(c => (
+                <tr key={c.id}>
+                  <td style={{ padding: '5px 3px', fontSize: '0.85rem' }}>{c.name}</td>
+                  <td style={{ padding: '5px 3px', fontSize: '0.85rem' }}>{c.type === 'poupanca' ? 'Poupança' : 'Investimento'}</td>
+                  <td style={{ color: '#10b981', fontWeight: 600, padding: '5px 3px', fontSize: '0.85rem' }}>R$ {Number(c.balance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                 </tr>
               ))}
             </tbody>
