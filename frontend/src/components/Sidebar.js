@@ -148,14 +148,15 @@ const Sidebar = ({ setToken, user }) => {
                 Transferências
               </Link>
             </li>
+            <li>
+              <Link to="/change-password" onClick={handleLinkClick} style={{ display: 'block', padding: '8px 0', textDecoration: 'none', color: 'inherit' }}>
+                Trocar Senha
+              </Link>
+            </li>
             {user && user.role === 'admin' && (
               <>
                 <li style={{ marginTop: 24, fontWeight: 600, color: '#2563eb' }}>Administração</li>
-                <li>
-                  <Link to="/admin/change-password" onClick={handleLinkClick} style={{ display: 'block', padding: '8px 0', textDecoration: 'none', color: 'inherit' }}>
-                    Trocar Senha
-                  </Link>
-                </li>
+
                 <li>
                   <Link to="/admin/users" onClick={handleLinkClick} style={{ display: 'block', padding: '8px 0', textDecoration: 'none', color: 'inherit' }}>
                     Gerenciar Usuários
@@ -189,4 +190,4 @@ const Sidebar = ({ setToken, user }) => {
   );
 };
 
-export default Sidebar; 
+export default Sidebar;

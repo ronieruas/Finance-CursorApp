@@ -86,7 +86,7 @@ function AnimatedRoutes({ token, setToken }) {
             </motion.div>
           </PrivateRoute>
         } />
-        <Route path="/admin/change-password" element={
+        <Route path="/change-password" element={
           <PrivateRoute token={token}>
             <ChangePassword token={token} />
           </PrivateRoute>

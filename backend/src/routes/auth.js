@@ -3,6 +3,7 @@ console.log('Loading auth routes module...');
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const authMiddleware = require('../middlewares/authMiddleware');
 
 console.log('Setting up auth routes...');
 
@@ -17,7 +18,7 @@ router.post('/login', (req, res, next) => {
   authController.login(req, res, next);
 });
 
-router.put('/change-password', (req, res, next) => {
+router.put('/change-password', authMiddleware, (req, res, next) => {
   console.log('Auth route: /change-password');
   authController.changePassword(req, res, next);
 });
