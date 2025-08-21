@@ -28,6 +28,11 @@ User.init(
       type: DataTypes.ENUM('admin', 'user'),
       defaultValue: 'user',
     },
++    passwordChangedAt: {
++      type: DataTypes.DATE,
++      allowNull: true,
++      field: 'password_changed_at',
++    },
     createdAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
@@ -47,4 +52,4 @@ User.init(
   }
 );
 
-module.exports = User; 
+module.exports = User;
