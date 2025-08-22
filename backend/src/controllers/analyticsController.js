@@ -161,8 +161,12 @@ async function getComparativoMensal(userId, today) {
   const mesAtual = new Date(today.getFullYear(), today.getMonth(), 1);
   const mesAnterior = new Date(today.getFullYear(), today.getMonth() - 1, 1);
   const mesAnterior2 = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+  const mesAnterior3 = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+  const mesAnterior4 = new Date(today.getFullYear(), today.getMonth() - 4, 1);
 
   const meses = [
+    { start: mesAnterior4, end: new Date(today.getFullYear(), today.getMonth() - 3, 0), nome: 'Mês -4' },
+    { start: mesAnterior3, end: new Date(today.getFullYear(), today.getMonth() - 2, 0), nome: 'Mês -3' },
     { start: mesAnterior2, end: new Date(today.getFullYear(), today.getMonth() - 1, 0), nome: 'Mês -2' },
     { start: mesAnterior, end: new Date(today.getFullYear(), today.getMonth(), 0), nome: 'Mês -1' },
     { start: mesAtual, end: new Date(today.getFullYear(), today.getMonth() + 1, 0), nome: 'Mês Atual' }
@@ -331,4 +335,4 @@ async function getMediaDespesas(userId, meses) {
   }) || 0;
 
   return Number(total / meses);
-} 
+}
