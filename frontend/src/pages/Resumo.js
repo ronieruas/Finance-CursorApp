@@ -17,7 +17,6 @@ function Resumo({ token }) {
     receitasSaldoUltimos6Meses: [],
     despesasMes: {
       gerais: 0,
-      // novos campos consolidados vindos do backend
       faturasProximoMes: 0,
       faturasMesCorrente: 0,
       total: 0
@@ -79,6 +78,9 @@ function Resumo({ token }) {
 
   // Calcular total das despesas parceladas
   const totalDespesasParceladas = data.despesasParceladas.reduce((total, parcela) => total + parcela.valor, 0);
+
+  // Filtrar cartões com valor em aberto > 0
+  const gastosPorCartaoFiltrados = (data.gastosPorCartao || []).filter(c => Number(c.total) > 0);
 
   if (loading) {
     return (
@@ -233,6 +235,9 @@ function Resumo({ token }) {
               <span>Faturas (mês corrente):</span>
               <span style={{ fontWeight: 600 }}>{formatCurrency(data.despesasMes.faturasMesCorrente || 0)}</span>
             </div>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#6b7280' }}>
+              Ajuda: “Faturas (próximo mês)” somam as compras do período de fatura em aberto, que vencem no mês seguinte. “Faturas (mês corrente)” somam as compras do período da fatura já fechada, que vence neste mês.
+            </div>
           </div>
         </motion.div>
 
@@ -290,11 +295,11 @@ function Resumo({ token }) {
             <span style={{ color: '#14b8a6', fontSize: 16 }}>📅</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {data.gastosPorCartao.map((cartao, index) => (
+            {gastosPorCartaoFiltrados.map((cartao, index) => (
               <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937' }}>{cartao.nome}</div>
-                  <div style={{ fontSize: 12, color: '#6b7280' }}>Fecha em {formatDate(cartao.fechamento)}</div>
+                  <div style={{ fontSize: 12, color: '#6b7280' }}>Vencimento em {formatDate(cartao.vencimento)}</div>
                 </div>
                 <span style={{ fontSize: 14, fontWeight: 600, color: '#059669' }}>
                   {formatCurrency(cartao.total)}
@@ -319,10 +324,10 @@ function Resumo({ token }) {
           transition={{ delay: 0.7 }}
         >
           <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Gastos por Cartão de Crédito</h3>
-          {data.gastosPorCartao.length > 0 ? (
+          {gastosPorCartaoFiltrados.length > 0 ? (
             <>
               <ResponsiveContainer width="100%" height={120}>
-                <BarChart data={data.gastosPorCartao} margin={{ left: 8, right: 8, top: 6, bottom: 6 }} barSize={22} barGap={8} barCategoryGap={16}>
+                <BarChart data={gastosPorCartaoFiltrados} margin={{ left: 8, right: 8, top: 6, bottom: 6 }} barSize={22} barGap={8} barCategoryGap={16}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
                   <XAxis dataKey="nome" stroke="#888" fontSize={10} />
                   <YAxis stroke="#888" fontSize={10} />
@@ -337,7 +342,7 @@ function Resumo({ token }) {
                     }}
                   />
                   <Bar dataKey="total" radius={[4, 4, 0, 0]}>
-                    {data.gastosPorCartao.map((entry, index) => (
+                    {gastosPorCartaoFiltrados.map((entry, index) => (
                       <Cell key={`cell-card-${index}`} fill={categoryColorsCartao[index % categoryColorsCartao.length]} />
                     ))}
                   </Bar>
@@ -356,7 +361,7 @@ function Resumo({ token }) {
               color: '#6b7280',
               fontSize: 14
             }}>
-              Nenhum cartão configurado
+              Nenhum cartão com fatura em aberto no período
             </div>
           )}
         </motion.div>
