@@ -183,7 +183,8 @@ exports.getResumo = async (req, res) => {
       gerais: despesasGerais,
       faturasProximoMes: somaFaturaAtual,
       faturasMesCorrente: somaFaturaFechada,
-      total: Number(despesasGerais) + Number(somaFaturaAtual) + Number(somaFaturaFechada)
+      // Total = Despesas Gerais + Faturas do Mês Corrente (conforme solicitado)
+      total: Number(despesasGerais) + Number(somaFaturaFechada)
     };
 
     console.log('Despesas do mês (consolidadas):', despesasMes);
@@ -221,11 +222,15 @@ exports.getResumo = async (req, res) => {
         },
       }) || 0;
 
-      gastosPorCartao.push({
-        nome: cartao.name,
-        total: Number(faturaAtualValor) || 0,
-        fechamento: openPeriod.end,
-      });
+      // Só incluir cartões com valor em aberto > 0
+      if (Number(faturaAtualValor) > 0) {
+        gastosPorCartao.push({
+          nome: cartao.name,
+          total: Number(faturaAtualValor) || 0,
+          fechamento: openPeriod.end,
+          vencimento: openPeriod.vencimento, // Adicionar data de vencimento
+        });
+      }
     }
 
     // 7. Orçamento vs. Gasto por Cartão
