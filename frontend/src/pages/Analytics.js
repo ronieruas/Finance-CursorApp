@@ -91,6 +91,11 @@ function Analytics({ token }) {
     '#ec4899', '#14b8a6', '#f97316', '#84cc16', '#22d3ee',
     '#eab308', '#9ca3af'
   ];
+  // Paleta de cores para categorias de receitas (fatias distintas)
+  const categoryColorsReceitas = [
+    '#22c55e', '#2563eb', '#f59e0b', '#10b981', '#8b5cf6',
+    '#ec4899', '#14b8a6', '#f97316', '#84cc16', '#22d3ee', '#eab308', '#9ca3af'
+  ];
   // Dados para gráfico de tendências
   const tendenciasData = data.tendenciasMensais.meses.map((mes, index) => ({
     mes,
@@ -164,17 +169,17 @@ function Analytics({ token }) {
       </motion.div>
 
       {/* 2. Comparativo Mensal */}
-      <motion.div className="glass-card fade-in" style={{ padding: 24, marginBottom: 32 }}>
+      <motion.div className="glass-card fade-in" style={{ padding: 16, marginBottom: 32 }}>
         <h3 style={{ marginBottom: 16, fontWeight: 600 }}>Comparativo Mensal</h3>
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={240}>
           <BarChart
             data={data.comparativoMensal}
-            margin={{ left: 8, right: 8, top: 6, bottom: 6 }}
-            barSize={22}
-            barGap={8}
-            barCategoryGap={16}
+            margin={{ left: 12, right: 12, top: 8, bottom: 8 }}
+            barSize={18}
+            barGap={6}
+            barCategoryGap={'25%'}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
             <XAxis dataKey="mes" stroke="#888" fontSize={11} />
             <YAxis stroke="#888" fontSize={11} />
             <Tooltip formatter={(value) => `R$ ${value.toLocaleString('pt-BR')}`} />
@@ -222,7 +227,7 @@ function Analytics({ token }) {
                 label={({ name, value }) => `${name}: R$ ${value.toLocaleString('pt-BR')}`}
               >
                 {categoriasReceitasData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={colors.receitas} />
+                  <Cell key={`cell-rec-${index}`} fill={categoryColorsReceitas[index % categoryColorsReceitas.length]} />
                 ))}
               </Pie>
               <Tooltip formatter={(value) => `R$ ${value.toLocaleString('pt-BR')}`} />
