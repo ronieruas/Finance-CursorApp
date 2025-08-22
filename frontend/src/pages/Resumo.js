@@ -17,7 +17,9 @@ function Resumo({ token }) {
     receitasSaldoUltimos6Meses: [],
     despesasMes: {
       gerais: 0,
-      cartao: 0,
+      // novos campos consolidados vindos do backend
+      faturasProximoMes: 0,
+      faturasMesCorrente: 0,
       total: 0
     },
     totalDespesasUltimos6Meses: [],
@@ -221,11 +223,15 @@ function Resumo({ token }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
               <span>Despesas Gerais:</span>
-              <span style={{ fontWeight: 600 }}>{formatCurrency(data.despesasMes.gerais)}</span>
+              <span style={{ fontWeight: 600 }}>{formatCurrency(data.despesasMes.gerais || 0)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
-              <span>Faturas de Cartão:</span>
-              <span style={{ fontWeight: 600 }}>{formatCurrency(data.despesasMes.cartao)}</span>
+              <span>Faturas (próximo mês):</span>
+              <span style={{ fontWeight: 600 }}>{formatCurrency(data.despesasMes.faturasProximoMes || 0)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+              <span>Faturas (mês corrente):</span>
+              <span style={{ fontWeight: 600 }}>{formatCurrency(data.despesasMes.faturasMesCorrente || 0)}</span>
             </div>
           </div>
         </motion.div>
