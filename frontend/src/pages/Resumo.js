@@ -27,6 +27,11 @@ function Resumo({ token }) {
     despesasParceladas: []
   });
   const [loading, setLoading] = useState(true);
+  // Paleta de cores para cartões (barras distintas)
+  const categoryColorsCartao = [
+    '#2563eb', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+    '#ec4899', '#14b8a6', '#f97316', '#84cc16', '#22d3ee'
+  ];
 
   useEffect(() => {
     fetchResumo();
