@@ -164,12 +164,15 @@ async function getComparativoMensal(userId, today) {
   const mesAnterior3 = new Date(today.getFullYear(), today.getMonth() - 3, 1);
   const mesAnterior4 = new Date(today.getFullYear(), today.getMonth() - 4, 1);
 
+  const monthNames = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const fmt = (d) => `${monthNames[d.getMonth()]}/${d.getFullYear()}`;
+
   const meses = [
-    { start: mesAnterior4, end: new Date(today.getFullYear(), today.getMonth() - 3, 0), nome: 'Mês -4' },
-    { start: mesAnterior3, end: new Date(today.getFullYear(), today.getMonth() - 2, 0), nome: 'Mês -3' },
-    { start: mesAnterior2, end: new Date(today.getFullYear(), today.getMonth() - 1, 0), nome: 'Mês -2' },
-    { start: mesAnterior, end: new Date(today.getFullYear(), today.getMonth(), 0), nome: 'Mês -1' },
-    { start: mesAtual, end: new Date(today.getFullYear(), today.getMonth() + 1, 0), nome: 'Mês Atual' }
+    { start: mesAnterior4, end: new Date(today.getFullYear(), today.getMonth() - 3, 0), nome: fmt(mesAnterior4) },
+    { start: mesAnterior3, end: new Date(today.getFullYear(), today.getMonth() - 2, 0), nome: fmt(mesAnterior3) },
+    { start: mesAnterior2, end: new Date(today.getFullYear(), today.getMonth() - 1, 0), nome: fmt(mesAnterior2) },
+    { start: mesAnterior, end: new Date(today.getFullYear(), today.getMonth(), 0), nome: fmt(mesAnterior) },
+    { start: mesAtual, end: new Date(today.getFullYear(), today.getMonth() + 1, 0), nome: fmt(mesAtual) }
   ];
 
   const comparativo = await Promise.all(meses.map(async (mes) => {

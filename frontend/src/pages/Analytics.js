@@ -176,8 +176,8 @@ function Analytics({ token }) {
             data={data.comparativoMensal}
             margin={{ left: 12, right: 12, top: 8, bottom: 8 }}
             barSize={18}
-            barGap={6}
-            barCategoryGap={'25%'}
+            barGap={4}
+            barCategoryGap={'15%'}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
             <XAxis dataKey="mes" stroke="#888" fontSize={11} />
