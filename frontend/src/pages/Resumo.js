@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import '../styles/global.css';
 import { motion } from 'framer-motion';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Cell } from 'recharts';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 
@@ -169,8 +169,8 @@ function Resumo({ token }) {
         >
           <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Receitas e Saldos (Últimos 6 Meses)</h3>
           <ResponsiveContainer width="100%" height={120}>
-            <BarChart data={data.receitasSaldoUltimos6Meses}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <BarChart data={data.receitasSaldoUltimos6Meses} margin={{ left: 8, right: 8, top: 6, bottom: 6 }} barSize={22} barGap={8} barCategoryGap={16}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
               <XAxis dataKey="mes" stroke="#888" fontSize={10} />
               <YAxis stroke="#888" fontSize={10} />
               <Tooltip 
@@ -183,12 +183,12 @@ function Resumo({ token }) {
                   boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                 }}
               />
-              <Bar dataKey="receitas" fill="#22c55e" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="saldoFinal" fill="#60a5fa" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="receitas" fill="#2563eb" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="saldoFinal" fill="#60a5fa" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
           <div style={{ marginTop: 8, fontSize: 12, color: '#6b7280', textAlign: 'center' }}>
-            <span style={{ color: '#22c55e' }}>■</span> Receitas <span style={{ marginLeft: 12, color: '#60a5fa' }}>■</span> Saldo
+            <span style={{ color: '#2563eb' }}>■</span> Receitas <span style={{ marginLeft: 12, color: '#60a5fa' }}>■</span> Saldo
           </div>
         </motion.div>
 
@@ -311,8 +311,8 @@ function Resumo({ token }) {
           {data.gastosPorCartao.length > 0 ? (
             <>
               <ResponsiveContainer width="100%" height={120}>
-                <BarChart data={data.gastosPorCartao}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <BarChart data={data.gastosPorCartao} margin={{ left: 8, right: 8, top: 6, bottom: 6 }} barSize={22} barGap={8} barCategoryGap={16}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
                   <XAxis dataKey="nome" stroke="#888" fontSize={10} />
                   <YAxis stroke="#888" fontSize={10} />
                   <Tooltip 
@@ -325,11 +325,15 @@ function Resumo({ token }) {
                       boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                     }}
                   />
-                  <Bar dataKey="total" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                    {data.gastosPorCartao.map((entry, index) => (
+                      <Cell key={`cell-card-${index}`} fill={categoryColorsCartao[index % categoryColorsCartao.length]} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
               <div style={{ marginTop: 8, fontSize: 12, color: '#6b7280', textAlign: 'center' }}>
-                <span style={{ color: '#f59e0b' }}>■</span> Total de Gastos
+                Cores representam cada cartão
               </div>
             </>
           ) : (
