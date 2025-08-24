@@ -13,6 +13,7 @@ Income.init(
     date: { type: DataTypes.DATEONLY, allowNull: false },
     category: { type: DataTypes.STRING },
     is_recurring: { type: DataTypes.BOOLEAN, defaultValue: false },
+    posted: { type: DataTypes.BOOLEAN, defaultValue: false },
     createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },
   {
@@ -23,4 +24,4 @@ Income.init(
   }
 );
 
-module.exports = Income; 
+module.exports = Income;

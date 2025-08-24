@@ -35,6 +35,7 @@ exports.list = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     const { account_id, description, value, date, category, is_recurring } = req.body;
+    const willBeApplied = isEffective(date);
     const income = await Income.create({
       user_id: req.user.id,
       account_id,
@@ -43,11 +44,12 @@ exports.create = async (req, res) => {
       date,
       category,
       is_recurring: !!is_recurring,
+      posted: willBeApplied,
     });
-    // Atualiza saldo da conta somente se a data for hoje ou passada
-    if (account_id) {
+    // Atualiza saldo da conta somente se a data for hoje ou passada (posted=true)
+    if (account_id && willBeApplied) {
       const account = await Account.findOne({ where: { id: account_id, user_id: req.user.id } });
-      if (account && isEffective(date)) {
+      if (account) {
         account.balance = Number(account.balance) + Number(value);
         await account.save();
       }
@@ -68,26 +70,27 @@ exports.update = async (req, res) => {
     const origAccountId = income.account_id;
     const origValue = Number(income.value);
     const origDate = income.date;
+    const origPosted = income.posted;
 
     // Novos valores (mantém original se não enviado)
     const newAccountId = account_id !== undefined ? account_id : origAccountId;
     const newValue = value !== undefined ? Number(value) : origValue;
     const newDate = date !== undefined ? date : origDate;
 
-    const wasEffective = isEffective(origDate);
-    const willBeEffective = isEffective(newDate);
+    const wasApplied = (origPosted !== undefined) ? !!origPosted : isEffective(origDate);
+    const willBeApplied = isEffective(newDate);
 
     // Ajuste de saldo conforme alterações
     if (origAccountId !== newAccountId) {
       // Conta mudou
-      if (wasEffective && origAccountId) {
+      if (wasApplied && origAccountId) {
         const accOld = await Account.findOne({ where: { id: origAccountId, user_id: req.user.id } });
         if (accOld) {
           accOld.balance = Number(accOld.balance) - origValue;
           await accOld.save();
         }
       }
-      if (willBeEffective && newAccountId) {
+      if (willBeApplied && newAccountId) {
         const accNew = await Account.findOne({ where: { id: newAccountId, user_id: req.user.id } });
         if (accNew) {
           accNew.balance = Number(accNew.balance) + newValue;
@@ -99,17 +102,17 @@ exports.update = async (req, res) => {
       if (origAccountId) {
         const acc = await Account.findOne({ where: { id: origAccountId, user_id: req.user.id } });
         if (acc) {
-          if (wasEffective && willBeEffective) {
+          if (wasApplied && willBeApplied) {
             const delta = newValue - origValue;
             if (delta !== 0) {
               acc.balance = Number(acc.balance) + delta;
               await acc.save();
             }
-          } else if (wasEffective && !willBeEffective) {
+          } else if (wasApplied && !willBeApplied) {
             // Estava aplicado e deixará de estar
             acc.balance = Number(acc.balance) - origValue;
             await acc.save();
-          } else if (!wasEffective && willBeEffective) {
+          } else if (!wasApplied && willBeApplied) {
             // Não estava aplicado e passará a estar
             acc.balance = Number(acc.balance) + newValue;
             await acc.save();
@@ -118,7 +121,7 @@ exports.update = async (req, res) => {
       }
     }
 
-    await income.update({ description, value, date, category, is_recurring, account_id: newAccountId });
+    await income.update({ description, value, date, category, is_recurring, account_id: newAccountId, posted: willBeApplied });
     res.json(income);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -129,8 +132,9 @@ exports.remove = async (req, res) => {
   const income = await Income.findOne({ where: { id: req.params.id, user_id: req.user.id } });
   if (!income) return res.status(404).json({ error: 'Receita não encontrada' });
 
-  // Se a receita já estava aplicada (data hoje ou passada), reverter do saldo
-  if (income.account_id && isEffective(income.date)) {
+  // Se a receita já estava aplicada (posted=true OU, fallback, data hoje/passada), reverter do saldo
+  const applied = (income.posted !== undefined) ? !!income.posted : isEffective(income.date);
+  if (income.account_id && applied) {
     const account = await Account.findOne({ where: { id: income.account_id, user_id: req.user.id } });
     if (account) {
       account.balance = Number(account.balance) - Number(income.value);
