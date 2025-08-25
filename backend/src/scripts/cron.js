@@ -20,22 +20,22 @@ cron.schedule('1 */3 * * *', async () => {
 // Job diário: aplicar receitas agendadas (date <= hoje) que ainda não foram postadas (posted=false)
 cron.schedule('10 2 * * *', async () => {
   console.log('[CRON] Aplicando receitas agendadas (diariamente às 02:10)...');
+  console.log(`[CRON] TZ=${process.env.TZ || 'N/A'} | now=${new Date().toString()}`);
   try {
-    const today = new Date();
-    const todayStr = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString().slice(0,10);
-
+    // Usar CURRENT_DATE no banco para evitar qualquer drift de timezone
     const incomes = await Income.findAll({
       where: {
         posted: { [Op.or]: [false, null] },
-        date: { [Op.lte]: todayStr },
+        date: { [Op.lte]: sequelize.literal('CURRENT_DATE') },
       }
     });
 
     console.log(`[CRON] Encontradas ${incomes.length} receita(s) para aplicar.`);
 
     for (const inc of incomes) {
+      console.log(`[CRON] Aplicando receita id=${inc.id} user=${inc.user_id} conta=${inc.account_id} date=${inc.date} valor=${inc.value}`);
       await sequelize.transaction(async (t) => {
-        const account = await Account.findOne({ where: { id: inc.account_id, user_id: inc.user_id } , transaction: t, lock: t.LOCK.UPDATE});
+        const account = await Account.findOne({ where: { id: inc.account_id, user_id: inc.user_id }, transaction: t, lock: t.LOCK.UPDATE });
         if (!account) {
           console.warn(`[CRON] Conta ${inc.account_id} não encontrada para a receita ${inc.id}. Pulando.`);
           await inc.update({ posted: true }, { transaction: t }); // evita reprocessar indefinidamente

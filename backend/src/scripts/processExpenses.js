@@ -1,35 +1,57 @@
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
-const { Expense, Account } = require('../models');
+-const { Expense, Account } = require('../models');
++const { Expense, Account, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const dayjs = require('dayjs');
 
 async function processExpenses() {
   try {
     console.log('Iniciando processamento de despesas automáticas...');
-    
-    // 1. Processar despesas pendentes cuja data de pagamento chegou
-    const today = new Date();
-    const pendingExpenses = await Expense.findAll({
-      where: {
-        status: 'pendente',
-        account_id: {
-          [Op.ne]: null
-        },
-        [Op.or]: [
-          // Agendadas explicitamente via paid_at
-          { paid_at: { [Op.lte]: today } },
-          // Não agendadas (paid_at nulo), mas com vencimento atingido (não débito automático)
-          {
-            [Op.and]: [
-              { paid_at: { [Op.is]: null } },
-              { due_date: { [Op.lte]: today } },
-              { [Op.or]: [ { auto_debit: false }, { auto_debit: { [Op.is]: null } } ] }
-            ]
-          }
-        ]
-      }
-    });
++    console.log(`[EXPENSES] TZ=${process.env.TZ || 'N/A'} | now=${new Date().toString()}`);
+-    
+-    // 1. Processar despesas pendentes cuja data de pagamento chegou
+-    const today = new Date();
+-    const pendingExpenses = await Expense.findAll({
+-      where: {
+-        status: 'pendente',
+-        account_id: {
+-          [Op.ne]: null
+-        },
+-        [Op.or]: [
+-          // Agendadas explicitamente via paid_at
+-          { paid_at: { [Op.lte]: today } },
+-          // Não agendadas (paid_at nulo), mas com vencimento atingido (não débito automático)
+-          {
+-            [Op.and]: [
+-              { paid_at: { [Op.is]: null } },
+-              { due_date: { [Op.lte]: today } },
+-              { [Op.or]: [ { auto_debit: false }, { auto_debit: { [Op.is]: null } } ] }
+-            ]
+-          }
+-        ]
+-      }
+-    });
++    
++    // 1. Processar despesas pendentes cuja data de pagamento chegou
++    const pendingExpenses = await Expense.findAll({
++      where: {
++        status: 'pendente',
++        account_id: { [Op.ne]: null },
++        [Op.or]: [
++          // Agendadas explicitamente via paid_at (considerando somente a parte de data)
++          sequelize.where(sequelize.cast(sequelize.col('paid_at'), 'date'), '<=', sequelize.literal('CURRENT_DATE')),
++          // Não agendadas (paid_at nulo), mas com vencimento atingido (não débito automático)
++          {
++            [Op.and]: [
++              { paid_at: { [Op.is]: null } },
++              sequelize.where(sequelize.col('due_date'), '<=', sequelize.literal('CURRENT_DATE')),
++              { [Op.or]: [ { auto_debit: false }, { auto_debit: { [Op.is]: null } } ] }
++            ]
++          }
++        ]
++      }
++    });
 
     console.log(`Encontradas ${pendingExpenses.length} despesas pendentes para processar`);
 
@@ -38,7 +60,7 @@ async function processExpenses() {
         // Atualizar status para paga
         await expense.update({
           status: 'paga',
-          paid_at: expense.paid_at || today
+          paid_at: expense.paid_at || new Date()
         });
 
         // Debitar da conta
@@ -114,18 +136,28 @@ async function processExpenses() {
 
 
     // 3. Processar despesas com débito automático
-    const autoDebitExpenses = await Expense.findAll({
-      where: {
-        auto_debit: true,
-        status: 'pendente',
-        due_date: {
-          [Op.lte]: today
-        },
-        account_id: {
-          [Op.ne]: null
-        }
-      }
-    });
+-    const autoDebitExpenses = await Expense.findAll({
+-      where: {
+-        auto_debit: true,
+-        status: 'pendente',
+-        due_date: {
+-          [Op.lte]: today
+-        },
+-        account_id: {
+-          [Op.ne]: null
+-        }
+-      }
+-    });
++    const autoDebitExpenses = await Expense.findAll({
++      where: {
++        auto_debit: true,
++        status: 'pendente',
++        account_id: { [Op.ne]: null },
++        [Op.and]: [
++          sequelize.where(sequelize.col('due_date'), '<=', sequelize.literal('CURRENT_DATE'))
++        ]
++      }
++    });
 
     console.log(`Encontradas ${autoDebitExpenses.length} despesas com débito automático para processar`);
 
@@ -142,7 +174,7 @@ async function processExpenses() {
 
           await expense.update({
             status: 'paga',
-            paid_at: today
+            paid_at: new Date()
           });
 
           console.log(`Despesa ${expense.id} paga por débito automático. Debitado R$ ${expense.value} da conta ${account.name}`);
