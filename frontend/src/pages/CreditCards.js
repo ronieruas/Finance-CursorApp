@@ -432,8 +432,8 @@ function CreditCards({ token }) {
 
     if (vencimento && hoje.isAfter(vencimento, 'day')) return 'Em atraso';
 
-    // Se a data de hoje for após o fechamento e antes do vencimento
-    if (fechamento && vencimento && hoje.isAfter(fechamento, 'day') && hoje.isBefore(vencimento, 'day')) {
+    // Se a data de hoje for no dia de fechamento (inclusive) e antes do vencimento
+    if (fechamento && vencimento && hoje.isSameOrAfter(fechamento, 'day') && hoje.isBefore(vencimento, 'day')) {
       return 'Fechada';
     }
     

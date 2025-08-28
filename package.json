@@ -1,5 +1,8 @@
 {
   "dependencies": {
     "recharts": "^3.0.2"
+  },
+  "devDependencies": {
+    "@react-native-community/cli": "^20.0.1"
   }
 }
