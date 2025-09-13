@@ -15,14 +15,14 @@ module.exports = {
     if (!table.created_at) {
       await queryInterface.addColumn('credit_card_payments', 'created_at', {
         type: Sequelize.DATE,
-        defaultValue: Sequelize.fn('NOW'),
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
       });
     }
     // Adicionar updated_at se não existir
     if (!table.updated_at) {
       await queryInterface.addColumn('credit_card_payments', 'updated_at', {
         type: Sequelize.DATE,
-        defaultValue: Sequelize.fn('NOW'),
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
       });
     }
   },
@@ -30,4 +30,4 @@ module.exports = {
   async down (queryInterface, Sequelize) {
     // Não desfaz para evitar perda de dados
   }
-}; 
+};

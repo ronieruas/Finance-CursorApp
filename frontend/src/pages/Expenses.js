@@ -13,6 +13,7 @@ const CARDS_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/c
 function Expenses({ token }) {
   const [expenses, setExpenses] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const [creditCards, setCreditCards] = useState([]);
   const [form, setForm] = useState({
     type: '', // 'conta' ou 'cartao'
     account_id: '',
@@ -43,7 +44,8 @@ function Expenses({ token }) {
 
   useEffect(() => { 
     fetchExpensesWithFilters(); 
-    fetchAccounts(); 
+    fetchAccounts();
+    fetchCreditCards(); 
     // Verificar se é admin
     const tokenData = JSON.parse(atob(token.split('.')[1]));
     setIsAdmin(tokenData.role === 'admin');
@@ -65,6 +67,16 @@ function Expenses({ token }) {
       setAccounts(data);
     } catch {
       setAccounts([]);
+    }
+  };
+
+  const fetchCreditCards = async () => {
+    try {
+      const res = await fetch(CARDS_URL, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      setCreditCards(data);
+    } catch {
+      setCreditCards([]);
     }
   };
 
@@ -118,7 +130,7 @@ function Expenses({ token }) {
       if (res.ok) {
         setToast({ show: true, message: 'Despesa adicionada com sucesso!', type: 'success' });
         setForm({ type: '', account_id: '', credit_card_id: '', description: '', value: '', due_date: '', category: '', status: 'pendente', is_recurring: false, auto_debit: false, paid_at: '', installment_type: 'avista', installment_total: 1 });
-        fetchExpenses(); // Atualiza lista após criação
+        fetchExpensesWithFilters(); // Atualiza lista após criação mantendo filtros
       } else {
         const errData = await res.json();
         setToast({ show: true, message: errData.error || 'Erro ao adicionar despesa.', type: 'error' });
@@ -175,7 +187,25 @@ function Expenses({ token }) {
 
   const handleEditChange = e => {
     const { name, value, type, checked } = e.target;
-    setEditForm({ ...editForm, [name]: type === 'checkbox' ? checked : value });
+    let newEditForm = { ...editForm, [name]: type === 'checkbox' ? checked : value };
+    
+    // Limpar campos desnecessários APENAS ao trocar o tipo de despesa
+    if (name === 'type') {
+      if (value === 'cartao') {
+        newEditForm = { ...newEditForm, account_id: '', due_date: '', status: 'pendente', paid_at: '' };
+      } else if (value === 'conta') {
+        newEditForm = { ...newEditForm, credit_card_id: '', installment_type: 'avista', installment_total: 1 };
+      }
+    }
+    // Para outros campos (como account_id, credit_card_id), apenas atualiza o valor sem limpar outros campos
+    
+    // Normaliza paid_at para conter apenas a data (AAAA-MM-DD)
+    if (name === 'paid_at' && value) {
+      const onlyDate = value.length > 10 ? value.slice(0,10) : value;
+      newEditForm.paid_at = onlyDate;
+    }
+    
+    setEditForm(newEditForm);
   };
 
   const handleEditSubmit = async e => {
@@ -195,7 +225,7 @@ function Expenses({ token }) {
       if (res.ok) {
         setToast({ show: true, message: 'Despesa editada com sucesso!', type: 'success' });
         setEditingId(null); setEditForm({});
-        fetchExpenses(); // Atualiza lista após edição
+        fetchExpensesWithFilters(); // Atualiza lista após edição mantendo filtros
       } else {
         const errData = await res.json();
         setToast({ show: true, message: errData.error || 'Erro ao editar despesa.', type: 'error' });
@@ -336,7 +366,7 @@ function Expenses({ token }) {
             <thead>
               <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
                 <th style={{ padding: 8, textAlign: 'left', width: 80 }}>Data</th>
-                <th style={{ padding: 8, textAlign: 'left', width: 98 }}>Conta</th>
+                <th style={{ padding: 8, textAlign: 'left', width: 98 }}>Conta/Cartão</th>
                 <th style={{ padding: 8, textAlign: 'left', width: 128 }}>Descrição</th>
                 <th style={{ padding: 8, textAlign: 'left', width: 80 }}>Valor</th>
                 <th style={{ padding: 8, textAlign: 'left', width: 80 }}>Vencimento</th>
@@ -364,12 +394,21 @@ function Expenses({ token }) {
                         </select>
                       </td>
                       <td>
-                        <select name="account_id" value={editForm.account_id} onChange={handleEditChange} className="input-glass" required style={{ width: '100%' }}>
-                          <option value="">Selecione</option>
-                          {accounts.map(acc => (
-                            <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
-                          ))}
-                        </select>
+                        {editForm.type === 'cartao' ? (
+                          <select name="credit_card_id" value={editForm.credit_card_id || ''} onChange={handleEditChange} className="input-glass" required style={{ width: '100%' }}>
+                            <option value="">Selecione Cartão</option>
+                            {creditCards.map(card => (
+                              <option key={card.id} value={card.id}>{card.name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <select name="account_id" value={editForm.account_id || ''} onChange={handleEditChange} className="input-glass" required style={{ width: '100%' }}>
+                            <option value="">Selecione Conta</option>
+                            {accounts.map(acc => (
+                              <option key={acc.id} value={acc.id}>{acc.name} ({acc.bank})</option>
+                            ))}
+                          </select>
+                        )}
                       </td>
                       <td><Input name="description" value={editForm.description} onChange={handleEditChange} required style={{ width: '100%' }} /></td>
                       <td><Input name="value" type="number" value={editForm.value} onChange={handleEditChange} required style={{ width: '100%' }} /></td>
@@ -412,7 +451,12 @@ function Expenses({ token }) {
                   ) : (
                     <>
                       <td style={{ textAlign: 'left' }}>{exp.createdAt ? dayjs(exp.createdAt).format('DD/MM/YYYY') : '-'}</td>
-                      <td style={{ textAlign: 'left' }}>{accounts.find(a => a.id === exp.account_id)?.name || exp.account_id}</td>
+                      <td style={{ textAlign: 'left' }}>
+                        {exp.type === 'cartao' 
+                          ? (creditCards.find(c => c.id === exp.credit_card_id)?.name || exp.credit_card_id)
+                          : (accounts.find(a => a.id === exp.account_id)?.name || exp.account_id)
+                        }
+                      </td>
                       <td style={{ textAlign: 'left' }}>{exp.description}</td>
                       <td style={{ textAlign: 'left', color: 'var(--color-despesa)', fontWeight: 600 }}>R$ {Number(exp.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                       <td style={{ textAlign: 'left' }}>{exp.due_date ? dayjs(exp.due_date).format('DD/MM/YYYY') : '-'}</td>

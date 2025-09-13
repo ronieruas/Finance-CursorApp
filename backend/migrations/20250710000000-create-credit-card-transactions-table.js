@@ -14,12 +14,12 @@ module.exports = {
       installment_number: { type: Sequelize.INTEGER, defaultValue: 1 },
       installment_total: { type: Sequelize.INTEGER, defaultValue: 1 },
       family_member: { type: Sequelize.STRING },
-      created_at: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
-      updated_at: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+      created_at: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') },
+      updated_at: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') },
     });
   },
 
   async down (queryInterface, Sequelize) {
     await queryInterface.dropTable('credit_card_transactions');
   }
-}; 
+};

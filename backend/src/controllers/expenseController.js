@@ -123,7 +123,7 @@ exports.create = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
-    const { description, value, due_date, category, status, is_recurring, auto_debit, paid_at } = req.body;
+    const { account_id, description, value, due_date, category, status, is_recurring, auto_debit, paid_at } = req.body;
     const expense = await Expense.findOne({ where: { id: req.params.id, user_id: req.user.id } });
     if (!expense) return res.status(404).json({ error: 'Despesa não encontrada' });
     
@@ -131,32 +131,58 @@ exports.update = async (req, res) => {
     const newValue = Number(value);
     const originalStatus = expense.status;
     const newStatus = status;
+    const originalAccountId = expense.account_id;
+    const newAccountId = account_id;
 
-    // Ajustar saldo da conta se for despesa de conta
-    if (expense.account_id) {
-      const account = await Account.findOne({ where: { id: expense.account_id, user_id: req.user.id } });
-      if (account) {
-        let balanceAdjustment = 0;
-
-        // Se estava paga e agora não está mais paga (pendente), devolve o valor original
-        if (originalStatus === 'paga' && newStatus !== 'paga') {
-          balanceAdjustment += originalValue;
+    // Ajustar saldo das contas se for despesa de conta
+    if (originalAccountId || newAccountId) {
+      // Se mudou de conta, ajustar saldos de ambas as contas
+      if (originalAccountId && newAccountId && originalAccountId !== newAccountId) {
+        // Conta antiga: devolver o valor se estava paga
+        if (originalStatus === 'paga') {
+          const oldAccount = await Account.findOne({ where: { id: originalAccountId, user_id: req.user.id } });
+          if (oldAccount) {
+            oldAccount.balance = Number(oldAccount.balance) + originalValue;
+            await oldAccount.save();
+            console.log(`[UPDATE EXPENSE] Devolvendo valor ${originalValue} para conta antiga ${oldAccount.id}`);
+          }
         }
         
-        // Se não estava paga e agora está paga, deduz o novo valor
-        if (originalStatus !== 'paga' && newStatus === 'paga') {
-          balanceAdjustment -= newValue;
+        // Conta nova: deduzir o valor se está paga
+        if (newStatus === 'paga') {
+          const newAccount = await Account.findOne({ where: { id: newAccountId, user_id: req.user.id } });
+          if (newAccount) {
+            newAccount.balance = Number(newAccount.balance) - newValue;
+            await newAccount.save();
+            console.log(`[UPDATE EXPENSE] Deduzindo valor ${newValue} da conta nova ${newAccount.id}`);
+          }
         }
-        
-        // Se estava paga e continua paga, mas o valor mudou
-        if (originalStatus === 'paga' && newStatus === 'paga') {
-          balanceAdjustment += originalValue - newValue; // devolve o antigo e deduz o novo
-        }
+      } else if (originalAccountId && originalAccountId === newAccountId) {
+        // Mesma conta, ajustar saldo conforme status e valor
+        const account = await Account.findOne({ where: { id: originalAccountId, user_id: req.user.id } });
+        if (account) {
+          let balanceAdjustment = 0;
 
-        if (balanceAdjustment !== 0) {
-          account.balance = Number(account.balance) + balanceAdjustment;
-          await account.save();
-          console.log(`[UPDATE EXPENSE] Ajuste de saldo da conta ${account.id}: ${balanceAdjustment > 0 ? '+' : ''}${balanceAdjustment}`);
+          // Se estava paga e agora não está mais paga (pendente), devolve o valor original
+          if (originalStatus === 'paga' && newStatus !== 'paga') {
+            balanceAdjustment += originalValue;
+          }
+          
+          // Se não estava paga e agora está paga, deduz o novo valor
+          if (originalStatus !== 'paga' && newStatus === 'paga') {
+            balanceAdjustment -= newValue;
+          }
+          
+          // Se estava paga e continua paga, mas o valor mudou
+          if (originalStatus === 'paga' && newStatus === 'paga') {
+            balanceAdjustment += originalValue - newValue; // devolve o antigo e deduz o novo
+          }
+
+          if (balanceAdjustment !== 0) {
+            account.balance = Number(account.balance) + balanceAdjustment;
+            await account.save();
+            console.log(`[UPDATE EXPENSE] Ajuste de saldo da conta ${account.id}: ${balanceAdjustment > 0 ? '+' : ''}${balanceAdjustment}`);
+          }
         }
       }
     }
@@ -177,7 +203,7 @@ exports.update = async (req, res) => {
       normalizedPaidAt = toLocalDate(normalizedPaidAt);
     }
     
-    await expense.update({ description, value: newValue, due_date, category, status: newStatus, is_recurring, auto_debit, paid_at: normalizedPaidAt });
+    await expense.update({ account_id, description, value: newValue, due_date, category, status: newStatus, is_recurring, auto_debit, paid_at: normalizedPaidAt });
     res.json(expense);
   } catch (err) {
     console.error('Erro ao editar despesa:', err);

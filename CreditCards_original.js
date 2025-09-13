@@ -11,7 +11,7 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/creditCards`; // ajuste conforme backend
+const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/creditCards`; // ajuste conforme backend
 
 function CreditCards({ token }) {
   const [cards, setCards] = useState([]);
@@ -33,7 +33,7 @@ function CreditCards({ token }) {
     credit_card_id: '',
     description: '',
     value: '',
-    due_date: dayjs().format('YYYY-MM-DD'), // Define data atual automaticamente
+    due_date: '',
     category: '',
     installment_type: 'avista',
     installment_total: 1,
@@ -76,7 +76,7 @@ function CreditCards({ token }) {
   };
 
   const fetchAccounts = async () => {
-    const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/accounts`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/accounts`, { headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
     setAccounts(data);
   };
@@ -101,7 +101,7 @@ function CreditCards({ token }) {
 
   const fetchCardExpenses = async (cardId) => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/expenses?type=cartao&credit_card_id=${cardId}&_=${Date.now()}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/expenses?type=cartao&credit_card_id=${cardId}&_=${Date.now()}`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setCardExpenses(prev => ({ ...prev, [cardId]: data }));
       console.log('Despesas retornadas para o cartão', cardId, data);
@@ -253,20 +253,18 @@ function CreditCards({ token }) {
       Object.keys(payload).forEach(k => {
         if (payload[k] === '' || payload[k] === null || payload[k] === undefined) delete payload[k];
       });
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/expenses`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
       if (res.ok) {
         setExpenseToast({ show: true, message: 'Despesa de cartão adicionada com sucesso!', type: 'success' });
-        setExpenseForm({ credit_card_id: '', description: '', value: '', due_date: dayjs().format('YYYY-MM-DD'), category: '', installment_type: 'avista', installment_total: 1, is_recurring: false, auto_debit: false, _hasInitialDate: false });
+        setExpenseForm({ credit_card_id: '', description: '', value: '', due_date: '', category: '', installment_type: 'avista', installment_total: 1, is_recurring: false, auto_debit: false });
         if (payload.credit_card_id) {
           console.log('Chamando fetchCardExpenses após criar despesa, credit_card_id:', payload.credit_card_id);
           setExpandedCardId(Number(payload.credit_card_id)); // força expandir o cartão correto
           fetchCardExpenses(payload.credit_card_id);
-          // Atualiza a fatura do cartão após criar despesa
-          fetchBill(payload.credit_card_id);
         }
       } else {
         const err = await res.json();
@@ -351,13 +349,14 @@ function CreditCards({ token }) {
       const card = cards.find(c => String(c.id) === String(expenseForm.credit_card_id));
       if (card) {
         const { start, end } = getBillPeriod(card, billMonth);
-        // Só preenche se o campo estiver completamente vazio (primeira vez)
-        // Não altera se já existe uma data (mantém data atual ou data inserida pelo usuário)
-        if (!expenseForm.due_date && !expenseForm._hasInitialDate) {
+        // Só sugere/preenche se o campo estiver vazio ou se cartão/mês mudou
+        if (!expenseForm.due_date ||
+            (expenseForm._lastCard !== expenseForm.credit_card_id || expenseForm._lastMonth !== billMonth)) {
           setExpenseForm(f => ({
             ...f,
-            due_date: dayjs().format('YYYY-MM-DD'), // Mantém data atual em vez da data de fechamento
-            _hasInitialDate: true // Flag para indicar que já foi inicializada
+            due_date: start ? start.format('YYYY-MM-DD') : '',
+            _lastCard: expenseForm.credit_card_id,
+            _lastMonth: billMonth
           }));
         }
       }
@@ -496,7 +495,7 @@ function CreditCards({ token }) {
                   return start && end && due.isSameOrAfter(start) && due.isSameOrBefore(end);
                 });
                 // Debug: mostrar despesas do período e seus status
-                // console.log(`DEBUG - Cartão ${card.id} (${card.name}) - Fatura do período`, billMonth, faturaAtual.map(d => ({ id: d.id, desc: d.description, status: d.status, valor: d.value, due: d.due_date })));
+                console.log(`DEBUG - Cartão ${card.id} (${card.name}) - Fatura do período`, billMonth, faturaAtual.map(d => ({ id: d.id, desc: d.description, status: d.status, valor: d.value, due: d.due_date })));
                 const valorFatura = faturaAtual.reduce((acc, d) => acc + Number(d.value), 0);
                 // Novo: checar se todas as despesas do período estão pagas
                 const todasPagas = faturaAtual.length > 0 && faturaAtual.every(d => d.status === 'paga');
@@ -605,11 +604,12 @@ function CreditCards({ token }) {
                                               // Remove campos não editáveis
                                               delete payload.id;
                                               delete payload.user_id;
+                                              delete payload.account_id;
                                               delete payload.credit_card_id;
                                               delete payload.installment_number;
                                               delete payload.createdAt;
                                               delete payload.updatedAt;
-                                              const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/expenses/${exp.id}`, {
+                                              const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/expenses/${exp.id}`, {
                                                 method: 'PUT',
                                                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                                                 body: JSON.stringify(payload),
@@ -641,7 +641,7 @@ function CreditCards({ token }) {
                                           <Button variant="danger" onClick={async () => {
                                             if (window.confirm('Deseja realmente excluir esta despesa?')) {
                                               setLoading(true);
-                                              await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/expenses/${exp.id}`, {
+                                              await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/expenses/${exp.id}`, {
                                                 method: 'DELETE',
                                                 headers: { Authorization: `Bearer ${token}` },
                                               });
@@ -718,4 +718,4 @@ function CreditCards({ token }) {
   );
 }
 
-export default CreditCards;
+export default CreditCards; 
