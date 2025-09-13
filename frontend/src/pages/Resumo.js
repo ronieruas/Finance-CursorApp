@@ -424,23 +424,36 @@ function Resumo({ token }) {
               Total: {formatCurrency(totalDespesasParceladas)}
             </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {data.despesasParceladas.map((parcela, index) => (
-              <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937' }}>
-                    {parcela.item} (Parcela {parcela.parcelaAtual}/{parcela.totalParcelas})
+          {data.despesasParceladas && data.despesasParceladas.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {data.despesasParceladas.map((parcela, index) => (
+                <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937' }}>
+                      {parcela.item} (Parcela {parcela.parcelaAtual}/{parcela.totalParcelas})
+                    </div>
+                    <div style={{ fontSize: 12, color: '#6b7280' }}>
+                      Cartão {parcela.cartao}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 12, color: '#6b7280' }}>
-                    Cartão {parcela.cartao}
-                  </div>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#7c3aed' }}>
+                    {formatCurrency(parcela.valor)}
+                  </span>
                 </div>
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#7c3aed' }}>
-                  {formatCurrency(parcela.valor)}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              height: 80,
+              color: '#6b7280',
+              fontSize: 14
+            }}>
+              Nenhuma parcela vence este mês
+            </div>
+          )}
         </motion.div>
 
       </div>

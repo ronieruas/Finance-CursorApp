@@ -11,7 +11,7 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/creditCards`; // ajuste conforme backend
+const API_URL = `${process.env.REACT_APP_API_URL}/creditCards`; // ajuste conforme backend
 
 function CreditCards({ token }) {
   const [cards, setCards] = useState([]);
@@ -33,7 +33,7 @@ function CreditCards({ token }) {
     credit_card_id: '',
     description: '',
     value: '',
-    due_date: dayjs().format('YYYY-MM-DD'), // Define data atual automaticamente
+    due_date: dayjs().format('YYYY-MM-DD'),
     category: '',
     installment_type: 'avista',
     installment_total: 1,
@@ -49,7 +49,7 @@ function CreditCards({ token }) {
     fetchLimits(); 
     // Buscar despesas de todos os cartões ao carregar
     (async () => {
-      const res = await fetch(API_URL, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/creditCards`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       data.forEach(card => fetchCardExpenses(card.id));
     })();
@@ -57,7 +57,7 @@ function CreditCards({ token }) {
 
   const fetchCards = async () => {
     setLoading(true);
-    const res = await fetch(API_URL, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${process.env.REACT_APP_API_URL}/creditCards`, { headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
     setCards(data);
     setLoading(false);
@@ -65,7 +65,7 @@ function CreditCards({ token }) {
 
   const fetchLimits = async () => {
     try {
-      const res = await fetch(`${API_URL}/limits`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/creditCards/limits`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       const map = {};
       data.forEach(l => { map[l.card_id] = l.utilizado; });
@@ -76,7 +76,7 @@ function CreditCards({ token }) {
   };
 
   const fetchAccounts = async () => {
-    const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/accounts`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${process.env.REACT_APP_API_URL}/accounts`, { headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
     setAccounts(data);
   };
@@ -84,7 +84,7 @@ function CreditCards({ token }) {
   const fetchBill = async (cardId) => {
     try {
       console.log('Buscando fatura para cartão:', cardId);
-      const res = await fetch(`${API_URL}/${cardId}/bill`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/creditCards/${cardId}/bill`, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) {
         console.error('Erro ao buscar fatura:', res.status, res.statusText);
         setBill(null);
@@ -101,7 +101,7 @@ function CreditCards({ token }) {
 
   const fetchCardExpenses = async (cardId) => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/expenses?type=cartao&credit_card_id=${cardId}&_=${Date.now()}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/expenses?type=cartao&credit_card_id=${cardId}&_=${Date.now()}`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setCardExpenses(prev => ({ ...prev, [cardId]: data }));
       console.log('Despesas retornadas para o cartão', cardId, data);
@@ -153,7 +153,7 @@ function CreditCards({ token }) {
     if (!window.confirm('Deseja realmente excluir este cartão?')) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/${id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/creditCards/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -181,7 +181,7 @@ function CreditCards({ token }) {
     setLoading(true);
     try {
       console.log('Enviando edição de cartão:', editForm);
-      const res = await fetch(`${API_URL}/${editingId}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/creditCards/${editingId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(editForm),
@@ -260,13 +260,12 @@ function CreditCards({ token }) {
       });
       if (res.ok) {
         setExpenseToast({ show: true, message: 'Despesa de cartão adicionada com sucesso!', type: 'success' });
-        setExpenseForm({ credit_card_id: '', description: '', value: '', due_date: dayjs().format('YYYY-MM-DD'), category: '', installment_type: 'avista', installment_total: 1, is_recurring: false, auto_debit: false, _hasInitialDate: false });
+        setExpenseForm({ credit_card_id: '', description: '', value: '', due_date: '', category: '', installment_type: 'avista', installment_total: 1, is_recurring: false, auto_debit: false });
         if (payload.credit_card_id) {
           console.log('Chamando fetchCardExpenses após criar despesa, credit_card_id:', payload.credit_card_id);
           setExpandedCardId(Number(payload.credit_card_id)); // força expandir o cartão correto
           fetchCardExpenses(payload.credit_card_id);
-          // Atualiza a fatura do cartão após criar despesa
-          fetchBill(payload.credit_card_id);
+          fetchLimits();
         }
       } else {
         const err = await res.json();
@@ -286,60 +285,104 @@ function CreditCards({ token }) {
     setExpenseLoading(false);
   };
 
+  const handleExport = async () => {
+    if (!expandedCardId) {
+      setToast({ show: true, message: 'Por favor, expanda um cartão para exportar as despesas.', type: 'error' });
+      return;
+    }
+
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/export/credit-card-expenses?cardId=${expandedCardId}&billMonth=${billMonth}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        // Tenta ler o erro como JSON, mas se falhar, usa o statusText
+        let errorMessage = res.statusText;
+        try {
+          const err = await res.json();
+          errorMessage = err.error || errorMessage;
+        } catch (e) {
+          // Ignora o erro de parsing se o corpo não for JSON
+        }
+        throw new Error(errorMessage);
+      }
+
+      const blob = await res.blob();
+
+      if (blob.size === 0) {
+        setToast({ show: true, message: 'Não há dados para exportar.', type: 'info' });
+        return;
+      }
+
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      const card = cards.find(c => c.id === expandedCardId);
+      link.setAttribute('download', `despesas_cartao_${card ? card.name : 'cartao'}_${billMonth}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setToast({ show: true, message: 'Exportação concluída com sucesso!', type: 'success' });
+
+    } catch (err) {
+      setToast({ show: true, message: err.message, type: 'error' });
+    }
+  };
+
   // Função para calcular o período da fatura igual ao backend
   function getBillPeriod(card, month) {
     if (!card || !month) return { start: null, end: null };
-    
+
     const closingDay = Number(card.closing_day);
     const dueDay = Number(card.due_day);
-    
-    // Validar se month está no formato correto
+
     if (!month.includes('-')) {
       console.warn('Formato de mês inválido:', month);
-      return { start: null, end: null };
+      return { start: null, end: null, fechamento: null, vencimento: null };
     }
-    
-    const parts = month.split('-');
-    if (parts.length !== 2) {
-      console.warn('Formato de mês inválido:', month);
-      return { start: null, end: null };
-    }
-    
-    const [year, m] = parts.map(Number);
-    
-    // Validar se year e m são números válidos
+
+    const [year, m] = month.split('-').map(Number);
+
     if (isNaN(year) || isNaN(m) || m < 1 || m > 12) {
       console.warn('Valores de ano ou mês inválidos:', { year, m });
-      return { start: null, end: null };
+      return { start: null, end: null, fechamento: null, vencimento: null };
     }
-    
-    // Data de vencimento da fatura para o mês especificado
-    const vencimento = dayjs(`${year}-${m.toString().padStart(2, '0')}-${dueDay.toString().padStart(2, '0')}`);
-    
-    // Calcular o fechamento correspondente ao vencimento
-    // O fechamento é sempre anterior ao vencimento
-    const fechamento = dayjs(`${year}-${m.toString().padStart(2, '0')}-${closingDay.toString().padStart(2, '0')}`);
-    
-    // Se o fechamento seria após o vencimento, ajustar para o mês anterior
-    let fechamentoAjustado = fechamento;
-    if (fechamento.isSameOrAfter(vencimento)) {
-      fechamentoAjustado = fechamento.subtract(1, 'month');
+
+    // month (m) representa o MÊS DE VENCIMENTO
+    const vencimento = dayjs(`${year}-${String(m).padStart(2, '0')}-${String(dueDay).padStart(2, '0')}`);
+
+    let start;
+    let end;
+    let fechamento;
+    if (closingDay > dueDay) {
+      // Fechamento ocorre no mês anterior ao vencimento
+      // start = dia 'closingDay' de (m-2)
+      start = dayjs(new Date(year, (m - 1) - 2, closingDay)).startOf('day');
+      // end = dia (closingDay-1) de (m-1)
+      end = dayjs(new Date(year, (m - 1) - 1, closingDay - 1)).endOf('day');
+      // fechamento nesse caso é em (m-1)
+      fechamento = dayjs(new Date(year, (m - 1) - 1, closingDay));
+    } else {
+      // Fechamento ocorre no mesmo mês do vencimento
+      // start = dia 'closingDay' de (m-1)
+      start = dayjs(new Date(year, (m - 1) - 1, closingDay)).startOf('day');
+      // end = dia (closingDay-1) de (m)
+      end = dayjs(new Date(year, (m - 1) - 0, closingDay - 1)).endOf('day');
+      // fechamento nesse caso é em (m)
+      fechamento = dayjs(new Date(year, (m - 1) - 0, closingDay));
     }
-    
-    // Período da fatura: do fechamento do mês anterior até o dia anterior ao fechamento atual
-    const start = fechamentoAjustado.subtract(1, 'month');
-    const end = fechamentoAjustado.subtract(1, 'day');
-    
-    return { start: start.startOf('day'), end: end.endOf('day'), vencimento };
+
+    return { start, end, fechamento, vencimento };
   }
 
-  // Função para determinar o mês da fatura em aberto (considerando fechamento)
+  // Função para determinar o mês da fatura em aberto (considerando vencimento)
   function getOpenBillMonth(card) {
     if (!card) return dayjs().format('YYYY-MM');
     const today = dayjs();
-    const closing = dayjs().date(card.closing_day);
-    // Se hoje é igual ou após o fechamento, fatura em aberto é do próximo mês
-    if (today.isSameOrAfter(closing, 'day')) {
+    const dueThisMonth = dayjs().date(Number(card.due_day));
+    // Se já passou do dia de vencimento deste mês, a fatura "atual" é a que vence no próximo mês
+    if (today.isAfter(dueThisMonth, 'day')) {
       return today.add(1, 'month').format('YYYY-MM');
     }
     return today.format('YYYY-MM');
@@ -351,13 +394,13 @@ function CreditCards({ token }) {
       const card = cards.find(c => String(c.id) === String(expenseForm.credit_card_id));
       if (card) {
         const { start, end } = getBillPeriod(card, billMonth);
-        // Só preenche se o campo estiver completamente vazio (primeira vez)
-        // Não altera se já existe uma data (mantém data atual ou data inserida pelo usuário)
-        if (!expenseForm.due_date && !expenseForm._hasInitialDate) {
+        // Só sugere/preenche se o campo estiver vazio ou se cartão/mês mudou
+        if (!expenseForm.due_date ||
+            (expenseForm._lastCard !== expenseForm.credit_card_id || expenseForm._lastMonth !== billMonth)) {
           setExpenseForm(f => ({
             ...f,
-            due_date: dayjs().format('YYYY-MM-DD'), // Mantém data atual em vez da data de fechamento
-            _hasInitialDate: true // Flag para indicar que já foi inicializada
+            _lastCard: expenseForm.credit_card_id,
+            _lastMonth: billMonth
           }));
         }
       }
@@ -378,14 +421,22 @@ function CreditCards({ token }) {
     dataForaDoPeriodo = !due.isSameOrAfter(periodoFatura.start) || !due.isSameOrBefore(periodoFatura.end);
   }
 
-  // Status da fatura: 'Em aberto', 'Em atraso', 'Paga'
+  // Status da fatura: 'Em aberto', 'Fechada', 'Em atraso', 'Paga'
   function getBillStatus(card, fatura, billMonth) {
     if (!card || !fatura) return '-';
-    const { vencimento } = getBillPeriod(card, billMonth);
+    const { fechamento, vencimento } = getBillPeriod(card, billMonth);
+    const hoje = dayjs();
+    
     const todasPagas = fatura.length > 0 && fatura.every(d => d.status === 'paga');
     if (todasPagas) return 'Paga';
-    // Se hoje > vencimento e não está paga, está em atraso
-    if (dayjs().isAfter(vencimento, 'day')) return 'Em atraso';
+
+    if (vencimento && hoje.isAfter(vencimento, 'day')) return 'Em atraso';
+
+    // Se a data de hoje for no dia de fechamento (inclusive) e antes do vencimento
+    if (fechamento && vencimento && hoje.isSameOrAfter(fechamento, 'day') && hoje.isBefore(vencimento, 'day')) {
+      return 'Fechada';
+    }
+    
     return 'Em aberto';
   }
 
@@ -463,6 +514,7 @@ function CreditCards({ token }) {
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
         <label style={{ fontWeight: 500 }}>Fatura do mês:</label>
         <input type="month" value={billMonth} onChange={e => setBillMonth(e.target.value)} style={{ minWidth: 120 }} />
+        <Button variant="secondary" onClick={handleExport}>Exportar Despesas (CSV)</Button>
         <span style={{ color: '#888', fontSize: 13 }}>(Período da fatura: {cards.length && expandedCardId ? (() => {
           const card = cards.find(c => c.id === expandedCardId);
           if (!card) return '-';
@@ -533,8 +585,8 @@ function CreditCards({ token }) {
                           </td>
                           <td style={{ textAlign: 'left', color: valorFatura > 0 ? 'var(--color-despesa)' : '#0a0', fontWeight: 600 }}>
                             R$ {valorFatura.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            <div style={{ fontSize: 13, fontWeight: 700, color: todasPagas ? '#0a0' : '#d77' }}>
-                              {todasPagas ? 'Paga' : 'Em aberto'}
+                            <div style={{ fontSize: 13, fontWeight: 700, color: getBillStatus(card, faturaAtual, billMonth) === 'Paga' ? '#0a0' : getBillStatus(card, faturaAtual, billMonth) === 'Fechada' ? 'blue' : '#d77' }}>
+                              {getBillStatus(card, faturaAtual, billMonth)}
                             </div>
                           </td>
                           <td style={{ textAlign: 'left' }}>{card.due_day}</td>
@@ -605,6 +657,7 @@ function CreditCards({ token }) {
                                               // Remove campos não editáveis
                                               delete payload.id;
                                               delete payload.user_id;
+                                              delete payload.account_id;
                                               delete payload.credit_card_id;
                                               delete payload.installment_number;
                                               delete payload.createdAt;
@@ -617,6 +670,7 @@ function CreditCards({ token }) {
                                               if (res.ok) {
                                                 setEditingId(null); setEditForm({});
                                                 fetchCardExpenses(card.id);
+                                                fetchLimits();
                                               } else {
                                                 const errData = await res.json();
                                                 alert(errData.error || 'Erro ao editar despesa.');
@@ -646,6 +700,7 @@ function CreditCards({ token }) {
                                                 headers: { Authorization: `Bearer ${token}` },
                                               });
                                               fetchCardExpenses(card.id);
+                                              fetchLimits();
                                               setLoading(false);
                                             }
                                           }}>Excluir</Button>

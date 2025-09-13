@@ -324,12 +324,12 @@ exports.getResumo = async (req, res) => {
     // 9. Despesas Parceladas
     const despesasParceladas = [];
     
-    // Buscar despesas que são parceladas (com installment_total > 1)
+    // Buscar apenas as parcelas cujo vencimento está no mês vigente
     const despesasParceladasDB = await Expense.findAll({
       where: {
         user_id: userId,
         installment_total: { [Op.gt]: 1 },
-        status: { [Op.ne]: 'paga' },
+        due_date: { [Op.between]: [primeiroDiaMes, ultimoDiaMes] },
       },
       include: [
         { model: CreditCard, as: 'credit_card', attributes: ['name'] }
@@ -344,7 +344,8 @@ exports.getResumo = async (req, res) => {
         cartao: despesa.credit_card ? despesa.credit_card.name : 'Conta',
         parcelaAtual: despesa.installment_number || 1,
         totalParcelas: despesa.installment_total || 1,
-        valor: parseFloat(despesa.value)
+        valor: parseFloat(despesa.value),
+        vencimento: despesa.due_date,
       });
     }
 

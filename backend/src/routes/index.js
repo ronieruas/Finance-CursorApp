@@ -36,6 +36,10 @@ router.get('/', (req, res) => {
   res.json({ status: 'API online' });
 });
 
+router.get('/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
 // Exemplo de rota protegida
 router.get('/protegida', (req, res) => {
   res.json({ mensagem: `Olá, usuário ${req.user.id}! Esta rota é protegida.` });
