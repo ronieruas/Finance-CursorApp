@@ -31,7 +31,8 @@ app.use((req, res, next) => {
 
 // CORS seguro para produção e testes locais
 const allowedOrigins = [
-  'https://finance.ronieruas.com.br', // Frontend em produção
+  'https://finance.ronieruas.com.br', // Frontend em produção (HTTPS)
+  'http://finance.ronieruas.com.br',  // Frontend em produção (HTTP via Cloudflare)
   'http://192.168.0.223',             // IP local para testes
   'http://localhost:3000',             // Para desenvolvimento local (opcional)
   'http://localhost',                  // Para acesso via Nginx no Docker
