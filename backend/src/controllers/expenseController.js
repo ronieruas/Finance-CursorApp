@@ -57,8 +57,20 @@ exports.create = async (req, res) => {
         const safeStatus = typeof status !== 'undefined' && status !== null ? status : 'pendente';
         let safePaidAt = typeof paid_at !== 'undefined' ? paid_at : null;
         if (safePaidAt && isDateOnly(safePaidAt)) {
+          // Corrigir o problema de fuso horário usando toLocalDate
           safePaidAt = toLocalDate(safePaidAt);
+        } else if (safePaidAt) {
+          // Se não for no formato date-only, usar o construtor Date
+          // mas garantir que seja no fuso horário local
+          const dateObj = new Date(safePaidAt);
+          safePaidAt = new Date(
+            dateObj.getFullYear(),
+            dateObj.getMonth(),
+            dateObj.getDate()
+          );
         }
+        
+        console.log(`Parcela ${i}/${totalParcelas} - Data de pagamento:`, safePaidAt ? safePaidAt.toISOString() : null);
         const expense = await Expense.create({
           user_id: req.user.id,
           credit_card_id,
@@ -87,8 +99,22 @@ exports.create = async (req, res) => {
       // Lançamento em conta normal
       let normalizedPaidAt = typeof paid_at !== 'undefined' ? paid_at : null;
       if (normalizedPaidAt && isDateOnly(normalizedPaidAt)) {
+        // Corrigir o problema de fuso horário usando toLocalDate
         normalizedPaidAt = toLocalDate(normalizedPaidAt);
+      } else if (normalizedPaidAt) {
+        // Se não for no formato date-only, usar o construtor Date
+        // mas garantir que seja no fuso horário local
+        const dateObj = new Date(normalizedPaidAt);
+        normalizedPaidAt = new Date(
+          dateObj.getFullYear(),
+          dateObj.getMonth(),
+          dateObj.getDate()
+        );
       }
+      
+      console.log('Data de pagamento recebida (criação):', paid_at);
+      console.log('Data de pagamento formatada (criação):', normalizedPaidAt);
+      console.log('Data formatada ISO (criação):', normalizedPaidAt ? normalizedPaidAt.toISOString() : null);
       const expense = await Expense.create({
         user_id: req.user.id,
         account_id,
@@ -200,8 +226,22 @@ exports.update = async (req, res) => {
     // Normalizar paid_at para data local quando vier como YYYY-MM-DD
     let normalizedPaidAt = paid_at;
     if (normalizedPaidAt && isDateOnly(normalizedPaidAt)) {
+      // Corrigir o problema de fuso horário usando toLocalDate
       normalizedPaidAt = toLocalDate(normalizedPaidAt);
+    } else if (normalizedPaidAt) {
+      // Se não for no formato date-only, usar o construtor Date
+      // mas garantir que seja no fuso horário local
+      const dateObj = new Date(normalizedPaidAt);
+      normalizedPaidAt = new Date(
+        dateObj.getFullYear(),
+        dateObj.getMonth(),
+        dateObj.getDate()
+      );
     }
+    
+    console.log('Data de pagamento recebida:', paid_at);
+    console.log('Data de pagamento formatada:', normalizedPaidAt);
+    console.log('Data formatada ISO:', normalizedPaidAt ? normalizedPaidAt.toISOString() : null);
     
     await expense.update({ account_id, description, value: newValue, due_date, category, status: newStatus, is_recurring, auto_debit, paid_at: normalizedPaidAt });
     res.json(expense);

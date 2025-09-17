@@ -117,7 +117,7 @@ function CreditCards({ token }) {
   const openPayModal = async (card) => {
     console.log('Abrindo modal de pagamento para cartão:', card);
     setPayModal({ open: true, card });
-    setPayForm({ account_id: '', value: '', payment_date: '', is_full_payment: true, auto_debit: !!card.debito_automatico });
+    setPayForm({ account_id: '', value: '', payment_date: dayjs().format('YYYY-MM-DD'), is_full_payment: true, auto_debit: !!card.debito_automatico });
     setBill(null);
     await fetchAccounts();
     await fetchBill(card.id);
@@ -212,10 +212,14 @@ function CreditCards({ token }) {
     setPayLoading(true);
     try {
       console.log('Enviando pagamento:', { ...payForm, cardId: payModal.card.id });
-      const res = await fetch(`${API_URL}/${payModal.card.id}/pay`, {
+      // Corrigindo a URL da API para garantir que esteja usando a URL correta
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+      // Garantindo que dayjs está disponível no escopo
+      const currentBillMonth = billMonth || dayjs().format('YYYY-MM');
+      const res = await fetch(`${apiUrl}/creditCards/${payModal.card.id}/pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ ...payForm, value: payForm.is_full_payment ? undefined : payForm.value, bill_month: billMonth }),
+        body: JSON.stringify({ ...payForm, value: payForm.is_full_payment ? undefined : payForm.value, bill_month: currentBillMonth }),
       });
       if (res.ok) {
         setToast({ show: true, message: 'Pagamento realizado com sucesso!', type: 'success' });
@@ -396,9 +400,72 @@ function CreditCards({ token }) {
     }
   }, [cards.length]);
 
+  // Função para exportar despesas do cartão em CSV
+  const handleExport = async () => {
+    // Removendo a restrição de precisar ter um cartão expandido
+    try {
+      // Usando a URL correta para a API
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+      const apiEndpoint = expandedCardId 
+        ? `${apiUrl}/export/credit-card-expenses?cardId=${expandedCardId}&billMonth=${billMonth}`
+        : `${apiUrl}/export/credit-cards`;
+        
+      const res = await fetch(apiEndpoint, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        // Tenta ler o erro como JSON, mas se falhar, usa o statusText
+        let errorMessage = res.statusText;
+        try {
+          const err = await res.json();
+          errorMessage = err.error || errorMessage;
+        } catch (e) {
+          // Ignora o erro de parsing se o corpo não for JSON
+        }
+        throw new Error(errorMessage);
+      }
+
+      const blob = await res.blob();
+
+      if (blob.size === 0) {
+        setToast({ show: true, message: 'Não há dados para exportar.', type: 'info' });
+        return;
+      }
+
+      const link = document.createElement('a');
+      const downloadUrl = URL.createObjectURL(blob);
+      link.setAttribute('href', downloadUrl);
+      const filename = expandedCardId 
+        ? `despesas_cartao_${cards.find(c => c.id === expandedCardId)?.name || 'cartao'}_${billMonth}.csv`
+        : `cartoes_${dayjs().format('YYYY-MM-DD')}.csv`;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setToast({ show: true, message: 'Exportação concluída com sucesso!', type: 'success' });
+
+    } catch (err) {
+      setToast({ show: true, message: err.message, type: 'error' });
+    }
+  };
+
   return (
     <div className="main-content" style={{ marginLeft: 240, padding: 32 }}>
-      <h2 style={{ marginBottom: 24, fontWeight: 700 }}>Cartões de Crédito</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <h2 style={{ fontWeight: 700, margin: 0 }}>Cartões de Crédito</h2>
+        <Button 
+          variant="secondary" 
+          onClick={handleExport} 
+          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+            <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+          </svg>
+          Exportar CSV
+        </Button>
+      </div>
       <motion.div className="glass-card fade-in" style={{ padding: 24, marginBottom: 32 }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
         {/* Formulário de cartão */}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 0 }}>
