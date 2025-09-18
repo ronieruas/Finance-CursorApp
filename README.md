@@ -2,6 +2,52 @@
 
 Sistema completo de gestão financeira pessoal com dashboard, controle de receitas, despesas, cartões de crédito e relatórios.
 
+## 🔄 Sistema de Backup Automático
+
+O sistema inclui scripts para backup automático diário do banco de dados e arquivos de configuração.
+
+### Funcionalidades do Backup
+
+- **Backup Diário**: Execução automática às 2:00 AM via cron
+- **Rotação Automática**: Mantém apenas os 7 backups mais recentes
+- **Verificação de Integridade**: Garante que os backups estejam íntegros
+- **Logs Detalhados**: Registra todas as operações para monitoramento
+- **Restauração Simplificada**: Comando único para restaurar qualquer backup
+
+### Como Usar o Sistema de Backup
+
+```bash
+# Configurar o backup automático (primeira vez)
+sudo ./cron-setup.sh
+
+# Executar backup manual
+./backup.sh
+
+# Restaurar um backup
+./restore.sh
+```
+
+### Alterar Local de Armazenamento dos Backups
+
+Para alterar o diretório onde os backups são armazenados:
+
+1. Edite a variável `BACKUP_DIR` no início dos arquivos `backup.sh` e `restore.sh`:
+   ```bash
+   # Altere esta linha nos dois arquivos
+   BACKUP_DIR="/novo/caminho/para/backups"
+   ```
+
+2. Certifique-se de que o novo diretório existe e tem permissões adequadas:
+   ```bash
+   sudo mkdir -p /novo/caminho/para/backups
+   sudo chown $USER:$USER /novo/caminho/para/backups
+   ```
+
+3. Transfira os backups existentes para o novo local (opcional):
+   ```bash
+   cp /mnt/miniserver/Finance/finance/*.tar.gz /novo/caminho/para/backups/
+   ```
+
 ## 🚀 Instalação Rápida
 
 ### Desenvolvimento Local
