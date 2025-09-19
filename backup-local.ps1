@@ -29,7 +29,7 @@ Log "Iniciando backup: $BackupName"
 
 # Backup do banco de dados usando Docker
 Log "Realizando backup do banco de dados..."
-docker exec finance-db pg_dump -U $DbUser -d $DbName > $BackupFile
+docker exec finance-db pg_dump -U $DbUser -d $DbName --encoding=UTF8 > $BackupFile
 if ($LASTEXITCODE -ne 0) {
     Log "ERRO: Falha ao realizar backup do banco de dados"
     exit 1

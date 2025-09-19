@@ -38,7 +38,7 @@ mkdir -p "$TEMP_DIR"
 # Backup do banco de dados
 log "Realizando backup do banco de dados..."
 # Usando Docker para executar pg_dump
-docker exec finance-db pg_dump -U "$DB_USER" -d "$DB_NAME" -F c > "$TEMP_DIR/database.dump"
+docker exec finance-db pg_dump -U "$DB_USER" -d "$DB_NAME" -F c --encoding=UTF8 > "$TEMP_DIR/database.dump"
 if [ $? -ne 0 ]; then
     log "ERRO: Falha ao realizar backup do banco de dados"
     rm -rf "$TEMP_DIR"
