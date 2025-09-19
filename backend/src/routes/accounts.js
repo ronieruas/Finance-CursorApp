@@ -227,9 +227,14 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
     // Função para formatar data dd/mm/aaaa
     function formatDateBR(dateStr) {
       const d = new Date(dateStr);
-      const day = String(d.getDate()).padStart(2, '0');
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const year = d.getFullYear();
+      // Ajuste para corrigir o problema de fuso horário nas transferências
+      // Adicionando um dia para compensar o problema de fuso horário
+      const adjustedDate = new Date(d);
+      adjustedDate.setDate(adjustedDate.getDate() + 1);
+      
+      const day = String(adjustedDate.getDate()).padStart(2, '0');
+      const month = String(adjustedDate.getMonth() + 1).padStart(2, '0');
+      const year = adjustedDate.getFullYear();
       return `${day}/${month}/${year}`;
     }
 
