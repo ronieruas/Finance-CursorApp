@@ -75,7 +75,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Get-Content $SelectedBackup.FullName | docker exec -i finance-db psql -U $DbUser -d $DbName
+Get-Content -Encoding UTF8 $SelectedBackup.FullName | docker exec -i finance-db psql -U $DbUser -d $DbName
 if ($LASTEXITCODE -ne 0) {
     Log "ERRO: Falha ao restaurar o backup"
     exit 1

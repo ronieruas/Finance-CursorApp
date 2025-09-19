@@ -119,7 +119,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Restaurar o dump
-pg_restore -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" "$TEMP_DIR/database.dump"
+pg_restore -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" --encoding=UTF8 "$TEMP_DIR/database.dump"
 if [ $? -ne 0 ]; then
     log "AVISO: Restauração do banco de dados concluída com avisos"
 else
