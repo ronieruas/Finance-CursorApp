@@ -225,16 +225,25 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
     cartoes.forEach(c => { cartoesMap[c.id] = c.name; });
 
     // Função para formatar data dd/mm/aaaa
-    function formatDateBR(dateStr) {
+    function formatDateBR(dateStr, transactionType = null) {
       const d = new Date(dateStr);
-      // Ajuste para corrigir o problema de fuso horário nas transferências
-      // Adicionando um dia para compensar o problema de fuso horário
-      const adjustedDate = new Date(d);
-      adjustedDate.setDate(adjustedDate.getDate() + 1);
       
-      const day = String(adjustedDate.getDate()).padStart(2, '0');
-      const month = String(adjustedDate.getMonth() + 1).padStart(2, '0');
-      const year = adjustedDate.getFullYear();
+      // Ajuste de data para diferentes tipos de transação
+      let dateToFormat = d;
+      if (transactionType === 'transferencia') {
+        // Para transferências, adicionamos um dia
+        dateToFormat = new Date(d);
+        dateToFormat.setDate(dateToFormat.getDate() + 1);
+      } else if (transactionType === 'receita') {
+        // Para receitas, também adicionamos um dia para corrigir o problema de fuso horário
+        dateToFormat = new Date(d);
+        dateToFormat.setDate(dateToFormat.getDate() + 1);
+      }
+      // Para outros tipos (despesa, pagamento_cartao), mantemos a data original
+      
+      const day = String(dateToFormat.getDate()).padStart(2, '0');
+      const month = String(dateToFormat.getMonth() + 1).padStart(2, '0');
+      const year = dateToFormat.getFullYear();
       return `${day}/${month}/${year}`;
     }
 
@@ -245,7 +254,7 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
         id: r.id,
         descricao: r.description,
         valor: Number(r.value),
-        data: formatDateBR(r.date),
+        data: formatDateBR(r.date, 'receita'),
         categoria: r.category,
       })),
       ...despesasPagas.map(d => ({
@@ -253,7 +262,7 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
         id: d.id,
         descricao: d.description,
         valor: -Number(d.value),
-        data: formatDateBR(d.paid_at),
+        data: formatDateBR(d.paid_at, 'despesa'),
         categoria: d.category,
       })),
       ...transferenciasSaida.map(t => ({
@@ -261,7 +270,7 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
         id: t.id,
         descricao: t.description || 'Transferência enviada',
         valor: -Number(t.value),
-        data: formatDateBR(t.date),
+        data: formatDateBR(t.date, 'transferencia'),
         categoria: 'Transferência',
       })),
       ...transferenciasEntrada.map(t => ({
@@ -269,7 +278,7 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
         id: t.id,
         descricao: t.description || 'Transferência recebida',
         valor: Number(t.value),
-        data: formatDateBR(t.date),
+        data: formatDateBR(t.date, 'transferencia'),
         categoria: 'Transferência',
       })),
       ...pagamentosCartao.map(p => ({
@@ -278,7 +287,7 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
         // Descrição do pagamento de fatura (mantida única origem: CreditCardPayment)
         descricao: `Fatura Cartão ${cartoesMap[p.card_id] || 'Desconhecido'}`,
         valor: -Number(p.value),
-        data: formatDateBR(p.payment_date),
+        data: formatDateBR(p.payment_date, 'pagamento_cartao'),
         categoria: 'Cartão de Crédito',
       })),
     ];
