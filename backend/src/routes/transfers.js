@@ -3,6 +3,7 @@ const router = express.Router();
 const { Transfer, Account, Expense } = require('../models');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { Op } = require('sequelize');
+const dayjs = require('dayjs');
 
 // Listar transferências do usuário
 router.get('/', authMiddleware, async (req, res) => {
@@ -25,7 +26,7 @@ router.post('/', authMiddleware, async (req, res) => {
     const { from_account_id, to_account_id, value, description, date, is_third_party } = req.body;
     if (!value || !date) return res.status(400).json({ error: 'Dados obrigatórios.' });
     
-    // Para transferência para terceiros, to_account_id pode ser null
+    // Para transferência de terceiros, to_account_id pode ser null
     // Para transferência de terceiros, from_account_id pode ser null
     // Para transferência interna, ambos devem ser preenchidos
     if (!from_account_id && !to_account_id) {
