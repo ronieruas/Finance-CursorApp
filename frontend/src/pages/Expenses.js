@@ -317,9 +317,14 @@ function Expenses({ token }) {
           </select>
           <Button variant="primary" type="submit">Filtrar</Button>
           <Button variant="secondary" onClick={handleExport} loading={exportLoading}>Exportar</Button>
-          <span style={{ marginLeft: 24, fontWeight: 600, color: 'crimson', fontSize: 18 }}>
-            Total: R$ {expenses.reduce((sum, exp) => sum + Number(exp.value), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </span>
+          <div style={{ marginLeft: 24, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ fontWeight: 600, color: 'crimson', fontSize: 18 }}>
+              Total: R$ {expenses.reduce((sum, exp) => sum + Number(exp.value), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </span>
+            <span style={{ fontWeight: 600, color: 'orange', fontSize: 16 }}>
+              A Pagar: R$ {expenses.filter(exp => exp.status === 'pendente' || exp.status === 'atrasada').reduce((sum, exp) => sum + Number(exp.value), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </span>
+          </div>
         </form>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 0 }}>
           {/* Tipo fixo como conta, não permite mais cadastrar despesas de cartão aqui */}

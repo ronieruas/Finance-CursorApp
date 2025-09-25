@@ -42,7 +42,18 @@ function CreditCards({ token }) {
   });
   const [expenseLoading, setExpenseLoading] = useState(false);
   const [expenseToast, setExpenseToast] = useState({ show: false, message: '', type: 'success' });
-  const [billMonth, setBillMonth] = useState(dayjs().format('YYYY-MM'));
+  const [billMonth, setBillMonth] = useState(() => {
+    const savedMonth = localStorage.getItem('creditCards_billMonth');
+    return savedMonth || dayjs().format('YYYY-MM');
+  });
+  const [showNextMonth, setShowNextMonth] = useState(() => {
+    const saved = localStorage.getItem('creditCards_showNextMonth');
+    return saved ? JSON.parse(saved) : false;
+  });
+  const [isManualMonth, setIsManualMonth] = useState(() => {
+    const saved = localStorage.getItem('creditCards_isManualMonth');
+    return saved ? JSON.parse(saved) : false;
+  });
 
   useEffect(() => { 
     fetchCards(); 
@@ -54,6 +65,27 @@ function CreditCards({ token }) {
       data.forEach(card => fetchCardExpenses(card.id));
     })();
   }, []);
+
+  // useEffect para atualizar o mês automaticamente baseado no checkbox (apenas se não for manual)
+  // Este useEffect só deve executar quando showNextMonth mudar, não quando isManualMonth mudar
+  useEffect(() => {
+    if (!isManualMonth) {
+      const currentMonth = dayjs().format('YYYY-MM');
+      const nextMonth = dayjs().add(1, 'month').format('YYYY-MM');
+      const newMonth = showNextMonth ? nextMonth : currentMonth;
+      setBillMonth(newMonth);
+      localStorage.setItem('creditCards_billMonth', newMonth);
+    }
+  }, [showNextMonth]); // Removido isManualMonth das dependências
+
+  // Função para lidar com mudança do checkbox
+  const handleShowNextMonthChange = (e) => {
+    const checked = e.target.checked;
+    setShowNextMonth(checked);
+    setIsManualMonth(false); // Reset manual mode when using checkbox
+    localStorage.setItem('creditCards_showNextMonth', JSON.stringify(checked));
+    localStorage.setItem('creditCards_isManualMonth', JSON.stringify(false));
+  };
 
   const fetchCards = async () => {
     setLoading(true);
@@ -393,12 +425,14 @@ function CreditCards({ token }) {
     return 'Em aberto';
   }
 
-  // Ao carregar cartões, definir billMonth para o mês da fatura em aberto do primeiro cartão (ou manter manual)
+  // Ao carregar cartões, definir billMonth para o mês da fatura em aberto do primeiro cartão (apenas se não for manual e não estiver usando checkbox)
   useEffect(() => {
-    if (cards.length > 0) {
-      setBillMonth(getOpenBillMonth(cards[0]));
+    if (cards.length > 0 && !isManualMonth && !showNextMonth) {
+      const openBillMonth = getOpenBillMonth(cards[0]);
+      setBillMonth(openBillMonth);
+      localStorage.setItem('creditCards_billMonth', openBillMonth);
     }
-  }, [cards.length]);
+  }, [cards.length, isManualMonth, showNextMonth]);
 
   // Função para exportar despesas do cartão em CSV
   const handleExport = async () => {
@@ -529,7 +563,20 @@ function CreditCards({ token }) {
       </motion.div>
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
         <label style={{ fontWeight: 500 }}>Fatura do mês:</label>
-        <input type="month" value={billMonth} onChange={e => setBillMonth(e.target.value)} style={{ minWidth: 120 }} />
+        <input type="month" value={billMonth} onChange={e => {
+          setBillMonth(e.target.value);
+          setIsManualMonth(true);
+          localStorage.setItem('creditCards_billMonth', e.target.value);
+          localStorage.setItem('creditCards_isManualMonth', JSON.stringify(true));
+        }} style={{ minWidth: 120 }} />
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 16 }}>
+          <input 
+            type="checkbox" 
+            checked={showNextMonth} 
+            onChange={handleShowNextMonthChange}
+          />
+          <span style={{ fontWeight: 500 }}>Mostrar próximo mês</span>
+        </label>
         <span style={{ color: '#888', fontSize: 13 }}>(Período da fatura: {cards.length && expandedCardId ? (() => {
           const card = cards.find(c => c.id === expandedCardId);
           if (!card) return '-';
@@ -739,7 +786,12 @@ function CreditCards({ token }) {
           <form onSubmit={handlePay}>
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontWeight: 500 }}>Competência da fatura</label>
-              <input type="month" name="payBillMonth" value={billMonth} onChange={e => setBillMonth(e.target.value)} style={{ minWidth: 120, marginLeft: 8 }} />
+              <input type="month" name="payBillMonth" value={billMonth} onChange={e => {
+                setBillMonth(e.target.value);
+                setIsManualMonth(true);
+                localStorage.setItem('creditCards_billMonth', e.target.value);
+                localStorage.setItem('creditCards_isManualMonth', JSON.stringify(true));
+              }} style={{ minWidth: 120, marginLeft: 8 }} />
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontWeight: 500 }}>Conta para débito</label>
