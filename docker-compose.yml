@@ -10,8 +10,7 @@ services:
       LC_ALL: en_US.UTF-8
       LANG: en_US.UTF-8
       TZ: ${TZ:-America/Sao_Paulo}
-    ports:
-      - "5432:5432"
+    # Removido mapeamento de porta pública; acesso apenas pela rede interna do Compose
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
@@ -36,14 +35,13 @@ services:
       DB_NAME: finance
       JWT_SECRET: ${JWT_SECRET:-}
       TZ: ${TZ:-America/Sao_Paulo}
-    ports:
-      - "3001:3001"
+    # Removido mapeamento de porta pública; Caddy fará o proxy para este serviço
     command: ["sh", "-c", "npm run migrate && npm start"]
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/"]
+      test: ["CMD", "curl", "-f", "http://localhost:3001/server-test"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -57,11 +55,31 @@ services:
     restart: unless-stopped
     environment:
       TZ: ${TZ:-America/Sao_Paulo}
+    # Removido mapeamento de porta pública; Caddy expõe a porta 80
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # Novo reverse proxy frontal
+  caddy:
+    image: caddy:2-alpine
+    container_name: finance-caddy
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-America/Sao_Paulo}
     ports:
       - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
     depends_on:
+      frontend:
+        condition: service_started
       backend:
         condition: service_healthy
 
 volumes:
   db_data:
+  caddy_data:
+  caddy_config:

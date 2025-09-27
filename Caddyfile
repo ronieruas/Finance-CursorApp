@@ -1,0 +1,76 @@
+{
+  # Caddyfile para domínio finance.ronieruas.com.br com proxy para frontend e backend
+  # Observação: mantendo HTTP local por trás do Cloudflare (sem TLS local neste momento)
+}
+
+http://finance.ronieruas.com.br {
+  encode zstd gzip
+
+  # Cabeçalhos de segurança básicos
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    X-Content-Type-Options nosniff
+    X-Frame-Options DENY
+    Referrer-Policy no-referrer-when-downgrade
+    Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  }
+
+  # Frontend React servido pelo Nginx do container finance-frontend
+  @static {
+    path "/" "/index.html" "/static/*"
+  }
+  handle @static {
+    reverse_proxy finance-frontend:80 {
+      header_up Host {host}
+      header_up X-Forwarded-For {remote}
+      header_up X-Forwarded-Proto {scheme}
+      header_up X-Real-IP {remote}
+      flush_interval -1
+    }
+  }
+
+  # Matchers para rotas de API (preservando paths)
+  @auth path /auth/*
+  @accounts path /accounts/*
+  @expenses path /expenses/*
+  @incomes path /incomes/*
+  @creditCards path /creditCards/*
+  @budgets path /budgets/*
+  @transfers path /transfers/*
+  @analytics path /analytics/*
+  @resumo path /resumo/*
+  @dashboard path /dashboard/*
+  @users path /users/*
+  @notifications path /notifications*
+  @export path /export/*
+
+  # Rota genérica /api com strip do prefixo (compatível com nginx.conf)
+  @api path /api/*
+  handle @api {
+    uri strip_prefix /api
+    reverse_proxy finance-backend:3001
+  }
+
+  handle @auth { reverse_proxy finance-backend:3001 }
+  handle @accounts { reverse_proxy finance-backend:3001 }
+  handle @expenses { reverse_proxy finance-backend:3001 }
+  handle @incomes { reverse_proxy finance-backend:3001 }
+  handle @creditCards { reverse_proxy finance-backend:3001 }
+  handle @budgets { reverse_proxy finance-backend:3001 }
+  handle @transfers { reverse_proxy finance-backend:3001 }
+  handle @analytics { reverse_proxy finance-backend:3001 }
+  handle @resumo { reverse_proxy finance-backend:3001 }
+  handle @dashboard { reverse_proxy finance-backend:3001 }
+  handle @users { reverse_proxy finance-backend:3001 }
+  handle @notifications { reverse_proxy finance-backend:3001 }
+  handle @export { reverse_proxy finance-backend:3001 }
+
+  # Healthcheck simples
+  @health path /health /server-test
+  handle @health { reverse_proxy finance-backend:3001 }
+
+  # Fallback para SPA (todas as demais rotas vão para o frontend)
+  handle {
+    reverse_proxy finance-frontend:80
+  }
+}
