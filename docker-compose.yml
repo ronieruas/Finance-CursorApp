@@ -69,8 +69,10 @@ services:
       TZ: ${TZ:-America/Sao_Paulo}
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./secrets:/etc/caddy/secrets:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
