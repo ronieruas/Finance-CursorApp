@@ -1,10 +1,12 @@
 {
   # Caddyfile para domínio finance.ronieruas.com.br com proxy para frontend e backend
-  # Observação: mantendo HTTP local por trás do Cloudflare (sem TLS local neste momento)
+  # TLS habilitado no host (usando certificado de origem Cloudflare)
 }
 
-http://finance.ronieruas.com.br {
+finance.ronieruas.com.br {
   encode zstd gzip
+
+  tls /etc/caddy/secrets/origin.crt /etc/caddy/secrets/origin.key
 
   # Cabeçalhos de segurança básicos
   header {
@@ -22,8 +24,6 @@ http://finance.ronieruas.com.br {
   handle @static {
     reverse_proxy finance-frontend:80 {
       header_up Host {host}
-      header_up X-Forwarded-For {remote}
-      header_up X-Forwarded-Proto {scheme}
       header_up X-Real-IP {remote}
       flush_interval -1
     }

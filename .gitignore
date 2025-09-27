@@ -31,3 +31,7 @@ yarn-error.log*
 # Arquivos de banco de dados
 *.sqlite
 *.db
+# Secrets (não versionar certificados/chaves)
+secrets/
+*.crt
+*.key
