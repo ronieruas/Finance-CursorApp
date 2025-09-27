@@ -51,23 +51,51 @@ http://finance.ronieruas.com.br {
     reverse_proxy finance-backend:3001
   }
 
-  handle @auth { reverse_proxy finance-backend:3001 }
-  handle @accounts { reverse_proxy finance-backend:3001 }
-  handle @expenses { reverse_proxy finance-backend:3001 }
-  handle @incomes { reverse_proxy finance-backend:3001 }
-  handle @creditCards { reverse_proxy finance-backend:3001 }
-  handle @budgets { reverse_proxy finance-backend:3001 }
-  handle @transfers { reverse_proxy finance-backend:3001 }
-  handle @analytics { reverse_proxy finance-backend:3001 }
-  handle @resumo { reverse_proxy finance-backend:3001 }
-  handle @dashboard { reverse_proxy finance-backend:3001 }
-  handle @users { reverse_proxy finance-backend:3001 }
-  handle @notifications { reverse_proxy finance-backend:3001 }
-  handle @export { reverse_proxy finance-backend:3001 }
+  handle @auth {
+    reverse_proxy finance-backend:3001
+  }
+  handle @accounts {
+    reverse_proxy finance-backend:3001
+  }
+  handle @expenses {
+    reverse_proxy finance-backend:3001
+  }
+  handle @incomes {
+    reverse_proxy finance-backend:3001
+  }
+  handle @creditCards {
+    reverse_proxy finance-backend:3001
+  }
+  handle @budgets {
+    reverse_proxy finance-backend:3001
+  }
+  handle @transfers {
+    reverse_proxy finance-backend:3001
+  }
+  handle @analytics {
+    reverse_proxy finance-backend:3001
+  }
+  handle @resumo {
+    reverse_proxy finance-backend:3001
+  }
+  handle @dashboard {
+    reverse_proxy finance-backend:3001
+  }
+  handle @users {
+    reverse_proxy finance-backend:3001
+  }
+  handle @notifications {
+    reverse_proxy finance-backend:3001
+  }
+  handle @export {
+    reverse_proxy finance-backend:3001
+  }
 
   # Healthcheck simples
   @health path /health /server-test
-  handle @health { reverse_proxy finance-backend:3001 }
+  handle @health {
+    reverse_proxy finance-backend:3001
+  }
 
   # Fallback para SPA (todas as demais rotas vão para o frontend)
   handle {
