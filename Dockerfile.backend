@@ -1,5 +1,6 @@
 # Dockerfile para backend Node.js
 FROM node:20-alpine
+RUN apk add --no-cache curl
 WORKDIR /app
 
 # Copiar arquivos de dependências
