@@ -7,13 +7,13 @@ WORKDIR /app
 # Copiar arquivos de dependências
 COPY frontend/package*.json ./
 
-# Configurar npm e instalar dependências com fallback
+# Configurar npm e instalar dependências (inclui dev) com fallback
 RUN npm config set registry https://registry.npmjs.org/ && \
     npm config set fetch-timeout 300000 && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
-    npm ci --omit=dev --no-audit --no-fund --prefer-offline --cache /tmp/.npm || \
-    npm install --omit=dev --no-audit --no-fund
+    npm ci --no-audit --no-fund --prefer-offline --cache /tmp/.npm || \
+    npm install --no-audit --no-fund
 
 # Copiar código fonte
 COPY frontend/. .
