@@ -1,16 +1,16 @@
 {
   # Caddyfile para domínio finance.ronieruas.com.br com proxy para frontend e backend
-  # TLS habilitado no host (usando certificado de origem Cloudflare)
+  # HTTP habilitado para Cloudflare Tunnel (sem redirecionamento automático)
+  auto_https off
+  admin off
 }
 
-finance.ronieruas.com.br {
+# Configuração HTTP para Cloudflare Tunnel (sem redirecionamento)
+:80 {
   encode zstd gzip
 
-  tls /etc/caddy/secrets/origin.crt /etc/caddy/secrets/origin.key
-
-  # Cabeçalhos de segurança básicos
+  # Cabeçalhos de segurança básicos (sem HSTS para HTTP)
   header {
-    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
     X-Content-Type-Options nosniff
     X-Frame-Options DENY
     Referrer-Policy no-referrer-when-downgrade
