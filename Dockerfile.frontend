@@ -1,5 +1,5 @@
 # Dockerfile para frontend React
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 # Definir diretório de trabalho
 WORKDIR /app
@@ -7,13 +7,16 @@ WORKDIR /app
 # Copiar arquivos de dependências
 COPY frontend/package*.json ./
 
+# Usar mirror do npm por padrão para reduzir falhas de DNS
+ENV npm_config_registry=https://registry.npmmirror.com
+
 # Configurar npm e instalar dependências (inclui dev) com fallback
-RUN npm config set registry https://registry.npmjs.org/ && \
-    npm config set fetch-timeout 300000 && \
+RUN npm config set fetch-timeout 300000 && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
-    npm ci --no-audit --no-fund --prefer-offline --cache /tmp/.npm || \
-    npm install --no-audit --no-fund
+    npm ci --registry=$npm_config_registry --no-audit --no-fund --prefer-offline --cache /tmp/.npm || \
+    npm ci --registry=https://registry.npmjs.org --no-audit --no-fund --prefer-offline --cache /tmp/.npm || \
+    npm install --registry=https://registry.npmjs.org --no-audit --no-fund
 
 # Copiar código fonte
 COPY frontend/. .

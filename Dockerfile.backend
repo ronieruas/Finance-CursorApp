@@ -1,18 +1,21 @@
 # Dockerfile para backend Node.js
-FROM node:18-alpine
+FROM node:20-alpine
 WORKDIR /app
 
 # Copiar arquivos de dependências
 COPY backend/package*.json ./
 
-# Configurar npm para usar cache e timeout maior, instalar dependências
-RUN npm config set registry https://registry.npmjs.org/ && \
-    npm config set fetch-timeout 300000 && \
+# Usar mirror do npm por padrão para reduzir falhas de DNS
+ENV npm_config_registry=https://registry.npmmirror.com
+
+# Configurar npm para usar cache e timeout maior, instalar dependências com fallback
+RUN npm config set fetch-timeout 300000 && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
-    npm install --omit=dev --no-audit --no-fund --prefer-offline || \
-    npm install --omit=dev --no-audit --no-fund
-RUN npm install --save-dev sequelize-cli --no-audit --no-fund
+    npm install --registry=$npm_config_registry --omit=dev --no-audit --no-fund --prefer-offline || \
+    npm install --registry=https://registry.npmjs.org --omit=dev --no-audit --no-fund
+RUN npm install --save-dev sequelize-cli --registry=$npm_config_registry --no-audit --no-fund || \
+    npm install --save-dev sequelize-cli --registry=https://registry.npmjs.org --no-audit --no-fund
 
 # Copiar código fonte
 COPY backend/. .
