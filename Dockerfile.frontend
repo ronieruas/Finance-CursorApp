@@ -1,5 +1,5 @@
 # Dockerfile para frontend React
-FROM node:18-alpine3.18 AS builder
+FROM node:18-alpine AS builder
 
 # Definir diretório de trabalho
 WORKDIR /app
@@ -7,7 +7,7 @@ WORKDIR /app
 # Copiar arquivos de dependências
 COPY frontend/package*.json ./
 
-# Instalar dependências com otimizações
+# Instalar dependências sem usar apk
 RUN npm ci --only=production --no-audit --no-fund --prefer-offline --cache /tmp/.npm
 
 # Copiar código fonte
@@ -18,11 +18,6 @@ RUN npm run build
 
 # Estágio de produção
 FROM nginx:1.24-alpine
-
-# Instalar tzdata para garantir timezone correto nos logs
-RUN apk update && apk add --no-cache tzdata \
-  && ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime \
-  && echo "America/Sao_Paulo" > /etc/timezone
 
 # Copiar arquivos buildados
 COPY --from=builder /app/build /usr/share/nginx/html
