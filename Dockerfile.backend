@@ -1,5 +1,5 @@
 # Dockerfile para backend Node.js
-FROM node:18-alpine
+FROM node:18-alpine3.18
 WORKDIR /app
 
 # Copiar arquivos de dependências

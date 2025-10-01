@@ -1,5 +1,5 @@
 # Dockerfile para frontend React
-FROM node:18-alpine AS builder
+FROM node:18-alpine3.18 AS builder
 
 # Definir diretório de trabalho
 WORKDIR /app
@@ -17,7 +17,7 @@ COPY frontend/. .
 RUN npm run build
 
 # Estágio de produção
-FROM nginx:alpine
+FROM nginx:1.24-alpine
 
 # Instalar tzdata para garantir timezone correto nos logs
 RUN apk update && apk add --no-cache tzdata \
