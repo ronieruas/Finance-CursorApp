@@ -219,11 +219,15 @@ exports.pay = async (req, res) => {
     if (is_full_payment) {
       let periods;
       if (bill_month) {
+        // bill_month no formato YYYY-MM
         const [ano, mes] = bill_month.split('-').map(Number);
-        const periodo = getBillPeriodForMonth(card.closing_day, card.due_day, ano, mes - 1);
+        // Usar a nova função para calcular período da fatura para o mês informado
+        const closingDay = card.closing_day;
+        const periodo = getBillPeriodForMonth(closingDay, card.due_day, ano, mes - 1); // mes - 1 porque getBillPeriodForMonth usa 0-11
         periods = { atual: periodo };
       } else {
-        periods = getBillPeriods(card.closing_day, card.due_day);
+        const { closing_day } = card;
+        periods = getBillPeriods(closing_day, card.due_day);
       }
       periodoFatura = periods.atual;
       const startStr = formatDateOnly(periodoFatura.start);

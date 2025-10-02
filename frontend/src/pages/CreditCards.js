@@ -414,14 +414,24 @@ function CreditCards({ token }) {
     dataForaDoPeriodo = !due.isSameOrAfter(periodoFatura.start) || !due.isSameOrBefore(periodoFatura.end);
   }
 
-  // Status da fatura: 'Em aberto', 'Em atraso', 'Paga'
+  // Status da fatura: 'Em aberto', 'Em atraso', 'Paga', 'Fechada'
   function getBillStatus(card, fatura, billMonth) {
     if (!card || !fatura) return '-';
-    const { vencimento } = getBillPeriod(card, billMonth);
+    const { vencimento, start, end } = getBillPeriod(card, billMonth);
     const todasPagas = fatura.length > 0 && fatura.every(d => d.status === 'paga');
     if (todasPagas) return 'Paga';
+    
+    const hoje = dayjs();
+    const fechamento = end; // O fechamento é o final do período da fatura
+    
     // Se hoje > vencimento e não está paga, está em atraso
-    if (dayjs().isAfter(vencimento, 'day')) return 'Em atraso';
+    if (vencimento && hoje.isAfter(vencimento, 'day')) return 'Em atraso';
+    
+    // Se a data de hoje for no dia de fechamento (inclusive) e antes do vencimento
+    if (fechamento && vencimento && hoje.isSameOrAfter(fechamento, 'day') && hoje.isBefore(vencimento, 'day')) {
+      return 'Fechada';
+    }
+    
     return 'Em aberto';
   }
 
