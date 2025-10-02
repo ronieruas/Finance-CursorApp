@@ -19,6 +19,7 @@ Expense.init(
     is_recurring: { type: DataTypes.BOOLEAN, defaultValue: false },
     auto_debit: { type: DataTypes.BOOLEAN, defaultValue: false },
     paid_at: { type: DataTypes.DATE },
+    bill_closed_at: { type: DataTypes.DATE },
     createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },
   {
@@ -29,4 +30,4 @@ Expense.init(
   }
 );
 
-module.exports = Expense; 
+module.exports = Expense;

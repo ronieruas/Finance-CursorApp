@@ -17,18 +17,6 @@
     Permissions-Policy "geolocation=(), microphone=(), camera=()"
   }
 
-  # Frontend React servido pelo Nginx do container finance-frontend
-  @static {
-    path "/" "/index.html" "/static/*"
-  }
-  handle @static {
-    reverse_proxy finance-frontend:80 {
-      header_up Host {host}
-      header_up X-Real-IP {remote}
-      flush_interval -1
-    }
-  }
-
   # Matchers para rotas de API (preservando paths)
   @auth path /auth/*
   @accounts path /accounts/*
@@ -43,6 +31,7 @@
   @users path /users/*
   @notifications path /notifications*
   @export path /export/*
+  @billClosing path /bill-closing/*
 
   # Rota genérica /api com strip do prefixo (compatível com nginx.conf)
   @api path /api/*
@@ -90,11 +79,26 @@
   handle @export {
     reverse_proxy finance-backend:3001
   }
+  handle @billClosing {
+    reverse_proxy finance-backend:3001
+  }
 
   # Healthcheck simples
   @health path /health /server-test
   handle @health {
     reverse_proxy finance-backend:3001
+  }
+
+  # Frontend React servido pelo Nginx do container finance-frontend
+  @static {
+    path "/" "/index.html" "/static/*"
+  }
+  handle @static {
+    reverse_proxy finance-frontend:80 {
+      header_up Host {host}
+      header_up X-Real-IP {remote}
+      flush_interval -1
+    }
   }
 
   # Fallback para SPA (todas as demais rotas vão para o frontend)
