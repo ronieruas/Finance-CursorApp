@@ -16,7 +16,8 @@ RUN npm config set fetch-timeout 300000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
     npm ci --registry=$npm_config_registry --no-audit --no-fund --prefer-offline --cache /tmp/.npm || \
     npm ci --registry=https://registry.npmjs.org --no-audit --no-fund --prefer-offline --cache /tmp/.npm || \
-    npm install --registry=https://registry.npmjs.org --no-audit --no-fund
+    npm install --registry=https://registry.npmjs.org --no-audit --no-fund && \
+    npx --yes react-scripts --version
 
 # Copiar código fonte
 COPY frontend/. .
