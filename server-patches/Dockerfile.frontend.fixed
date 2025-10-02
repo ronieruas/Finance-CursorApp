@@ -1,0 +1,41 @@
+# Dockerfile para frontend React (corrigido para servidor)
+FROM node:20-alpine AS builder
+
+# Definir diretório de trabalho
+WORKDIR /app
+
+# Copiar arquivos de dependências
+COPY frontend/package*.json ./
+
+# Usar mirror do npm por padrão para reduzir falhas de DNS
+ENV npm_config_registry=https://registry.npmmirror.com
+
+# Configurar npm e instalar dependências (inclui dev) com fallback
+RUN npm config set fetch-timeout 300000 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm ci --registry=$npm_config_registry --no-audit --no-fund --prefer-offline --cache /tmp/.npm || \
+    npm ci --registry=https://registry.npmjs.org --no-audit --no-fund --prefer-offline --cache /tmp/.npm || \
+    npm install --registry=https://registry.npmjs.org --no-audit --no-fund && \
+    npx --yes react-scripts --version
+
+# Copiar código fonte
+COPY frontend/. .
+
+# Build da aplicação
+RUN npm run build
+
+# Estágio de produção
+FROM nginx:1.24-alpine
+
+# Copiar arquivos buildados
+COPY --from=builder /app/build /usr/share/nginx/html
+
+# Copiar configuração do nginx
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expor porta 80
+EXPOSE 80
+
+# Comando para iniciar nginx
+CMD ["nginx", "-g", "daemon off;"]
