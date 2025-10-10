@@ -24,7 +24,6 @@ router.use('/analytics', authMiddleware, require('./analytics'));
 router.use('/resumo', authMiddleware, require('./resumo'));
 router.use('/export', authMiddleware, require('./exportRoutes'));
 router.use('/dashboard', authMiddleware, require('./dashboard'));
-router.use('/bill-closing', authMiddleware, require('./billClosing'));
 
 router.get('/notifications', authMiddleware, notificationController.list);
 router.patch('/notifications/:id/read', authMiddleware, notificationController.markAsRead);

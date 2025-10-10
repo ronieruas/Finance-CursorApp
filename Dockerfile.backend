@@ -23,8 +23,5 @@ COPY backend/. .
 # Garante que scripts do src/scripts estejam disponíveis
 COPY backend/src/scripts ./src/scripts
 
-# Garante que services do src/services estejam disponíveis
-COPY backend/src/services ./src/services
-
 EXPOSE 3001
 CMD ["npm", "run", "start:migrate"]
