@@ -420,18 +420,18 @@ function CreditCards({ token }) {
     const { vencimento, start, end } = getBillPeriod(card, billMonth);
     const todasPagas = fatura.length > 0 && fatura.every(d => d.status === 'paga');
     if (todasPagas) return 'Paga';
-
+    
     const hoje = dayjs();
-    const fechamento = end; // Início do estado "Fechada" ocorre logo após o fim do período
-
-    // Após o vencimento (dia seguinte ao vencimento), se não paga, está em atraso
+    const fechamento = end; // O fechamento é o final do período da fatura
+    
+    // Se hoje > vencimento e não está paga, está em atraso
     if (vencimento && hoje.isAfter(vencimento, 'day')) return 'Em atraso';
-
-    // Entre fechamento (inclusive) e vencimento (inclusive), deve permanecer "Fechada"
-    if (fechamento && vencimento && hoje.isSameOrAfter(fechamento, 'day') && hoje.isSameOrBefore(vencimento, 'day')) {
+    
+    // Se a data de hoje for no dia de fechamento (inclusive) e antes do vencimento
+    if (fechamento && vencimento && hoje.isSameOrAfter(fechamento, 'day') && hoje.isBefore(vencimento, 'day')) {
       return 'Fechada';
     }
-
+    
     return 'Em aberto';
   }
 
