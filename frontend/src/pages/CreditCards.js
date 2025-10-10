@@ -657,8 +657,8 @@ function CreditCards({ token }) {
                           </td>
                           <td style={{ textAlign: 'left', color: valorFatura > 0 ? 'var(--color-despesa)' : '#0a0', fontWeight: 600 }}>
                             R$ {valorFatura.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            <div style={{ fontSize: 13, fontWeight: 700, color: getBillStatus(card, faturaAtual, billMonth) === 'Paga' ? '#0a0' : getBillStatus(card, faturaAtual, billMonth) === 'Fechada' ? '#f57c00' : '#d77' }}>
-                              {getBillStatus(card, faturaAtual, billMonth)}
+                            <div style={{ fontSize: 13, fontWeight: 700, color: todasPagas ? '#0a0' : '#d77' }}>
+                              {todasPagas ? 'Paga' : 'Em aberto'}
                             </div>
                           </td>
                           <td style={{ textAlign: 'left' }}>{card.due_day}</td>
