@@ -9,6 +9,8 @@ COPY frontend/package*.json ./
 
 # Usar mirror do npm por padrão para reduzir falhas de DNS
 ENV npm_config_registry=https://registry.npmmirror.com
+# Garantir que o frontend use o proxy de API via Caddy/Nginx em produção
+ENV REACT_APP_API_URL=/api
 
 # Configurar npm e instalar dependências (inclui dev) com fallback
 RUN npm config set fetch-timeout 300000 && \

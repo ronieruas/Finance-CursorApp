@@ -8,7 +8,7 @@ import {
 import Input from '../components/Input';
 import dayjs from 'dayjs';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+const API_URL = process.env.REACT_APP_API_URL || '/api';
 
 function Analytics({ token }) {
   const [data, setData] = useState({

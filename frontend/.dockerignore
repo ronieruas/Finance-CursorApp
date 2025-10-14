@@ -2,4 +2,16 @@ node_modules
 npm-debug.log
 .DS_Store
 .env
-build 
+.env*
+build
+
+# Excluir arquivos temporários
+*.swp
+*.swo
+
+# Excluir diretórios de debug
+../debug/
+
+# Excluir logs
+../logs.txt
+../logs/

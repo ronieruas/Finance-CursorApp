@@ -103,10 +103,10 @@ docker compose up -d --build
 Arquivo: `frontend/.env`
 
 ```bash
-# Para desenvolvimento local
-REACT_APP_API_URL=http://localhost:3001
+# Desenvolvimento com compose.dev
+REACT_APP_API_URL=/api
 
-# Para produção com domínio próprio
+# Produção com Caddy (localhost ou domínio)
 REACT_APP_API_URL=/api
 ```
 
@@ -131,8 +131,8 @@ free -h                  # Memória disponível
 
 ### Desenvolvimento
 - **Frontend**: http://localhost/
-- **API Backend**: http://localhost/api/
-- **Backend Direto**: http://localhost:3001 (debug)
+- **API via proxy**: http://localhost/api/
+- **Backend direto (dev compose)**: http://localhost:3001
 - **Banco de dados**: localhost:5432
 
 ### Produção

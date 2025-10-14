@@ -6,7 +6,7 @@ import Input from '../components/Input';
 import Toast from '../components/Toast';
 import Modal from '../components/Modal';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/accounts`; // ajuste conforme backend
+const API_URL = `${process.env.REACT_APP_API_URL || '/api'}/accounts`; // ajuste conforme backend
 
 const currencyOptions = [
   { value: 'BRL', label: 'Real (R$)' },

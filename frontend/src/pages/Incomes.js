@@ -5,8 +5,8 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import Toast from '../components/Toast';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/incomes`; // ajuste conforme backend
-const ACCOUNTS_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/accounts`;
+const API_URL = `${process.env.REACT_APP_API_URL || '/api'}/incomes`; // ajuste conforme backend
+const ACCOUNTS_URL = `${process.env.REACT_APP_API_URL || '/api'}/accounts`;
 
 function formatDateBR(dateStr) {
   if (!dateStr) return '';
@@ -105,7 +105,14 @@ function Incomes({ token }) {
 
   const handleEditChange = e => {
     const { name, value, type, checked } = e.target;
-    setEditForm({ ...editForm, [name]: type === 'checkbox' ? checked : value });
+    let nextValue = type === 'checkbox' ? checked : value;
+    if (name === 'date') {
+      const m = (value || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (m) {
+        nextValue = `${m[3]}-${m[2]}-${m[1]}`;
+      }
+    }
+    setEditForm({ ...editForm, [name]: nextValue });
   };
 
   const handleEditSubmit = async e => {
@@ -203,7 +210,7 @@ function Incomes({ token }) {
                       </td>
                       <td style={{ textAlign: 'left' }}><Input name="description" value={editForm.description} onChange={handleEditChange} /></td>
                       <td style={{ textAlign: 'left' }}><Input name="value" value={editForm.value} onChange={handleEditChange} /></td>
-                      <td style={{ textAlign: 'left' }}><Input name="date" value={editForm.date} onChange={handleEditChange} /></td>
+                      <td style={{ textAlign: 'left' }}><Input name="date" value={formatDateBR(editForm.date)} onChange={handleEditChange} /></td>
                       <td style={{ textAlign: 'left' }}><Input name="category" value={editForm.category} onChange={handleEditChange} /></td>
                       <td style={{ textAlign: 'left' }}><input name="is_recurring" type="checkbox" checked={!!editForm.is_recurring} onChange={e => setEditForm({ ...editForm, is_recurring: e.target.checked })} /></td>
                       <td style={{ textAlign: 'left' }}>

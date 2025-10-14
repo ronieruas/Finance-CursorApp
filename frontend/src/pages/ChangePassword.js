@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/auth/change-password`;
+const API_URL = `${process.env.REACT_APP_API_URL || '/api'}/auth/change-password`;
 
 function ChangePassword({ token }) {
   const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });

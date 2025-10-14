@@ -11,7 +11,7 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/creditCards`; // ajuste conforme backend
+const API_URL = `${process.env.REACT_APP_API_URL || '/api'}/creditCards`; // ajuste conforme backend
 
 function CreditCards({ token }) {
   const [cards, setCards] = useState([]);
@@ -108,7 +108,7 @@ function CreditCards({ token }) {
   };
 
   const fetchAccounts = async () => {
-    const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/accounts`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${process.env.REACT_APP_API_URL || '/api'}/accounts`, { headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
     setAccounts(data);
   };
@@ -133,7 +133,7 @@ function CreditCards({ token }) {
 
   const fetchCardExpenses = async (cardId) => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/expenses?type=cartao&credit_card_id=${cardId}&_=${Date.now()}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${process.env.REACT_APP_API_URL || '/api'}/expenses?type=cartao&credit_card_id=${cardId}&_=${Date.now()}`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setCardExpenses(prev => ({ ...prev, [cardId]: data }));
       console.log('Despesas retornadas para o cartão', cardId, data);
@@ -245,7 +245,7 @@ function CreditCards({ token }) {
     try {
       console.log('Enviando pagamento:', { ...payForm, cardId: payModal.card.id });
       // Corrigindo a URL da API para garantir que esteja usando a URL correta
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+    const apiUrl = process.env.REACT_APP_API_URL || '/api';
       // Garantindo que dayjs está disponível no escopo
       const currentBillMonth = billMonth || dayjs().format('YYYY-MM');
       const res = await fetch(`${apiUrl}/creditCards/${payModal.card.id}/pay`, {
@@ -289,7 +289,7 @@ function CreditCards({ token }) {
       Object.keys(payload).forEach(k => {
         if (payload[k] === '' || payload[k] === null || payload[k] === undefined) delete payload[k];
       });
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/expenses`, {
+    const res = await fetch(`${process.env.REACT_APP_API_URL || '/api'}/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
@@ -366,7 +366,8 @@ function CreditCards({ token }) {
     const start = fechamentoAjustado.subtract(1, 'month');
     const end = fechamentoAjustado.subtract(1, 'day');
     
-    return { start: start.startOf('day'), end: end.endOf('day'), vencimento };
+    // Retorna também o fechamento (ajustado) para uso na lógica de status
+    return { start: start.startOf('day'), end: end.endOf('day'), vencimento, fechamento: fechamentoAjustado };
   }
 
   // Função para determinar o mês da fatura em aberto (considerando fechamento)
@@ -414,14 +415,23 @@ function CreditCards({ token }) {
     dataForaDoPeriodo = !due.isSameOrAfter(periodoFatura.start) || !due.isSameOrBefore(periodoFatura.end);
   }
 
-  // Status da fatura: 'Em aberto', 'Em atraso', 'Paga'
+  // Status da fatura: 'Em aberto', 'Fechada', 'Em atraso', 'Paga'
   function getBillStatus(card, fatura, billMonth) {
     if (!card || !fatura) return '-';
-    const { vencimento } = getBillPeriod(card, billMonth);
+    const { fechamento, vencimento } = getBillPeriod(card, billMonth);
+    const hoje = dayjs();
+
     const todasPagas = fatura.length > 0 && fatura.every(d => d.status === 'paga');
     if (todasPagas) return 'Paga';
-    // Se hoje > vencimento e não está paga, está em atraso
-    if (dayjs().isAfter(vencimento, 'day')) return 'Em atraso';
+
+    // Após o vencimento, se não paga: em atraso
+    if (vencimento && hoje.isAfter(vencimento, 'day')) return 'Em atraso';
+
+    // Entre o fechamento (inclusive) e até o vencimento (inclusive): fechada
+    if (fechamento && vencimento && hoje.isSameOrAfter(fechamento, 'day') && !hoje.isAfter(vencimento, 'day')) {
+      return 'Fechada';
+    }
+
     return 'Em aberto';
   }
 
@@ -439,7 +449,7 @@ function CreditCards({ token }) {
     // Removendo a restrição de precisar ter um cartão expandido
     try {
       // Usando a URL correta para a API
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+    const apiUrl = process.env.REACT_APP_API_URL || '/api';
       const apiEndpoint = expandedCardId 
         ? `${apiUrl}/export/credit-card-expenses?cardId=${expandedCardId}&billMonth=${billMonth}`
         : `${apiUrl}/export/credit-cards`;
@@ -612,8 +622,16 @@ function CreditCards({ token }) {
                 // Debug: mostrar despesas do período e seus status
                 // console.log(`DEBUG - Cartão ${card.id} (${card.name}) - Fatura do período`, billMonth, faturaAtual.map(d => ({ id: d.id, desc: d.description, status: d.status, valor: d.value, due: d.due_date })));
                 const valorFatura = faturaAtual.reduce((acc, d) => acc + Number(d.value), 0);
-                // Novo: checar se todas as despesas do período estão pagas
-                const todasPagas = faturaAtual.length > 0 && faturaAtual.every(d => d.status === 'paga');
+                // Status para exibir abaixo do valor da fatura, usando mesma lógica da coluna Status
+                const statusLabel = getBillStatus(card, faturaAtual, billMonth);
+                const statusColor = (label => {
+                  switch (label) {
+                    case 'Paga': return '#0a0';
+                    case 'Fechada': return '#e68a00';
+                    case 'Em atraso': return '#d00';
+                    default: return '#d77'; // Em aberto ou indefinido
+                  }
+                })(statusLabel);
                 return (
                   <React.Fragment key={card.id}>
                     <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
@@ -647,8 +665,8 @@ function CreditCards({ token }) {
                           </td>
                           <td style={{ textAlign: 'left', color: valorFatura > 0 ? 'var(--color-despesa)' : '#0a0', fontWeight: 600 }}>
                             R$ {valorFatura.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            <div style={{ fontSize: 13, fontWeight: 700, color: todasPagas ? '#0a0' : '#d77' }}>
-                              {todasPagas ? 'Paga' : 'Em aberto'}
+                            <div style={{ fontSize: 13, fontWeight: 700, color: statusColor }}>
+                              {statusLabel}
                             </div>
                           </td>
                           <td style={{ textAlign: 'left' }}>{card.due_day}</td>
@@ -723,7 +741,7 @@ function CreditCards({ token }) {
                                               delete payload.installment_number;
                                               delete payload.createdAt;
                                               delete payload.updatedAt;
-                                              const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/expenses/${exp.id}`, {
+                                              const res = await fetch(`${process.env.REACT_APP_API_URL || '/api'}/expenses/${exp.id}`, {
                                                 method: 'PUT',
                                                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                                                 body: JSON.stringify(payload),
@@ -755,7 +773,7 @@ function CreditCards({ token }) {
                                           <Button variant="danger" onClick={async () => {
                                             if (window.confirm('Deseja realmente excluir esta despesa?')) {
                                               setLoading(true);
-                                              await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/expenses/${exp.id}`, {
+                                              await fetch(`${process.env.REACT_APP_API_URL || '/api'}/expenses/${exp.id}`, {
                                                 method: 'DELETE',
                                                 headers: { Authorization: `Bearer ${token}` },
                                               });

@@ -1,15 +1,11 @@
 {
-  # Caddyfile para domínio finance.ronieruas.com.br com proxy para frontend e backend
-  # HTTP habilitado para Cloudflare Tunnel (sem redirecionamento automático)
   auto_https off
   admin off
 }
 
-# Configuração HTTP para Cloudflare Tunnel (sem redirecionamento)
 :80 {
   encode zstd gzip
 
-  # Cabeçalhos de segurança básicos (sem HSTS para HTTP)
   header {
     X-Content-Type-Options nosniff
     X-Frame-Options DENY
@@ -33,65 +29,65 @@
   @export path /export/*
   @billClosing path /bill-closing/*
 
-  # Rota genérica /api com strip do prefixo (compatível com nginx.conf)
+  # Rota genérica /api com strip do prefixo (compatível com nginx.dev.conf)
   @api path /api/*
   handle @api {
     uri strip_prefix /api
-    reverse_proxy finance-backend:3001
+    reverse_proxy backend:3001
   }
 
   handle @auth {
-    reverse_proxy finance-backend:3001
+    reverse_proxy backend:3001
   }
   handle @accounts {
-    reverse_proxy finance-backend:3001
+    reverse_proxy backend:3001
   }
   handle @expenses {
-    reverse_proxy finance-backend:3001
+    reverse_proxy backend:3001
   }
   handle @incomes {
-    reverse_proxy finance-backend:3001
+    reverse_proxy backend:3001
   }
   handle @creditCards {
-    reverse_proxy finance-backend:3001
+    reverse_proxy backend:3001
   }
   handle @budgets {
-    reverse_proxy finance-backend:3001
+    reverse_proxy backend:3001
   }
   handle @transfers {
-    reverse_proxy finance-backend:3001
+    reverse_proxy backend:3001
   }
   handle @analytics {
-    reverse_proxy finance-backend:3001
+    reverse_proxy backend:3001
   }
   handle @resumo {
-    reverse_proxy finance-backend:3001
+    reverse_proxy backend:3001
   }
   handle @dashboard {
-    reverse_proxy finance-backend:3001
+    reverse_proxy backend:3001
   }
   handle @users {
-    reverse_proxy finance-backend:3001
+    reverse_proxy backend:3001
   }
   handle @notifications {
-    reverse_proxy finance-backend:3001
+    reverse_proxy backend:3001
   }
   handle @export {
-    reverse_proxy finance-backend:3001
+    reverse_proxy backend:3001
   }
   handle @billClosing {
-    reverse_proxy finance-backend:3001
+    reverse_proxy backend:3001
   }
 
   # Healthcheck simples
   @health path /health /server-test
   handle @health {
-    reverse_proxy finance-backend:3001
+    reverse_proxy backend:3001
   }
 
   # SPA: tudo que não for API vai para o frontend
   handle {
-    reverse_proxy finance-frontend:80 {
+    reverse_proxy frontend:80 {
       header_up Host {host}
       header_up X-Real-IP {remote}
       flush_interval -1

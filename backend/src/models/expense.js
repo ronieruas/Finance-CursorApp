@@ -20,6 +20,7 @@ Expense.init(
     auto_debit: { type: DataTypes.BOOLEAN, defaultValue: false },
     paid_at: { type: DataTypes.DATE },
     createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+    updatedAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },
   {
     sequelize,
@@ -29,4 +30,4 @@ Expense.init(
   }
 );
 
-module.exports = Expense; 
+module.exports = Expense;

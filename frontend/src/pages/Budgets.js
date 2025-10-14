@@ -6,7 +6,7 @@ import Input from '../components/Input';
 import Toast from '../components/Toast';
 import dayjs from 'dayjs';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/budgets`; // ajuste conforme backend
+const API_URL = `${process.env.REACT_APP_API_URL || '/api'}/budgets`; // ajuste conforme backend
 
 function Budgets({ token }) {
   const [budgets, setBudgets] = useState([]);
@@ -32,7 +32,7 @@ function Budgets({ token }) {
 
   const fetchCreditCards = async () => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/creditCards`, { 
+    const res = await fetch(`${process.env.REACT_APP_API_URL || '/api'}/creditCards`, {
         headers: { Authorization: `Bearer ${token}` } 
       });
       if (res.ok) {
@@ -94,9 +94,46 @@ function Budgets({ token }) {
     setLoading(false);
   };
 
-  const handleEdit = budget => { setEditingId(budget.id); setEditForm(budget); };
+  // Helpers de data para edição em formato BR
+  const formatDateBR = (iso) => {
+    if (!iso) return '';
+    try {
+      const d = dayjs(iso);
+      return d.isValid() ? d.format('DD/MM/YYYY') : '';
+    } catch {
+      return '';
+    }
+  };
 
-  const handleEditChange = e => { setEditForm({ ...editForm, [e.target.name]: e.target.value }); };
+  const parseDateBRToISO = (br) => {
+    if (!br) return '';
+    // Se já está em ISO (YYYY-MM-DD), retorna como está
+    if (/^\d{4}-\d{2}-\d{2}$/.test(br)) return br;
+    const parts = br.split('/');
+    if (parts.length !== 3) return br;
+    const [dd, mm, yyyy] = parts;
+    if (!dd || !mm || !yyyy) return br;
+    return `${yyyy}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+  };
+
+  const handleEdit = budget => {
+    setEditingId(budget.id);
+    // Preparar formulário de edição com datas em dd/mm/aaaa
+    setEditForm({
+      ...budget,
+      period_start: formatDateBR(budget.period_start),
+      period_end: formatDateBR(budget.period_end)
+    });
+  };
+
+  const handleEditChange = e => {
+    const { name, value } = e.target;
+    if (name === 'period_start' || name === 'period_end') {
+      setEditForm({ ...editForm, [name]: value });
+    } else {
+      setEditForm({ ...editForm, [name]: value });
+    }
+  };
 
   const handleEditSubmit = async e => {
     e.preventDefault();
@@ -105,7 +142,12 @@ function Budgets({ token }) {
       const res = await fetch(`${API_URL}/${editingId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify({
+          ...editForm,
+          // Converter datas dd/mm/aaaa para ISO antes de enviar
+          period_start: parseDateBRToISO(editForm.period_start),
+          period_end: parseDateBRToISO(editForm.period_end)
+        }),
       });
       if (res.ok) {
         setToast({ show: true, message: 'Orçamento editado com sucesso!', type: 'success' });

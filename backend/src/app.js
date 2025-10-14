@@ -35,6 +35,8 @@ const allowedOrigins = [
   'http://finance.ronieruas.com.br',  // Frontend em produção (HTTP via Cloudflare)
   'http://192.168.0.223',             // IP local para testes
   'http://localhost:3000',             // Para desenvolvimento local (opcional)
+  'http://localhost:3002',             // Desenvolvimento local na porta 3002
+  'http://localhost:3003',             // Desenvolvimento local na porta 3003
   'http://localhost',                  // Para acesso via Nginx no Docker
   'http://localhost:80'               // Para acesso via Nginx no Docker na porta 80
 ];

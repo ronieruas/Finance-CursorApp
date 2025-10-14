@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import '../styles/global.css';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/auth/login`;
+const API_URL = `${process.env.REACT_APP_API_URL || '/api'}/auth/login`;
 
 function Login({ setToken }) {
   const [form, setForm] = useState({ email: '', password: '' });

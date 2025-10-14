@@ -142,7 +142,8 @@ exports.exportAccountStatement = async (req, res) => {
 
     res.header('Content-Type', 'text/csv; charset=utf-8');
     res.attachment(`extrato_conta_${accountId}_${start}_${end}.csv`);
-    return res.send('\uFEFF' + csv); // BOM para Excel
+    const safeCsv = String(csv).replace(/^[\uFEFF\r\n]+/, '');
+    return res.send('\uFEFF' + safeCsv); // BOM para Excel
   } catch (error) {
     console.error('exportAccountStatement: Error exporting account statement:', error);
     res.status(500).send('Error exporting account statement: ' + error.message);
@@ -223,7 +224,8 @@ exports.exportExpenses = async (req, res) => {
 
     res.header('Content-Type', 'text/csv; charset=utf-8');
     res.attachment(`despesas_${start}_${end}.csv`);
-    return res.send('\uFEFF' + csv);
+    const safeCsv = String(csv).replace(/^[\uFEFF\r\n]+/, '');
+    return res.send('\uFEFF' + safeCsv);
   } catch (error) {
     console.error('Error exporting expenses:', error);
     res.status(500).send('Error exporting expenses: ' + error.message);

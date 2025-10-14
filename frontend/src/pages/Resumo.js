@@ -8,7 +8,7 @@ import 'dayjs/locale/pt-br';
 // Configurar dayjs para português brasileiro
 dayjs.locale('pt-br');
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+const API_URL = process.env.REACT_APP_API_URL || '/api';
 
 function Resumo({ token }) {
   const [data, setData] = useState({

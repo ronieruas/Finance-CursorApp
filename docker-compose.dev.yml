@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: finance-db-dev
+    environment:
+      POSTGRES_DB: finance_dev
+      POSTGRES_USER: finance
+      POSTGRES_PASSWORD: finance123
+      LC_ALL: en_US.UTF-8
+      LANG: en_US.UTF-8
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=en_US.UTF-8
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    ports:
+      - "5433:5432"  # Porta diferente para não conflitar com produção
+    networks:
+      - finance-network-dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finance -d finance_dev"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+      args:
+        BASE_IMAGE: public.ecr.aws/docker/library/node:20-alpine
+    container_name: finance-backend-dev
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=db
+      - DB_NAME=finance_dev
+      - DB_USER=finance
+      - DB_PASSWORD=finance123
+      - DB_DIALECT=postgres
+      - JWT_SECRET=dev_jwt_secret_key_for_local_development_only
+      - PORT=3001
+      - DEBUG=true
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - finance-network-dev
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 3001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: finance-frontend-dev
+    environment:
+      - REACT_APP_API_URL=/api
+      - REACT_APP_ENV=development
+      - REACT_APP_DEBUG=true
+    volumes:
+      - ./frontend:/app
+      - ./frontend/nginx.dev.conf:/etc/nginx/conf.d/default.conf
+      - /app/node_modules
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - finance-network-dev
+
+  caddy:
+    image: caddy:2
+    container_name: finance-caddy-dev
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile.dev/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data_dev:/data
+      - caddy_config_dev:/config
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - finance-network-dev
+
+volumes:
+  postgres_data_dev:
+  caddy_data_dev:
+  caddy_config_dev:
+
+networks:
+  finance-network-dev:
+    driver: bridge

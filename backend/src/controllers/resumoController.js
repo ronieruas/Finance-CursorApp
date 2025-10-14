@@ -148,43 +148,52 @@ exports.getResumo = async (req, res) => {
       where: { user_id: userId, status: 'ativa' }
     });
 
-    let somaFaturaAtual = 0; // será paga no próximo mês
-    let somaFaturaFechada = 0; // vence no mês corrente (paga ou a pagar)
-    const refHoje = new Date();
-    const refYear = refHoje.getFullYear();
-    const refMonth = refHoje.getMonth();
+    // Ajuste: somar faturas por MÊS DE VENCIMENTO explícito (corrente e próximo),
+    // alinhado com a aba Cartões/Faturas, evitando mistura por cartão.
+    let somaFaturaPeriodoAtual = 0;      // Faturas que vencem no mês corrente
+    let somaFaturaPeriodoProximo = 0;    // Faturas que vencem no próximo mês
+
+    // Determinar meses de vencimento corrente e próximo com base em hojeBrasil
+    const anoCorrente = hojeBrasil.getFullYear();
+    const mesCorrente = hojeBrasil.getMonth(); // 0-11
+    let anoProximo = anoCorrente;
+    let mesProximo = mesCorrente + 1;
+    if (mesProximo > 11) { mesProximo = 0; anoProximo += 1; }
 
     for (const cartao of cartoes) {
-      // Período aberto (fatura atual)
-      const periods = getBillPeriodsFromRef(cartao.closing_day, cartao.due_day, refHoje);
-      const openPeriod = periods.atual;
-      const faturaAtualValor = await Expense.sum('value', {
+      // Período da fatura que vence no mês corrente
+      const periodoCorrente = getBillPeriodForMonth(cartao.closing_day, cartao.due_day, anoCorrente, mesCorrente);
+      const atualStart = formatDateOnly(periodoCorrente.start);
+      const atualEnd = formatDateOnly(periodoCorrente.end);
+      const totalAtualCartao = await Expense.sum('value', {
         where: {
           user_id: userId,
           credit_card_id: cartao.id,
-          due_date: { [Op.between]: [formatDateOnly(openPeriod.start), formatDateOnly(openPeriod.end)] },
+          due_date: { [Op.between]: [atualStart, atualEnd] },
         },
       }) || 0;
-      somaFaturaAtual += Number(faturaAtualValor) || 0;
+      somaFaturaPeriodoAtual += Number(totalAtualCartao) || 0;
 
-      // Período fechado que vence no mês corrente
-      const closedPeriod = getBillPeriodForMonth(cartao.closing_day, cartao.due_day, refYear, refMonth);
-      const totalFechada = await Expense.sum('value', {
+      // Período da fatura que vence no próximo mês
+      const periodoProximo = getBillPeriodForMonth(cartao.closing_day, cartao.due_day, anoProximo, mesProximo);
+      const proxStart = formatDateOnly(periodoProximo.start);
+      const proxEnd = formatDateOnly(periodoProximo.end);
+      const totalProximoCartao = await Expense.sum('value', {
         where: {
           user_id: userId,
           credit_card_id: cartao.id,
-          due_date: { [Op.between]: [formatDateOnly(closedPeriod.start), formatDateOnly(closedPeriod.end)] },
+          due_date: { [Op.between]: [proxStart, proxEnd] },
         },
       }) || 0;
-      somaFaturaFechada += Number(totalFechada) || 0;
+      somaFaturaPeriodoProximo += Number(totalProximoCartao) || 0;
     }
 
     const despesasMes = {
       gerais: despesasGerais,
-      faturasProximoMes: somaFaturaAtual,
-      faturasMesCorrente: somaFaturaFechada,
-      // Total = Despesas Gerais + Faturas do Mês Corrente (conforme solicitado)
-      total: Number(despesasGerais) + Number(somaFaturaFechada)
+      faturasProximoMes: somaFaturaPeriodoProximo,
+      faturasMesCorrente: somaFaturaPeriodoAtual,
+      // Total = Despesas Gerais + Faturas do Período Atual (conforme solicitado)
+      total: Number(despesasGerais) + Number(somaFaturaPeriodoAtual)
     };
 
     console.log('Despesas do mês (consolidadas):', despesasMes);

@@ -1,6 +1,11 @@
 # Dockerfile para backend Node.js
-FROM node:20-alpine
+# Permite definir a imagem base via ARG para usar mirrors quando necessário
+ARG BASE_IMAGE=node:20-alpine
+FROM ${BASE_IMAGE}
 WORKDIR /app
+
+# Instalar netcat para health check
+RUN apk add --no-cache netcat-openbsd
 
 # Copiar arquivos de dependências
 COPY backend/package*.json ./
@@ -22,6 +27,8 @@ COPY backend/. .
 
 # Garante que scripts do src/scripts estejam disponíveis
 COPY backend/src/scripts ./src/scripts
+
+# (Removido) COPY de services inexistentes para evitar falha no build
 
 EXPOSE 3001
 CMD ["npm", "run", "start:migrate"]

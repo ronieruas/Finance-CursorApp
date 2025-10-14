@@ -51,6 +51,32 @@ const app = require('./app');
 
 console.log('App module loaded:', typeof app);
 
+// Garantir client_encoding UTF-8 após conectar com Sequelize
+try {
+  const { sequelize, syncDb } = require('./models');
+  (async () => {
+    try {
+      await sequelize.authenticate();
+      const dialect = sequelize.getDialect();
+      if (dialect === 'sqlite') {
+        try {
+          await syncDb();
+          console.log('SQLite: modelos sincronizados com sucesso via sequelize.sync()');
+        } catch (syncErr) {
+          console.warn('Falha ao sincronizar modelos no SQLite:', syncErr.message);
+        }
+      } else if (dialect === 'postgres') {
+        await sequelize.query("SET client_encoding TO 'UTF8'");
+        console.log('client_encoding definido para UTF8');
+      }
+    } catch (dbErr) {
+      console.warn('Não foi possível definir client_encoding UTF8:', dbErr.message);
+    }
+  })();
+} catch (e) {
+  console.warn('Falha ao carregar Sequelize para definir client_encoding:', e.message);
+}
+
 const PORT = process.env.PORT || 3001;
 
 console.log(`Starting server on port ${PORT}...`);
@@ -88,5 +114,8 @@ console.log('Server started.');
 // Adicionar um log para verificar se o servidor está realmente iniciando
 app.get('/server-test', (req, res) => {
   console.log('Server test route accessed');
-  res.json({ message: 'Server test route working' });
+  res.json({
+    message: 'Teste: áéíóú ç Ç ã õ â ê ô ü ñ Æ Ø å Å ¿',
+    examples: ['maçã', 'coração', 'São Paulo', 'año', 'über', 'façade'],
+  });
 });

@@ -6,9 +6,9 @@ import Input from '../components/Input';
 import Toast from '../components/Toast';
 import dayjs from 'dayjs';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/expenses`; // ajuste conforme backend
-const ACCOUNTS_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/accounts`;
-const CARDS_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/creditCards`;
+const API_URL = `${process.env.REACT_APP_API_URL || '/api'}/expenses`; // ajuste conforme backend
+const ACCOUNTS_URL = `${process.env.REACT_APP_API_URL || '/api'}/accounts`;
+const CARDS_URL = `${process.env.REACT_APP_API_URL || '/api'}/creditCards`;
 
 function Expenses({ token }) {
   const [expenses, setExpenses] = useState([]);
@@ -246,7 +246,7 @@ function Expenses({ token }) {
     if (filters.status) params.append('status', filters.status);
 
     try {
-      const url = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/export/expenses?${params.toString()}`; 
+      const url = `${process.env.REACT_APP_API_URL || '/api'}/export/expenses?${params.toString()}`; 
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });

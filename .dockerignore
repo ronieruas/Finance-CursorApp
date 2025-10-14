@@ -8,3 +8,30 @@ build
 *.log
 frontend/node_modules
 backend/node_modules 
+
+# Excluir VCS e secrets
+.git
+secrets/
+backend/.jwt_secret
+
+# Excluir backups e artefatos pesados
+database/backups/
+backup-*.sql
+*backup*.sql
+*.tar.gz
+export_test*.csv
+logs.txt
+logs/
+debug/
+
+# Arquivos de ambiente em subpastas
+.env*
+frontend/.env*
+backend/.env*
+
+# Arquivos temporários de editores
+*.swp
+*.swo
+
+# Patches e arquivos auxiliares não necessários no build
+server-patches/

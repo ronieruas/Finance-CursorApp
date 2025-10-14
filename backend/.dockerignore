@@ -1,4 +1,21 @@
 node_modules
 npm-debug.log
 .DS_Store
-.env 
+.env
+.env*
+
+# Excluir secrets locais
+.jwt_secret
+
+# Excluir dumps e backups
+../database/backups/
+../backup-*.sql
+../*backup*.sql
+
+# Excluir logs
+../logs.txt
+../logs/
+
+# Excluir arquivos temporários
+*.swp
+*.swo

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Route, Routes, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation, useNavigate, Navigate, useLocation as useReactLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Accounts from './pages/Accounts';
@@ -27,6 +27,21 @@ function PrivateRoute({ token, children }) {
 function AnimatedRoutes({ token, setToken }) {
   const location = useLocation();
   const navigate = useNavigate();
+  function SetToken() {
+    const loc = useReactLocation();
+    useEffect(() => {
+      const params = new URLSearchParams(loc.search);
+      const jwt = params.get('token');
+      if (jwt) {
+        try {
+          localStorage.setItem('token', jwt);
+          setToken(jwt);
+        } catch {}
+      }
+      navigate('/resumo', { replace: true });
+    }, [loc.search]);
+    return null;
+  }
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
@@ -101,6 +116,7 @@ function AnimatedRoutes({ token, setToken }) {
             <Transfers token={token} />
           </PrivateRoute>
         } />
+        <Route path="/set-token" element={<SetToken />} />
         <Route path="/login" element={<Login setToken={setToken} />} />
       </Routes>
     </AnimatePresence>
@@ -122,7 +138,7 @@ function App() {
     if (!token) return;
     const fetchNotifications = async () => {
       try {
-        const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/notifications`, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await fetch(`${process.env.REACT_APP_API_URL || '/api'}/notifications`, { headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
         setNotifications(data);
       } catch {}
@@ -134,7 +150,7 @@ function App() {
 
   const markNotificationAsRead = async (id) => {
     try {
-      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/notifications/${id}/read`, {
+      await fetch(`${process.env.REACT_APP_API_URL || '/api'}/notifications/${id}/read`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
       });
