@@ -397,6 +397,17 @@ docker exec finance-db pg_dump -U finance finance > backup.sql
 docker exec -i finance-db psql -U finance finance < backup.sql
 ```
 
+## 📄 Boas práticas de versionamento
+
+- Não versionar dumps/backups de banco (`database/backups/`, `backup-*.sql`).
+- Não versionar segredos locais (`backend/.jwt_secret`, arquivos `.crt`/`.key`).
+- O `.gitignore` já bloqueia esses arquivos; se aparecerem em staging, use:
+  - `git restore --staged <arquivo>` para removê-los do índice.
+- Mantenha backups fora do repositório (diretório local, storage externo, bucket privado).
+- Se um backup/segredo for versionado por engano, sanitize o histórico e force push; colaboradores devem sincronizar com:
+  - `git fetch --all && git reset --hard origin/main`
+  - Repetir para `development` se necessário.
+
 ## 🚨 Importante
 
 - **Sempre use `docker-compose down` antes de rebuild**
