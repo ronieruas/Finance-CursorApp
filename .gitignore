@@ -35,3 +35,10 @@ yarn-error.log*
 secrets/
 *.crt
 *.key
+
+# Backups e dumps de banco (não versionar)
+database/backups/
+backup-*.sql
+
+# Segredo local do backend (não versionar)
+backend/.jwt_secret
