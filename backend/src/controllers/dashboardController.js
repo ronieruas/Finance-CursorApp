@@ -251,22 +251,29 @@ exports.getDashboard = async (req, res) => {
       cartao: cartaoPeriodo,
     }
 
-    // Transações recentes (10 últimas do período)
+    // Transações recentes: últimos 45 dias até hoje (independente do período selecionado)
+    const hojeRecentes = new Date()
+    const inicioRecentes = new Date(hojeRecentes)
+    inicioRecentes.setDate(hojeRecentes.getDate() - 45)
+    inicioRecentes.setHours(0, 0, 0, 0)
+    const fimRecentes = new Date(hojeRecentes)
+    fimRecentes.setHours(23, 59, 59, 999)
+
     const receitasRecentes = await models.Income.findAll({
       where: {
         user_id: userId,
-        date: { [Op.between]: [firstDay, lastDay] },
+        date: { [Op.between]: [inicioRecentes, fimRecentes] },
       },
       order: [['date', 'DESC']],
-      limit: 20,
+      limit: 50,
     })
     const despesasRecentes = await models.Expense.findAll({
       where: {
         user_id: userId,
-        due_date: { [Op.between]: [firstDay, lastDay] },
+        due_date: { [Op.between]: [inicioRecentes, fimRecentes] },
       },
       order: [['due_date', 'DESC']],
-      limit: 20,
+      limit: 50,
     })
 
     const contasMap = {}

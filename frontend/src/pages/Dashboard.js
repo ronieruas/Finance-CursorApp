@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, LineChart, Line } from 'recharts';
 import Input from '../components/Input';
 import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
+dayjs.extend(customParseFormat);
 
 const API_URL = process.env.REACT_APP_API_URL || '/api';
 
@@ -92,25 +94,21 @@ function Dashboard({ token }) {
       });
       setBreakdown(data.breakdown || { receitas: 0, despesas: 0, cartao: 0 });
       // Processar transações recentes: filtrar futuras, formatar datas e ordenar desc
+      const parseDate = (s) => {
+        if (!s) return null;
+        // Aceitar formatos 'DD/MM/YYYY' e ISO 'YYYY-MM-DD'
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return dayjs(s, 'DD/MM/YYYY', true);
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return dayjs(s);
+        const d = dayjs(s);
+        return d.isValid() ? d : null;
+      };
+      const hoje = dayjs().startOf('day');
       const recentesProcessadas = (data.recentes || [])
-        .filter(t => {
-          const d = new Date(t.data);
-          const hoje = new Date();
-          // Comparar apenas data (Y-M-D) sem tempo
-          const dOnly = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-          const hojeOnly = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-          return dOnly <= hojeOnly;
-        })
-        .map(t => ({
-          ...t,
-          data: dayjs(t.data).isValid() ? dayjs(t.data).format('DD/MM/YYYY') : t.data
-        }))
-        .sort((a,b) => {
-          const da = dayjs(a.data, 'DD/MM/YYYY');
-          const db = dayjs(b.data, 'DD/MM/YYYY');
-          if (da.isValid() && db.isValid()) return db.valueOf() - da.valueOf();
-          return 0;
-        });
+        .map(t => ({ ...t, _date: parseDate(t.data) }))
+        .filter(t => t._date)
+        .filter(t => t._date.startOf('day').valueOf() <= hoje.valueOf())
+        .sort((a, b) => b._date.valueOf() - a._date.valueOf())
+        .map(t => ({ ...t, data: t._date.format('DD/MM/YYYY') }));
       setRecentes(recentesProcessadas);
       setAlertas(data.alertas || []);
       setSaldoEvolucao(data.saldoEvolucao || []);
