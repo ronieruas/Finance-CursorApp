@@ -96,9 +96,15 @@ function Dashboard({ token }) {
       // Processar transações recentes: filtrar futuras, formatar datas e ordenar desc
       const parseDate = (s) => {
         if (!s) return null;
-        // Aceitar formatos 'DD/MM/YYYY' e ISO 'YYYY-MM-DD'
-        if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return dayjs(s, 'DD/MM/YYYY', true);
-        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return dayjs(s);
+        // DD/MM/YYYY (estrito)
+        const br = dayjs(s, 'DD/MM/YYYY', true);
+        if (br.isValid()) return br;
+        // YYYY-MM-DD ou ISO -> sempre considerar apenas a parte de data (primeiros 10 chars)
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+          const only = s.slice(0, 10);
+          const d = dayjs(only, 'YYYY-MM-DD', true);
+          return d.isValid() ? d : null;
+        }
         const d = dayjs(s);
         return d.isValid() ? d : null;
       };
@@ -348,14 +354,25 @@ function Dashboard({ token }) {
               <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
                 <td style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>{t.data}</td>
                 <td style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>{t.descricao}</td>
-                <td style={{ padding: '5px 3px', textAlign: 'left', color: t.tipo === 'receita' ? 'var(--color-receita)' : t.tipo === 'despesa' ? 'var(--color-despesa)' : 'var(--color-cartao)', fontWeight: 600, fontSize: '0.85rem' }}>
-                  {t.tipo === 'despesa' ? '-' : ''}R$ {Number(t.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                <td style={{ padding: '5px 3px', textAlign: 'left', color: (
+                  t.tipo === 'receita'
+                    ? 'var(--color-receita)'
+                    : (t.tipo === 'despesa' || t.tipo === 'pagamento' || t.tipo === 'pagamento_cartao')
+                      ? 'var(--color-despesa)'
+                      : (t.tipo === 'transferencia')
+                        ? '#2563eb'
+                        : 'var(--color-cartao)'
+                ), fontWeight: 600, fontSize: '0.85rem' }}>
+                  {(t.tipo === 'despesa' || t.tipo === 'pagamento' || t.tipo === 'pagamento_cartao') ? '-' : ''}R$ {Number(t.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </td>
                 <td style={{ padding: '5px 3px', textAlign: 'left', fontSize: '0.85rem' }}>{t.conta_nome}</td>
                 <td style={{ padding: '5px 3px', textAlign: 'left' }}>
                   {t.tipo === 'receita' && <span style={{ color: 'var(--color-receita)', fontWeight: 500, fontSize: '0.8rem' }}>Receita</span>}
                   {t.tipo === 'despesa' && <span style={{ color: 'var(--color-despesa)', fontWeight: 500, fontSize: '0.8rem' }}>Despesa</span>}
                   {t.tipo === 'cartao' && <span style={{ color: 'var(--color-cartao)', fontWeight: 500, fontSize: '0.8rem' }}>Cartão</span>}
+                  {t.tipo === 'transferencia' && <span style={{ color: '#2563eb', fontWeight: 500, fontSize: '0.8rem' }}>Transferência</span>}
+                  {t.tipo === 'pagamento' && <span style={{ color: 'var(--color-despesa)', fontWeight: 500, fontSize: '0.8rem' }}>Pagamento</span>}
+                  {t.tipo === 'pagamento_cartao' && <span style={{ color: 'var(--color-despesa)', fontWeight: 500, fontSize: '0.8rem' }}>Pagamento cartão</span>}
                 </td>
               </tr>
             ))}
