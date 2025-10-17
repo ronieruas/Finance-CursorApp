@@ -5,8 +5,8 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import Toast from '../components/Toast';
 
-const API_URL = `${process.env.REACT_APP_API_URL || '/api'}/incomes`; // ajuste conforme backend
-const ACCOUNTS_URL = `${process.env.REACT_APP_API_URL || '/api'}/accounts`;
+// Bases possíveis para a API (prioridade: env -> localhost:3003 -> relativo /api)
+const API_BASES = [process.env.REACT_APP_API_URL, 'http://localhost:3003', '/api'].filter(Boolean);
 
 function formatDateBR(dateStr) {
   if (!dateStr) return '';
@@ -22,6 +22,9 @@ function Incomes({ token }) {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  // Token e base dinâmica da API
+  const authToken = token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+  const [apiBase, setApiBase] = useState(API_BASES[0]);
   const [period, setPeriod] = useState(() => {
     const today = new Date();
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0,10);
@@ -29,11 +32,26 @@ function Incomes({ token }) {
     return { start: firstDay, end: lastDay };
   });
 
-  useEffect(() => { fetchIncomes(); fetchAccounts(); }, []);
+  // Detectar base acessível da API
+  useEffect(() => {
+    (async () => {
+      for (const base of API_BASES) {
+        try {
+          const r = await fetch(`${base}/server-test`, { cache: 'no-store' });
+          if (r.ok || r.status >= 200) { setApiBase(base); break; }
+        } catch (e) { /* tenta próxima base */ }
+      }
+    })();
+  }, []);
+
+  useEffect(() => { 
+    if (apiBase) { fetchIncomes(); fetchAccounts(); }
+    // eslint-disable-next-line
+  }, [apiBase]);
 
   const fetchAccounts = async () => {
     try {
-      const res = await fetch(ACCOUNTS_URL, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${apiBase}/accounts`, { headers: { Authorization: `Bearer ${authToken}` } });
       const data = await res.json();
       setAccounts(data);
     } catch {
@@ -47,8 +65,8 @@ function Incomes({ token }) {
     const params = [];
     if (p.start) params.push(`start=${p.start}`);
     if (p.end) params.push(`end=${p.end}`);
-    const url = `${API_URL}${params.length ? '?' + params.join('&') : ''}`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const url = `${apiBase}/incomes${params.length ? '?' + params.join('&') : ''}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${authToken}` } });
     const data = await res.json();
     setIncomes(data);
     setLoading(false);
@@ -63,9 +81,9 @@ function Incomes({ token }) {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch(API_URL, {
+      const res = await fetch(`${apiBase}/incomes`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify(form),
       });
       if (res.ok) {
@@ -85,9 +103,9 @@ function Incomes({ token }) {
     if (!window.confirm('Deseja realmente excluir esta receita?')) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/${id}`, {
+      const res = await fetch(`${apiBase}/incomes/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
       if (res.ok) {
         setToast({ show: true, message: 'Receita excluída com sucesso!', type: 'success' });
@@ -119,9 +137,9 @@ function Incomes({ token }) {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/${editingId}`, {
+      const res = await fetch(`${apiBase}/incomes/${editingId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify(editForm),
       });
       if (res.ok) {

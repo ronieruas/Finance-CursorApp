@@ -6,7 +6,8 @@ import Input from '../components/Input';
 import Toast from '../components/Toast';
 import Modal from '../components/Modal';
 
-const API_URL = `${process.env.REACT_APP_API_URL || '/api'}/accounts`; // ajuste conforme backend
+// Bases possíveis para a API (prioridade: env -> localhost:3003 -> relativo /api)
+const API_BASES = [process.env.REACT_APP_API_URL, 'http://localhost:3003', '/api'].filter(Boolean);
 
 const currencyOptions = [
   { value: 'BRL', label: 'Real (R$)' },
@@ -15,6 +16,9 @@ const currencyOptions = [
 ];
 
 function Accounts({ token }) {
+  // Token de autenticação: usa prop se disponível; caso contrário, fallback para localStorage
+  const authToken = token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+  const [apiBase, setApiBase] = useState(API_BASES[0]);
   const [accounts, setAccounts] = useState([]);
   const [form, setForm] = useState({ name: '', bank: '', type: 'corrente', balance: '', currency: 'BRL' });
   const [loading, setLoading] = useState(false);
@@ -28,16 +32,55 @@ function Accounts({ token }) {
   const [extratoError, setExtratoError] = useState('');
   const [exportLoading, setExportLoading] = useState(false);
 
+  // Detectar base acessível da API
   useEffect(() => {
-    fetchAccounts();
+    (async () => {
+      for (const base of API_BASES) {
+        try {
+          // Tenta um ping simples: server-test não requer auth; se não existir, qualquer resposta HTTP já indica reachability
+          const r = await fetch(`${base}/server-test`, { cache: 'no-store' });
+          if (r.ok || r.status >= 200) {
+            setApiBase(base);
+            break;
+          }
+        } catch (e) {
+          // tenta próxima base
+        }
+      }
+    })();
   }, []);
+
+  useEffect(() => {
+    if (apiBase) fetchAccounts();
+    // eslint-disable-next-line
+  }, [apiBase]);
 
   const fetchAccounts = async () => {
     setLoading(true);
-    const res = await fetch(API_URL, { headers: { Authorization: `Bearer ${token}` } });
-    const data = await res.json();
-    setAccounts(data);
-    setLoading(false);
+    try {
+      const url = `${apiBase}/accounts?t=${Date.now()}`;
+      console.log('[Accounts] Fetching accounts from', url);
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${authToken}`, 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+        cache: 'no-store',
+      });
+      console.log('[Accounts] Response status:', res.status);
+      if (!res.ok) {
+        // Em caso de erro, garante que a UI não fique travada
+        setAccounts([]);
+      } else {
+        const data = await res.json();
+        console.log('[Accounts] Loaded accounts count:', Array.isArray(data) ? data.length : 0);
+        // Garante que seja um array
+        setAccounts(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('[Accounts] Fetch error:', err);
+      // Falha de rede ou CORS: não travar UI
+      setAccounts([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = e => {
@@ -48,10 +91,14 @@ function Accounts({ token }) {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch(API_URL, {
+      const res = await fetch(`${apiBase}/accounts`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(form),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({
+          ...form,
+          // garante número para backend
+          balance: form.balance ? Number(form.balance) : 0,
+        }),
       });
       if (res.ok) {
         setToast({ show: true, message: 'Conta adicionada com sucesso!', type: 'success' });
@@ -71,9 +118,9 @@ function Accounts({ token }) {
     if (!window.confirm('Deseja realmente excluir esta conta?')) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/${id}`, {
+      const res = await fetch(`${apiBase}/accounts/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
       if (res.ok) {
         setToast({ show: true, message: 'Conta excluída com sucesso!', type: 'success' });
@@ -101,9 +148,9 @@ function Accounts({ token }) {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/${editingId}`, {
+      const res = await fetch(`${apiBase}/accounts/${editingId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify(editForm),
       });
       if (res.ok) {
@@ -136,8 +183,8 @@ function Accounts({ token }) {
       const params = [];
       if (extratoPeriodo.start) params.push(`start=${extratoPeriodo.start}`);
       if (extratoPeriodo.end) params.push(`end=${extratoPeriodo.end}`);
-      const url = `${API_URL}/${extratoConta.id}/extrato${params.length ? '?' + params.join('&') : ''}`;
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const url = `${apiBase}/accounts/${extratoConta.id}/extrato${params.length ? '?' + params.join('&') : ''}`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${authToken}` } });
       if (!res.ok) throw new Error('Erro ao buscar extrato');
       const data = await res.json();
       setExtrato(data.extrato || []);
@@ -175,11 +222,11 @@ function Accounts({ token }) {
         params.append('endDate', extratoPeriodo.end);
       }
 
-      const url = `/export/statement?${params.toString()}`;
-      console.log('Final Export URL:', window.location.origin + url);
+      const url = `${API_BASE}/export/statement?${params.toString()}`;
+      console.log('Final Export URL:', url);
 
       const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
 
       if (!res.ok) {
