@@ -2,21 +2,21 @@
   "development": {
     "username": "finance",
     "password": "finance123",
-    "database": "finance",
+    "database": "finance_dev",
     "host": "db",
     "dialect": "postgres"
   },
   "test": {
     "username": "finance",
     "password": "finance123",
-    "database": "finance",
+    "database": "finance_dev",
     "host": "db",
     "dialect": "postgres"
   },
   "production": {
     "username": "finance",
     "password": "finance123",
-    "database": "finance",
+    "database": "finance_dev",
     "host": "db",
     "dialect": "postgres"
   }

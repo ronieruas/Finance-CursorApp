@@ -257,24 +257,28 @@ exports.pay = async (req, res) => {
 
     await account.update({ balance: account.balance - valorPagamento });
 
-    // Garantir que a data seja tratada corretamente no fuso horário local
+    // Normalizar a data de pagamento como "date-only" (YYYY-MM-DD), sem ajuste artificial de fuso
     console.log('Data recebida do frontend:', payment_date);
     console.log('Tipo da data recebida:', typeof payment_date);
-    
-    // Usar dayjs para garantir que a data seja tratada corretamente, sem problemas de fuso horário
-    let paymentDateFormatted;
-    if (payment_date) {
-      // Usar dayjs para garantir que a data seja no formato YYYY-MM-DD sem ajuste de fuso horário
-      // Usando a data exata fornecida pelo usuário, adicionando 1 dia para compensar o fuso horário
-      const dayjsDate = dayjs(payment_date).add(1, 'day');
-      paymentDateFormatted = dayjsDate.format('YYYY-MM-DD');
-    } else {
-      // Se não houver data, usar a data atual com o fuso horário local
-      // Adicionando .add(1, 'day') para compensar o problema de fuso horário
-      paymentDateFormatted = dayjs().add(1, 'day').format('YYYY-MM-DD');
-    }
-    
-    console.log('Data formatada para salvar:', paymentDateFormatted);
+
+    const normalizeDateOnly = (input) => {
+      if (!input) return formatDateOnly(new Date());
+      const s = String(input).trim();
+      // Já está no formato YYYY-MM-DD
+      const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (m1) return s;
+      // Formato brasileiro DD/MM/YYYY
+      const m2 = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (m2) return `${m2[3]}-${m2[2]}-${m2[1]}`;
+      // Tentar interpretar como data e converter para YYYY-MM-DD
+      const dt = new Date(s);
+      if (!isNaN(dt.getTime())) return formatDateOnly(dt);
+      // Fallback via dayjs (casos ISO completos)
+      return dayjs(s).format('YYYY-MM-DD');
+    };
+
+    const paymentDateFormatted = normalizeDateOnly(payment_date);
+    console.log('Data normalizada para salvar (YYYY-MM-DD):', paymentDateFormatted);
     
     const payment = await CreditCardPayment.create({
       card_id: card.id,
@@ -288,10 +292,12 @@ exports.pay = async (req, res) => {
 
     if (is_full_payment && periodoFatura) {
       // Atualiza todas as despesas da fatura como pagas
-      // Garantir que a data de pagamento seja consistente em todas as despesas
-      // É importante que a data seja tratada da mesma forma em todos os lugares
-      await Promise.all(despesasFatura.map(despesa => despesa.update({ status: 'paga', paid_at: paymentDateFormatted })));
-      console.log(`[PAGAMENTO] ${despesasFatura.length} despesas marcadas como pagas com data ${paymentDateFormatted}`);
+      // Salva paid_at como Date local para evitar retroceder 1 dia em exibições
+      const paidAtLocal = toLocalDate(paymentDateFormatted);
+      await Promise.all(
+        despesasFatura.map(despesa => despesa.update({ status: 'paga', paid_at: paidAtLocal }))
+      );
+      console.log(`[PAGAMENTO] ${despesasFatura.length} despesas marcadas como pagas com data ${paymentDateFormatted} (local)`);
     }
     if (auto_debit !== undefined) {
       await card.update({ debito_automatico: !!auto_debit, conta_debito_id: account_id });

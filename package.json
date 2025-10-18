@@ -3,6 +3,7 @@
     "recharts": "^3.0.2"
   },
   "devDependencies": {
-    "@react-native-community/cli": "^20.0.1"
+    "@react-native-community/cli": "^20.0.1",
+    "playwright": "^1.50.1"
   }
 }

@@ -224,27 +224,45 @@ router.get('/:id/extrato', authMiddleware, async (req, res) => {
     const cartoesMap = {};
     cartoes.forEach(c => { cartoesMap[c.id] = c.name; });
 
-    // Função para formatar data dd/mm/aaaa
-    function formatDateBR(dateStr, transactionType = null) {
-      const d = new Date(dateStr);
-      
-      // Ajuste de data para diferentes tipos de transação
-      let dateToFormat = d;
-      if (transactionType === 'transferencia') {
-        // Para transferências, adicionamos um dia
-        dateToFormat = new Date(d);
-        dateToFormat.setDate(dateToFormat.getDate() + 1);
-      } else if (transactionType === 'receita') {
-        // Para receitas, também adicionamos um dia para corrigir o problema de fuso horário
-        dateToFormat = new Date(d);
-        dateToFormat.setDate(dateToFormat.getDate() + 1);
+    // Função para formatar data dd/mm/aaaa com robustez contra fuso/ISO
+    // Remove qualquer ajuste artificial (+1 dia). Mantém a data exata recebida.
+    function formatDateBR(dateInput, transactionType = null) {
+      let y, m, d;
+      if (dateInput instanceof Date) {
+        y = dateInput.getFullYear();
+        m = dateInput.getMonth() + 1;
+        d = dateInput.getDate();
+      } else if (typeof dateInput === 'string') {
+        const s = dateInput.trim();
+        // Padrão 'YYYY-MM-DD' (DATEONLY)
+        let m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (m1) {
+          y = Number(m1[1]); m = Number(m1[2]); d = Number(m1[3]);
+        } else {
+          // Padrão ISO 'YYYY-MM-DDTHH:mm:ss(.sss)[Z|offset]'
+          let m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})[T\s]/);
+          if (m2) {
+            y = Number(m2[1]); m = Number(m2[2]); d = Number(m2[3]);
+          } else {
+            const dt = new Date(s);
+            if (!isNaN(dt.getTime())) {
+              y = dt.getFullYear(); m = dt.getMonth() + 1; d = dt.getDate();
+            } else {
+              return s;
+            }
+          }
+        }
+      } else {
+        return '';
       }
-      // Para outros tipos (despesa, pagamento_cartao), mantemos a data original
-      
-      const day = String(dateToFormat.getDate()).padStart(2, '0');
-      const month = String(dateToFormat.getMonth() + 1).padStart(2, '0');
-      const year = dateToFormat.getFullYear();
-      return `${day}/${month}/${year}`;
+
+      // Não aplicar ajustes de fuso/offset aqui. Todas as datas vêm como
+      // DATEONLY (YYYY-MM-DD) ou equivalentes e devem ser exibidas literalmente.
+
+      const dd = String(d).padStart(2, '0');
+      const mm = String(m).padStart(2, '0');
+      const yyyy = String(y);
+      return `${dd}/${mm}/${yyyy}`;
     }
 
     // Monta extrato unificado

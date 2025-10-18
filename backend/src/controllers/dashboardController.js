@@ -258,6 +258,9 @@ exports.getDashboard = async (req, res) => {
     inicioRecentes.setHours(0, 0, 0, 0)
     const fimRecentes = new Date(hojeRecentes)
     fimRecentes.setHours(23, 59, 59, 999)
+    // Strings para comparar com campos DATEONLY
+    const inicioRecentesStr = formatDateOnly(inicioRecentes)
+    const fimRecentesStr = formatDateOnly(fimRecentes)
 
     const receitasRecentes = await models.Income.findAll({
       where: {
@@ -275,6 +278,35 @@ exports.getDashboard = async (req, res) => {
       order: [['due_date', 'DESC']],
       limit: 50,
     })
+    const transfersRecentes = await models.Transfer.findAll({
+      where: {
+        user_id: userId,
+        date: { [Op.between]: [inicioRecentes, fimRecentes] },
+      },
+      order: [['date', 'DESC']],
+      limit: 50,
+    })
+    const pagamentosCartaoRecentes = await models.CreditCardPayment.findAll({
+      where: {
+        user_id: userId,
+        [Op.or]: [
+          { payment_date: { [Op.between]: [inicioRecentesStr, fimRecentesStr] } },
+          { createdAt: { [Op.between]: [inicioRecentes, fimRecentes] } },
+        ],
+      },
+      order: [['payment_date', 'DESC'], ['createdAt', 'DESC']],
+      limit: 50,
+    })
+    const despesasPagasRecentes = await models.Expense.findAll({
+      where: {
+        user_id: userId,
+        credit_card_id: null,
+        status: 'paga',
+        paid_at: { [Op.between]: [inicioRecentes, fimRecentes] },
+      },
+      order: [['paid_at', 'DESC']],
+      limit: 50,
+    })
 
     const contasMap = {}
     const contas = await models.Account.findAll({ where: { user_id: userId } })
@@ -283,12 +315,44 @@ exports.getDashboard = async (req, res) => {
     const cartoes = await models.CreditCard.findAll({ where: { user_id: userId } })
     cartoes.forEach(c => { cartoesMap[c.id] = c.name })
 
-    function formatDateBR(dateStr) {
-      const d = new Date(dateStr)
-      const day = String(d.getDate()).padStart(2, '0')
-      const month = String(d.getMonth() + 1).padStart(2, '0')
-      const year = d.getFullYear()
-      return `${day}/${month}/${year}`
+    function formatDateBR(dateInput) {
+      // Evitar deslocamento por fuso: sempre extrair YYYY-MM-DD de forma estável
+      let y, m, d
+      if (dateInput instanceof Date) {
+        // Extrair componentes em UTC para evitar deslocamento por fuso
+        y = dateInput.getUTCFullYear();
+        m = dateInput.getUTCMonth() + 1;
+        d = dateInput.getUTCDate();
+      } else if (typeof dateInput === 'string') {
+        const s = dateInput.trim()
+        // Padrão 'YYYY-MM-DD'
+        let m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+        if (m1) {
+          y = Number(m1[1]); m = Number(m1[2]); d = Number(m1[3])
+        } else {
+          // Padrão ISO 'YYYY-MM-DDTHH:mm:ss(.sss)[Z|offset]'
+          let m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})[T\s]/)
+          if (m2) {
+            y = Number(m2[1]); m = Number(m2[2]); d = Number(m2[3])
+          } else {
+            const dt = new Date(s)
+            if (!isNaN(dt.getTime())) {
+              const only = dt.toISOString().slice(0, 10)
+              const m3 = only.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+              if (m3) { y = Number(m3[1]); m = Number(m3[2]); d = Number(m3[3]) }
+              else return s
+            } else {
+              return s
+            }
+          }
+        }
+      } else {
+        return ''
+      }
+      const dd = String(d).padStart(2, '0')
+      const mm = String(m).padStart(2, '0')
+      const yyyy = String(y)
+      return `${dd}/${mm}/${yyyy}`
     }
 
     const recentesRaw = [
@@ -311,6 +375,36 @@ exports.getDashboard = async (req, res) => {
         conta_nome: d.credit_card_id ? (cartoesMap[d.credit_card_id] || '') : (contasMap[d.account_id] || ''),
         cartao_id: d.credit_card_id || null,
         cartao_nome: d.credit_card_id ? (cartoesMap[d.credit_card_id] || '') : '',
+      })),
+      ...transfersRecentes.map(t => ({
+        tipo: 'transferencia',
+        descricao: t.description || 'Transferência',
+        valor: t.value,
+        data: formatDateBR(t.date),
+        conta: null,
+        conta_nome: `${t.from_account_id ? (contasMap[t.from_account_id] || t.from_account_id) : 'Terceiros'} → ${t.to_account_id ? (contasMap[t.to_account_id] || t.to_account_id) : 'Terceiros'}`,
+        cartao_id: null,
+        cartao_nome: '',
+      })),
+      ...despesasPagasRecentes.map(d => ({
+        tipo: 'pagamento',
+        descricao: d.description ? `Pagamento: ${d.description}` : 'Pagamento de despesa',
+        valor: d.value,
+        data: formatDateBR(d.paid_at || d.due_date),
+        conta: d.account_id,
+        conta_nome: contasMap[d.account_id] || '',
+        cartao_id: null,
+        cartao_nome: '',
+      })),
+      ...pagamentosCartaoRecentes.map(p => ({
+        tipo: 'pagamento_cartao',
+        descricao: `Pagamento de cartão${cartoesMap[p.card_id] ? ` ${cartoesMap[p.card_id]}` : ''}`,
+        valor: p.value,
+        data: formatDateBR(p.payment_date),
+        conta: p.account_id,
+        conta_nome: `${contasMap[p.account_id] || p.account_id} → Cartão ${cartoesMap[p.card_id] || p.card_id}`,
+        cartao_id: p.card_id,
+        cartao_nome: cartoesMap[p.card_id] || '',
       })),
     ]
 
@@ -350,11 +444,26 @@ exports.getDashboard = async (req, res) => {
       }
     }
 
+    // Filtrar transações futuras antes de ordenar e limitar
+    const hojeLocal = new Date()
+    const hojeInt = (hojeLocal.getFullYear() * 10000) + ((hojeLocal.getMonth() + 1) * 100) + hojeLocal.getDate()
+
     const recentes = recentesRaw
+      .filter(item => {
+        if (!item?.data || typeof item.data !== 'string') return false
+        const parts = item.data.split('/')
+        if (parts.length !== 3) return true // caso inesperado, não bloquear
+        const [dd, mm, yyyy] = parts
+        const ti = (parseInt(yyyy, 10) * 10000) + (parseInt(mm, 10) * 100) + parseInt(dd, 10)
+        return ti <= hojeInt
+      })
       .sort((a, b) => {
         const [da, ma, aa] = a.data.split('/')
         const [db, mb, ab] = b.data.split('/')
-        return new Date(`${ab}-${mb}-${db}`) - new Date(`${aa}-${ma}-${da}`)
+        // Ordenar usando componentes locais, sem criar Date a partir de string UTC
+        const ta = (parseInt(aa, 10) * 10000) + (parseInt(ma, 10) * 100) + parseInt(da, 10)
+        const tb = (parseInt(ab, 10) * 10000) + (parseInt(mb, 10) * 100) + parseInt(db, 10)
+        return tb - ta
       })
       .slice(0, 10)
 
