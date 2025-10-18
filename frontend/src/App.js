@@ -15,6 +15,7 @@ import Analytics from './pages/Analytics';
 import Resumo from './pages/Resumo';
 import { AnimatePresence, motion } from 'framer-motion';
 import { jwtDecode } from 'jwt-decode';
+import useApiBase from './hooks/useApiBase'
 
 function PrivateRoute({ token, children }) {
   const location = useLocation();
@@ -124,8 +125,9 @@ function AnimatedRoutes({ token, setToken }) {
 }
 
 function App() {
-  const [token, setToken] = useState(localStorage.getItem('token'));
-  const [notifications, setNotifications] = useState([]);
+  const [token, setToken] = useState(localStorage.getItem('token'))
+  const [notifications, setNotifications] = useState([])
+  const apiBase = useApiBase()
   let user = null;
   if (token) {
     try {
@@ -135,28 +137,28 @@ function App() {
     }
   }
   useEffect(() => {
-    if (!token) return;
+    if (!token) return
     const fetchNotifications = async () => {
       try {
-        const res = await fetch(`${process.env.REACT_APP_API_URL || '/api'}/notifications`, { headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json();
-        setNotifications(data);
+        const res = await fetch(`${apiBase}/notifications`, { headers: { Authorization: `Bearer ${token}` } })
+        const data = await res.json()
+        setNotifications(data)
       } catch {}
-    };
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000); // Atualiza a cada 1 min
-    return () => clearInterval(interval);
-  }, [token]);
+    }
+    fetchNotifications()
+    const interval = setInterval(fetchNotifications, 60000)
+    return () => clearInterval(interval)
+  }, [token, apiBase])
 
   const markNotificationAsRead = async (id) => {
     try {
-      await fetch(`${process.env.REACT_APP_API_URL || '/api'}/notifications/${id}/read`, {
+      await fetch(`${apiBase}/notifications/${id}/read`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
-      });
-      setNotifications(n => n.map(notif => notif.id === id ? { ...notif, read: true } : notif));
+      })
+      setNotifications(n => n.map(notif => notif.id === id ? { ...notif, read: true } : notif))
     } catch {}
-  };
+  }
 
   return (
     <Router>

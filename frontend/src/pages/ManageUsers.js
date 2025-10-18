@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-
-const API_URL = `${process.env.REACT_APP_API_URL || '/api'}/users`;
+import useApiBase from '../hooks/useApiBase';
 
 function ManageUsers({ token }) {
+  const apiBase = useApiBase();
+  const API_URL = `${apiBase}/users`;
   const [users, setUsers] = useState([]);
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'user' });
   const [loading, setLoading] = useState(false);
@@ -23,7 +24,10 @@ function ManageUsers({ token }) {
     setLoading(false);
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => { 
+    if (!apiBase) return;
+    fetchUsers(); 
+  }, [apiBase, token]);
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });

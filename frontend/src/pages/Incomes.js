@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Toast from '../components/Toast';
+import useApiBase from '../hooks/useApiBase';
 
 // Bases possíveis para a API (prioridade: env -> localhost:3003 -> relativo /api)
 const API_BASES = [process.env.REACT_APP_API_URL, 'http://localhost:3003', '/api'].filter(Boolean);
@@ -24,7 +25,7 @@ function Incomes({ token }) {
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   // Token e base dinâmica da API
   const authToken = token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
-  const [apiBase, setApiBase] = useState(API_BASES[0]);
+  const apiBase = useApiBase();
   const [period, setPeriod] = useState(() => {
     const today = new Date();
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0,10);
@@ -32,18 +33,7 @@ function Incomes({ token }) {
     return { start: firstDay, end: lastDay };
   });
 
-  // Detectar base acessível da API
-  useEffect(() => {
-    (async () => {
-      for (const base of API_BASES) {
-        try {
-          const r = await fetch(`${base}/server-test`, { cache: 'no-store' });
-          if (r.ok || r.status >= 200) { setApiBase(base); break; }
-        } catch (e) { /* tenta próxima base */ }
-      }
-    })();
-  }, []);
-
+  
   useEffect(() => { 
     if (apiBase) { fetchIncomes(); fetchAccounts(); }
     // eslint-disable-next-line

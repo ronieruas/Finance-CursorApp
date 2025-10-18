@@ -5,10 +5,11 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import Toast from '../components/Toast';
 import dayjs from 'dayjs';
-
-const API_URL = `${process.env.REACT_APP_API_URL || '/api'}/budgets`; // ajuste conforme backend
+import useApiBase from '../hooks/useApiBase';
 
 function Budgets({ token }) {
+  const apiBase = useApiBase();
+  const API_URL = `${apiBase}/budgets`; // ajuste conforme backend
   const [budgets, setBudgets] = useState([]);
   const [form, setForm] = useState({ name: '', type: 'geral', credit_card_id: '', period_start: '', period_end: '', planned_value: '' });
   const [loading, setLoading] = useState(false);
@@ -18,9 +19,10 @@ function Budgets({ token }) {
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
   useEffect(() => { 
+    if (!apiBase) return;
     fetchBudgets(); 
     fetchCreditCards();
-  }, []);
+  }, [apiBase, token]);
 
   const fetchBudgets = async () => {
     setLoading(true);
@@ -32,7 +34,7 @@ function Budgets({ token }) {
 
   const fetchCreditCards = async () => {
     try {
-    const res = await fetch(`${process.env.REACT_APP_API_URL || '/api'}/creditCards`, {
+      const res = await fetch(`${apiBase}/creditCards`, {
         headers: { Authorization: `Bearer ${token}` } 
       });
       if (res.ok) {

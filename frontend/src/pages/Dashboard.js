@@ -5,11 +5,12 @@ import { ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Ba
 import Input from '../components/Input';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
+import useApiBase from '../hooks/useApiBase';
 dayjs.extend(customParseFormat);
 
-const API_URL = process.env.REACT_APP_API_URL || '/api';
-
 function Dashboard({ token }) {
+  const apiBase = useApiBase();
+  const API_URL = apiBase;
   // Mock de dados para exibição inicial
   const [kpis, setKpis] = useState({
     saldoTotalReais: 0,
@@ -51,10 +52,11 @@ function Dashboard({ token }) {
 
   // Estrutura pronta para integração futura com backend
   useEffect(() => {
+    if (!apiBase) return;
     fetchDashboard();
     fetchMonthlySummary();
     // eslint-disable-next-line
-  }, [token]);
+  }, [token, apiBase]);
 
   const fetchMonthlySummary = async () => {
     try {

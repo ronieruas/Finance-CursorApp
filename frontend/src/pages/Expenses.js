@@ -5,6 +5,7 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import Toast from '../components/Toast';
 import dayjs from 'dayjs';
+import useApiBase from '../hooks/useApiBase';
 
 const API_URL = `${process.env.REACT_APP_API_URL || '/api'}/expenses`; // ajuste conforme backend
 const ACCOUNTS_URL = `${process.env.REACT_APP_API_URL || '/api'}/accounts`;
@@ -41,6 +42,10 @@ function Expenses({ token }) {
   });
   const [isAdmin, setIsAdmin] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const apiBase = useApiBase();
+  const API_URL = `${apiBase}/expenses`;
+  const ACCOUNTS_URL = `${apiBase}/accounts`;
+  const CARDS_URL = `${apiBase}/creditCards`;
 
   useEffect(() => { 
     fetchExpensesWithFilters(); 
@@ -246,7 +251,7 @@ function Expenses({ token }) {
     if (filters.status) params.append('status', filters.status);
 
     try {
-      const url = `${process.env.REACT_APP_API_URL || '/api'}/export/expenses?${params.toString()}`; 
+      const url = `${apiBase}/export/expenses?${params.toString()}`;
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -316,7 +321,7 @@ function Expenses({ token }) {
             <option value="atrasada">Atrasada</option>
           </select>
           <Button variant="primary" type="submit">Filtrar</Button>
-          <Button variant="secondary" onClick={handleExport} loading={exportLoading}>Exportar</Button>
+          <Button variant="secondary" onClick={handleExport} loading={exportLoading} disabled={exportLoading || !filters?.start || !filters?.end} aria-label="Exportar despesas em CSV">Exportar</Button>
           <div style={{ marginLeft: 24, display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span style={{ fontWeight: 600, color: 'crimson', fontSize: 18 }}>
               Total: R$ {expenses.reduce((sum, exp) => sum + Number(exp.value), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}

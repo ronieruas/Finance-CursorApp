@@ -10,10 +10,13 @@ import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
+import useApiBase from '../hooks/useApiBase';
 
-const API_URL = `${process.env.REACT_APP_API_URL || '/api'}/creditCards`; // ajuste conforme backend
+const API_URL_OLD = `${process.env.REACT_APP_API_URL || '/api'}/creditCards`; // (deprecated) mantido para referência, não usado
 
 function CreditCards({ token }) {
+  const apiBase = useApiBase();
+  const API_URL = `${apiBase}/creditCards`;
   const [cards, setCards] = useState([]);
   const [form, setForm] = useState({ bank: '', brand: '', limit_value: '', due_day: '', closing_day: '', name: '', status: 'ativa' });
   const [loading, setLoading] = useState(false);
@@ -28,6 +31,7 @@ function CreditCards({ token }) {
   const [payLoading, setPayLoading] = useState(false);
   const [expandedCardId, setExpandedCardId] = useState(null);
   const [cardExpenses, setCardExpenses] = useState({}); // { [cardId]: [despesas] }
+  const [exportLoading, setExportLoading] = useState(false);
   // Novo estado para formulário de despesa de cartão
   const [expenseForm, setExpenseForm] = useState({
     credit_card_id: '',
@@ -108,7 +112,7 @@ function CreditCards({ token }) {
   };
 
   const fetchAccounts = async () => {
-    const res = await fetch(`${process.env.REACT_APP_API_URL || '/api'}/accounts`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${apiBase}/accounts`, { headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
     setAccounts(data);
   };
@@ -133,7 +137,7 @@ function CreditCards({ token }) {
 
   const fetchCardExpenses = async (cardId) => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || '/api'}/expenses?type=cartao&credit_card_id=${cardId}&_=${Date.now()}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${apiBase}/expenses?type=cartao&credit_card_id=${cardId}&_=${Date.now()}`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setCardExpenses(prev => ({ ...prev, [cardId]: data }));
       console.log('Despesas retornadas para o cartão', cardId, data);
@@ -245,7 +249,7 @@ function CreditCards({ token }) {
     try {
       console.log('Enviando pagamento:', { ...payForm, cardId: payModal.card.id });
       // Corrigindo a URL da API para garantir que esteja usando a URL correta
-    const apiUrl = process.env.REACT_APP_API_URL || '/api';
+    const apiUrl = apiBase;
       // Garantindo que dayjs está disponível no escopo
       const currentBillMonth = billMonth || dayjs().format('YYYY-MM');
       const res = await fetch(`${apiUrl}/creditCards/${payModal.card.id}/pay`, {
@@ -289,7 +293,7 @@ function CreditCards({ token }) {
       Object.keys(payload).forEach(k => {
         if (payload[k] === '' || payload[k] === null || payload[k] === undefined) delete payload[k];
       });
-    const res = await fetch(`${process.env.REACT_APP_API_URL || '/api'}/expenses`, {
+    const res = await fetch(`${apiBase}/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
@@ -324,50 +328,35 @@ function CreditCards({ token }) {
 
   // Função para calcular o período da fatura igual ao backend
   function getBillPeriod(card, month) {
-    if (!card || !month) return { start: null, end: null };
-    
     const closingDay = Number(card.closing_day);
     const dueDay = Number(card.due_day);
-    
-    // Validar se month está no formato correto
-    if (!month.includes('-')) {
-      console.warn('Formato de mês inválido:', month);
-      return { start: null, end: null };
+  
+    if (!month || !/^(\d{4})-(\d{2})$/.test(month)) {
+      throw new Error('billMonth inválido. Use o formato YYYY-MM');
     }
-    
-    const parts = month.split('-');
-    if (parts.length !== 2) {
-      console.warn('Formato de mês inválido:', month);
-      return { start: null, end: null };
+  
+    const [yearStr, monthStr] = month.split('-');
+    const year = Number(yearStr);
+    const m = Number(monthStr); // 1-12 (mês do vencimento)
+  
+    const pad = (n) => String(n).padStart(2, '0');
+    const vencimento = dayjs(`${year}-${pad(m)}-${pad(dueDay)}`).endOf('day');
+  
+    let start, end, fechamento;
+  
+    if (closingDay > dueDay) {
+      // Fechamento ocorre no mês anterior ao vencimento
+      start = dayjs(new Date(year, (m - 1) - 2, closingDay)).startOf('day');
+      end = dayjs(new Date(year, (m - 1) - 1, closingDay - 1)).endOf('day');
+      fechamento = dayjs(new Date(year, (m - 1) - 1, closingDay)).endOf('day');
+    } else {
+      // Fechamento ocorre no mesmo mês do vencimento
+      start = dayjs(new Date(year, (m - 1) - 1, closingDay)).startOf('day');
+      end = dayjs(new Date(year, (m - 1), closingDay - 1)).endOf('day');
+      fechamento = dayjs(new Date(year, (m - 1), closingDay)).endOf('day');
     }
-    
-    const [year, m] = parts.map(Number);
-    
-    // Validar se year e m são números válidos
-    if (isNaN(year) || isNaN(m) || m < 1 || m > 12) {
-      console.warn('Valores de ano ou mês inválidos:', { year, m });
-      return { start: null, end: null };
-    }
-    
-    // Data de vencimento da fatura para o mês especificado
-    const vencimento = dayjs(`${year}-${m.toString().padStart(2, '0')}-${dueDay.toString().padStart(2, '0')}`);
-    
-    // Calcular o fechamento correspondente ao vencimento
-    // O fechamento é sempre anterior ao vencimento
-    const fechamento = dayjs(`${year}-${m.toString().padStart(2, '0')}-${closingDay.toString().padStart(2, '0')}`);
-    
-    // Se o fechamento seria após o vencimento, ajustar para o mês anterior
-    let fechamentoAjustado = fechamento;
-    if (fechamento.isSameOrAfter(vencimento)) {
-      fechamentoAjustado = fechamento.subtract(1, 'month');
-    }
-    
-    // Período da fatura: do fechamento do mês anterior até o dia anterior ao fechamento atual
-    const start = fechamentoAjustado.subtract(1, 'month');
-    const end = fechamentoAjustado.subtract(1, 'day');
-    
-    // Retorna também o fechamento (ajustado) para uso na lógica de status
-    return { start: start.startOf('day'), end: end.endOf('day'), vencimento, fechamento: fechamentoAjustado };
+  
+    return { start, end, vencimento, fechamento };
   }
 
   // Função para determinar o mês da fatura em aberto (considerando fechamento)
@@ -448,8 +437,9 @@ function CreditCards({ token }) {
   const handleExport = async () => {
     // Removendo a restrição de precisar ter um cartão expandido
     try {
+      setExportLoading(true);
       // Usando a URL correta para a API
-    const apiUrl = process.env.REACT_APP_API_URL || '/api';
+    const apiUrl = apiBase;
       const apiEndpoint = expandedCardId 
         ? `${apiUrl}/export/credit-card-expenses?cardId=${expandedCardId}&billMonth=${billMonth}`
         : `${apiUrl}/export/credit-cards`;
@@ -491,6 +481,8 @@ function CreditCards({ token }) {
 
     } catch (err) {
       setToast({ show: true, message: err.message, type: 'error' });
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -501,6 +493,9 @@ function CreditCards({ token }) {
         <Button 
           variant="secondary" 
           onClick={handleExport} 
+          loading={exportLoading}
+          disabled={exportLoading}
+          aria-label="Exportar cartões em CSV"
           style={{ display: 'flex', alignItems: 'center', gap: 8 }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -741,7 +736,7 @@ function CreditCards({ token }) {
                                               delete payload.installment_number;
                                               delete payload.createdAt;
                                               delete payload.updatedAt;
-                                              const res = await fetch(`${process.env.REACT_APP_API_URL || '/api'}/expenses/${exp.id}`, {
+                                              const res = await fetch(`${apiBase}/expenses/${exp.id}`, {
                                                 method: 'PUT',
                                                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                                                 body: JSON.stringify(payload),
@@ -773,7 +768,7 @@ function CreditCards({ token }) {
                                           <Button variant="danger" onClick={async () => {
                                             if (window.confirm('Deseja realmente excluir esta despesa?')) {
                                               setLoading(true);
-                                              await fetch(`${process.env.REACT_APP_API_URL || '/api'}/expenses/${exp.id}`, {
+                                              await fetch(`${apiBase}/expenses/${exp.id}`, {
                                                 method: 'DELETE',
                                                 headers: { Authorization: `Bearer ${token}` },
                                               });

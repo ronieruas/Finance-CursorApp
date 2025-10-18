@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-
-const API_URL = `${process.env.REACT_APP_API_URL || '/api'}/auth/change-password`;
+import useApiBase from '../hooks/useApiBase';
 
 function ChangePassword({ token }) {
+  const apiBase = useApiBase();
+  const API_URL = `${apiBase}/auth/change-password`;
   const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -21,6 +22,11 @@ function ChangePassword({ token }) {
     setError('');
     if (form.newPassword !== form.confirmPassword) {
       setError('As senhas não coincidem.');
+      setLoading(false);
+      return;
+    }
+    if (!apiBase) {
+      setError('Aguarde a conexão com a API.');
       setLoading(false);
       return;
     }

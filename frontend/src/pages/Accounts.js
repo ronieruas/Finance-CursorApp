@@ -5,9 +5,10 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import Toast from '../components/Toast';
 import Modal from '../components/Modal';
+import useApiBase from '../hooks/useApiBase';
 
 // Bases possíveis para a API (prioridade: env -> localhost:3003 -> relativo /api)
-const API_BASES = [process.env.REACT_APP_API_URL, 'http://localhost:3003', '/api'].filter(Boolean);
+// API base is standardized via useApiBase(); legacy API_BASES removed.
 
 const currencyOptions = [
   { value: 'BRL', label: 'Real (R$)' },
@@ -18,7 +19,7 @@ const currencyOptions = [
 function Accounts({ token }) {
   // Token de autenticação: usa prop se disponível; caso contrário, fallback para localStorage
   const authToken = token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
-  const [apiBase, setApiBase] = useState(API_BASES[0]);
+  const apiBase = useApiBase();
   const [accounts, setAccounts] = useState([]);
   const [form, setForm] = useState({ name: '', bank: '', type: 'corrente', balance: '', currency: 'BRL' });
   const [loading, setLoading] = useState(false);
@@ -32,23 +33,8 @@ function Accounts({ token }) {
   const [extratoError, setExtratoError] = useState('');
   const [exportLoading, setExportLoading] = useState(false);
 
-  // Detectar base acessível da API
-  useEffect(() => {
-    (async () => {
-      for (const base of API_BASES) {
-        try {
-          // Tenta um ping simples: server-test não requer auth; se não existir, qualquer resposta HTTP já indica reachability
-          const r = await fetch(`${base}/server-test`, { cache: 'no-store' });
-          if (r.ok || r.status >= 200) {
-            setApiBase(base);
-            break;
-          }
-        } catch (e) {
-          // tenta próxima base
-        }
-      }
-    })();
-  }, []);
+  // Base da API padronizada via hook; nenhuma detecção adicional necessária.
+  useEffect(() => {}, []);
 
   useEffect(() => {
     if (apiBase) fetchAccounts();
@@ -358,7 +344,7 @@ function Accounts({ token }) {
             <span>a</span>
             <input type="date" name="end" value={extratoPeriodo.end} onChange={handlePeriodoChange} className="input-glass" />
             <Button variant="primary" type="submit" loading={extratoLoading}>Filtrar</Button>
-            <Button variant="secondary" onClick={handleExportExtrato} loading={exportLoading} style={{ marginLeft: 8 }}>Exportar</Button>
+            <Button variant="secondary" onClick={handleExportExtrato} loading={exportLoading} disabled={exportLoading} aria-label="Exportar extrato em CSV" style={{ marginLeft: 8 }}>Exportar Extrato</Button>
           </form>
           {extratoLoading ? <p>Carregando extrato...</p> : extratoError ? <p style={{ color: 'red' }}>{extratoError}</p> : (
             <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent' }}>

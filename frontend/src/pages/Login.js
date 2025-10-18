@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import '../styles/global.css';
-
-const API_URL = `${process.env.REACT_APP_API_URL || '/api'}/auth/login`;
+import useApiBase from '../hooks/useApiBase';
 
 function Login({ setToken }) {
+  const apiBase = useApiBase();
+  const API_URL = `${apiBase}/auth/login`;
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -422,7 +423,7 @@ function Login({ setToken }) {
       </div>
 
       {/* CSS para animação de loading */}
-      <style jsx>{`
+      <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }

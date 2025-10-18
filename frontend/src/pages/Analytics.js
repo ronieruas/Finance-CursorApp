@@ -7,10 +7,11 @@ import {
 } from 'recharts';
 import Input from '../components/Input';
 import dayjs from 'dayjs';
-
-const API_URL = process.env.REACT_APP_API_URL || '/api';
+import useApiBase from '../hooks/useApiBase';
 
 function Analytics({ token }) {
+  const apiBase = useApiBase();
+  const API_URL = apiBase;
   const [data, setData] = useState({
     tendenciasMensais: { meses: [], receitas: [], despesas: [], saldos: [] },
     analiseCategorias: { topDespesas: [], topReceitas: [] },
@@ -24,8 +25,9 @@ function Analytics({ token }) {
   const [periodInput, setPeriodInput] = useState({ start: '', end: '' });
 
   useEffect(() => {
+    if (!apiBase) return;
     fetchAnalytics();
-  }, [token, period]);
+  }, [token, period, apiBase]);
 
   const fetchAnalytics = async (start, end) => {
     setLoading(true);

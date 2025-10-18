@@ -4,13 +4,14 @@ import { motion } from 'framer-motion';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Cell } from 'recharts';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
+import useApiBase from '../hooks/useApiBase';
 
 // Configurar dayjs para português brasileiro
 dayjs.locale('pt-br');
 
-const API_URL = process.env.REACT_APP_API_URL || '/api';
-
 function Resumo({ token }) {
+  const apiBase = useApiBase();
+  const API_URL = apiBase;
   const [data, setData] = useState({
     receitasMes: 0,
     saldoPorConta: [],
@@ -35,8 +36,9 @@ function Resumo({ token }) {
   ];
 
   useEffect(() => {
+    if (!apiBase) return;
     fetchResumo();
-  }, [token]);
+  }, [token, apiBase]);
 
   const fetchResumo = async () => {
     try {

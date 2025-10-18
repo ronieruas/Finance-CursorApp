@@ -10,10 +10,13 @@ import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
+import useApiBase from '../hooks/useApiBase';
 
-const API_URL = `${process.env.REACT_APP_API_URL}/creditCards`;
+const API_URL_OLD = `${process.env.REACT_APP_API_URL}/creditCards`;
 
 function CreditCards({ token }) {
+  const apiBase = useApiBase();
+  const API_URL = `${apiBase}/creditCards`;
   const [cards, setCards] = useState([]);
   const [form, setForm] = useState({ bank: '', brand: '', limit_value: '', due_day: '', closing_day: '', name: '', status: 'ativa' });
   const [loading, setLoading] = useState(false);
@@ -28,6 +31,7 @@ function CreditCards({ token }) {
   const [payLoading, setPayLoading] = useState(false);
   const [expandedCardId, setExpandedCardId] = useState(null);
   const [cardExpenses, setCardExpenses] = useState({});
+  const [exportLoading, setExportLoading] = useState(false);
 
   useEffect(() => { 
     fetchCards(); 
@@ -36,7 +40,7 @@ function CreditCards({ token }) {
 
   const fetchCards = async () => {
     setLoading(true);
-    const res = await fetch(`${process.env.REACT_APP_API_URL}/creditCards`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${API_URL}`, { headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
     setCards(data);
     setLoading(false);
@@ -44,7 +48,7 @@ function CreditCards({ token }) {
 
   const fetchLimits = async () => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/creditCards/limits`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${apiBase}/creditCards/limits`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       const map = {};
       data.forEach(l => { map[l.card_id] = l.utilizado; });
@@ -55,14 +59,14 @@ function CreditCards({ token }) {
   };
 
   const fetchAccounts = async () => {
-    const res = await fetch(`${process.env.REACT_APP_API_URL}/accounts`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${apiBase}/accounts`, { headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
     setAccounts(data);
   };
 
   const fetchBill = async (cardId) => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/creditCards/${cardId}/bill`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${apiBase}/creditCards/${cardId}/bill`, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) {
         setBill(null);
         return;
@@ -76,7 +80,7 @@ function CreditCards({ token }) {
 
   const fetchCardExpenses = async (cardId) => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/creditCards/${cardId}/expenses`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${apiBase}/creditCards/${cardId}/expenses`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setCardExpenses(prev => ({ ...prev, [cardId]: data }));
     } catch (err) {
@@ -141,7 +145,7 @@ function CreditCards({ token }) {
     e.preventDefault();
     setPayLoading(true);
     
-    const res = await fetch(`${process.env.REACT_APP_API_URL}/creditCards/${payModal.card.id}/pay`, {
+    const res = await fetch(`${apiBase}/creditCards/${payModal.card.id}/pay`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(payForm)
@@ -169,7 +173,8 @@ function CreditCards({ token }) {
 
   const handleExport = async () => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/creditCards/export`, {
+      setExportLoading(true);
+      const res = await fetch(`${apiBase}/creditCards/export`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const blob = await res.blob();
@@ -182,6 +187,8 @@ function CreditCards({ token }) {
       setToast({ show: true, message: 'Exportação concluída!', type: 'success' });
     } catch (err) {
       setToast({ show: true, message: 'Erro na exportação', type: 'error' });
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -216,7 +223,7 @@ function CreditCards({ token }) {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h3 style={{ fontWeight: 600 }}>Meus Cartões</h3>
-        <Button variant="secondary" onClick={handleExport}>Exportar</Button>
+        <Button variant="secondary" onClick={handleExport} loading={exportLoading} disabled={exportLoading} aria-label="Exportar cartões em Excel">Exportar</Button>
       </div>
 
       <div style={{ display: 'grid', gap: 16 }}>

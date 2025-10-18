@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-
-const API_URL = `${process.env.REACT_APP_API_URL || '/api'}`;
+import useApiBase from '../hooks/useApiBase';
 
 function formatDateBR(dateStr) {
   if (!dateStr) return '';
@@ -10,6 +9,8 @@ function formatDateBR(dateStr) {
 }
 
 function Transfers({ token }) {
+  const apiBase = useApiBase();
+  const API_URL = apiBase;
   const [accounts, setAccounts] = useState([]);
   const [transfers, setTransfers] = useState([]);
   const [form, setForm] = useState({ from_account_id: '', to_account_id: '', value: '', date: '', description: '' });
@@ -32,9 +33,10 @@ function Transfers({ token }) {
   });
 
   useEffect(() => {
+    if (!apiBase) return;
     fetchAccounts();
     fetchTransfers();
-  }, []);
+  }, [apiBase, token]);
 
   const fetchAccounts = async () => {
     try {
