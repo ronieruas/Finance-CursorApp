@@ -222,7 +222,7 @@ function Accounts({ token }) {
         params.append('endDate', extratoPeriodo.end);
       }
 
-      const url = `${API_BASE}/export/statement?${params.toString()}`;
+      const url = `${apiBase}/export/statement?${params.toString()}`;
       console.log('Final Export URL:', url);
 
       const res = await fetch(url, {
