@@ -9,12 +9,15 @@
 :80 {
   encode zstd gzip
 
-  # Cabeçalhos de segurança básicos (sem HSTS para HTTP)
+  # Cabeçalhos de segurança aprimorados (sem HSTS para HTTP)
   header {
     X-Content-Type-Options nosniff
     X-Frame-Options DENY
-    Referrer-Policy no-referrer-when-downgrade
-    Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    X-XSS-Protection "1; mode=block"
+    Referrer-Policy strict-origin-when-cross-origin
+    Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=()"
+    Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'"
+    -Server
   }
 
   # Matchers para rotas de API (preservando paths)
@@ -33,11 +36,56 @@
   @export path /export/*
   @billClosing path /bill-closing/*
 
-  # Rota genérica /api com strip do prefixo (compatível com nginx.conf)
+  # Rotas de monitoramento com Cloudflare Access
+  @monitoring path /uptime-kuma/* /grafana/* /prometheus/*
+  handle @monitoring {
+    # Headers para Cloudflare Access
+    header {
+      CF-Access-Authenticated-User-Email {http.request.header.CF-Access-Authenticated-User-Email}
+      CF-Access-JWT-Assertion {http.request.header.CF-Access-JWT-Assertion}
+    }
+    
+    # Uptime Kuma
+    @uptime path /uptime-kuma/*
+    handle @uptime {
+      uri strip_prefix /uptime-kuma
+      reverse_proxy uptime-kuma:3001 {
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+      }
+    }
+    
+    # Grafana
+    @grafana path /grafana/*
+    handle @grafana {
+      uri strip_prefix /grafana
+      reverse_proxy grafana:3000 {
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+      }
+    }
+    
+    # Prometheus (apenas para debug, normalmente não exposto)
+    @prometheus path /prometheus/*
+    handle @prometheus {
+      uri strip_prefix /prometheus
+      reverse_proxy prometheus:9090 {
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+      }
+    }
+  }
   @api path /api/*
   handle @api {
     uri strip_prefix /api
-    reverse_proxy finance-backend:3001
+    reverse_proxy finance-backend:3001 {
+      header_up X-Real-IP {remote}
+      header_up X-Forwarded-For {remote}
+      header_up X-Forwarded-Proto {scheme}
+    }
   }
 
   handle @auth {

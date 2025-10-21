@@ -273,17 +273,20 @@ exports.getResumo = async (req, res) => {
       });
     }
 
-    // 8. Próximos Vencimentos (sem alterações)
+    // 8. Próximos Vencimentos (incluir despesas que vencem hoje)
     const proximosVencimentos = [];
     
-    // Despesas próximas (próximos 15 dias)
-    const daqui15Dias = new Date();
+    // Despesas próximas (incluindo hoje até próximos 15 dias)
+    const hojeInicio = new Date(hoje);
+    hojeInicio.setHours(0, 0, 0, 0); // Início do dia de hoje
+    const daqui15Dias = new Date(hoje);
     daqui15Dias.setDate(hoje.getDate() + 15);
+    daqui15Dias.setHours(23, 59, 59, 999); // Final do 15º dia
     
     const despesasProximas = await Expense.findAll({
       where: {
         user_id: userId,
-        due_date: { [Op.between]: [hoje, daqui15Dias] },
+        due_date: { [Op.between]: [hojeInicio, daqui15Dias] },
         status: { [Op.in]: ['pendente', 'atrasada'] },
         credit_card_id: null, // Só despesas de conta
       },

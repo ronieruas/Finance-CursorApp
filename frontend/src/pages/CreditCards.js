@@ -15,6 +15,8 @@ import useApiBase from '../hooks/useApiBase';
 const API_URL_OLD = `${process.env.REACT_APP_API_URL || '/api'}/creditCards`; // (deprecated) mantido para referência, não usado
 
 function CreditCards({ token }) {
+  // Token de autenticação: usa prop se disponível; caso contrário, fallback para localStorage
+  const authToken = token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
   const apiBase = useApiBase();
   const API_URL = `${apiBase}/creditCards`;
   const [cards, setCards] = useState([]);
@@ -64,7 +66,7 @@ function CreditCards({ token }) {
     fetchLimits(); 
     // Buscar despesas de todos os cartões ao carregar
     (async () => {
-      const res = await fetch(API_URL, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(API_URL, { headers: { Authorization: `Bearer ${authToken}` } });
       const data = await res.json();
       data.forEach(card => fetchCardExpenses(card.id));
     })();
@@ -93,7 +95,7 @@ function CreditCards({ token }) {
 
   const fetchCards = async () => {
     setLoading(true);
-    const res = await fetch(API_URL, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(API_URL, { headers: { Authorization: `Bearer ${authToken}` } });
     const data = await res.json();
     setCards(data);
     setLoading(false);
@@ -101,7 +103,7 @@ function CreditCards({ token }) {
 
   const fetchLimits = async () => {
     try {
-      const res = await fetch(`${API_URL}/limits`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${API_URL}/limits`, { headers: { Authorization: `Bearer ${authToken}` } });
       const data = await res.json();
       const map = {};
       data.forEach(l => { map[l.card_id] = l.utilizado; });
@@ -112,41 +114,39 @@ function CreditCards({ token }) {
   };
 
   const fetchAccounts = async () => {
-    const res = await fetch(`${apiBase}/accounts`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${apiBase}/accounts`, { headers: { Authorization: `Bearer ${authToken}` } });
     const data = await res.json();
     setAccounts(data);
   };
 
   const fetchBill = async (cardId) => {
     try {
-      console.log('Buscando fatura para cartão:', cardId);
-      const res = await fetch(`${API_URL}/${cardId}/bill`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${API_URL}/${cardId}/bill`, { headers: { Authorization: `Bearer ${authToken}` } });
       if (!res.ok) {
-        console.error('Erro ao buscar fatura:', res.status, res.statusText);
         setBill(null);
         return;
       }
       const data = await res.json();
-      console.log('Fatura recebida:', data);
       setBill(data);
     } catch (err) {
-      console.error('Erro ao buscar fatura:', err);
       setBill(null);
     }
   };
 
   const fetchCardExpenses = async (cardId) => {
     try {
-      const res = await fetch(`${apiBase}/expenses?type=cartao&credit_card_id=${cardId}&_=${Date.now()}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${apiBase}/expenses?type=cartao&credit_card_id=${cardId}&_=${Date.now()}`, { headers: { Authorization: `Bearer ${authToken}` } });
       const data = await res.json();
-      setCardExpenses(prev => ({ ...prev, [cardId]: data }));
-      console.log('Despesas retornadas para o cartão', cardId, data);
-      if (Array.isArray(data)) {
-        data.forEach((exp, idx) => console.log(`Despesa[${idx}]`, exp));
-      }
-    } catch {
+      
+      // Ensure data is always an array
+      const expenses = Array.isArray(data) ? data : [];
+      setCardExpenses(prev => ({ ...prev, [cardId]: expenses }));
+      
+      console.log('Despesas retornadas para o cartão', cardId, expenses);
+      expenses.forEach((exp, idx) => console.log(`Despesa[${idx}]`, exp));
+    } catch (error) {
+      console.error('Erro ao buscar despesas para o cartão', cardId, error);
       setCardExpenses(prev => ({ ...prev, [cardId]: [] }));
-      console.log('Erro ao buscar despesas para o cartão', cardId);
     }
   };
 
@@ -169,7 +169,7 @@ function CreditCards({ token }) {
     try {
       const res = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify(form),
       });
       if (res.ok) {
@@ -191,7 +191,7 @@ function CreditCards({ token }) {
     try {
       const res = await fetch(`${API_URL}/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
       if (res.ok) {
         setToast({ show: true, message: 'Cartão excluído com sucesso!', type: 'success' });
@@ -219,7 +219,7 @@ function CreditCards({ token }) {
       console.log('Enviando edição de cartão:', editForm);
       const res = await fetch(`${API_URL}/${editingId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify(editForm),
       });
       if (res.ok) {
@@ -254,7 +254,7 @@ function CreditCards({ token }) {
       const currentBillMonth = billMonth || dayjs().format('YYYY-MM');
       const res = await fetch(`${apiUrl}/creditCards/${payModal.card.id}/pay`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({ ...payForm, value: payForm.is_full_payment ? undefined : payForm.value, bill_month: currentBillMonth }),
       });
       if (res.ok) {
@@ -295,7 +295,7 @@ function CreditCards({ token }) {
       });
     const res = await fetch(`${apiBase}/expenses`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify(payload),
       });
       if (res.ok) {
@@ -406,14 +406,19 @@ function CreditCards({ token }) {
 
   // Status da fatura: 'Em aberto', 'Fechada', 'Em atraso', 'Paga'
   function getBillStatus(card, fatura, billMonth) {
-    if (!card || !fatura) return '-';
+    if (!card || !fatura || fatura.length === 0) return 'Em aberto';
     const { fechamento, vencimento } = getBillPeriod(card, billMonth);
     const hoje = dayjs();
 
-    const todasPagas = fatura.length > 0 && fatura.every(d => d.status === 'paga');
-    if (todasPagas) return 'Paga';
+    // Calcular valor total da fatura e valor pago
+    const valorTotal = fatura.reduce((sum, d) => sum + Number(d.value || 0), 0);
+    const valorPago = fatura.filter(d => d.status === 'paga').reduce((sum, d) => sum + Number(d.value || 0), 0);
+    const valorPendente = valorTotal - valorPago;
 
-    // Após o vencimento, se não paga: em atraso
+    // Se não há valor pendente (tudo pago), fatura está paga
+    if (valorPendente <= 0.01) return 'Paga';
+
+    // Após o vencimento, se há valor pendente: em atraso
     if (vencimento && hoje.isAfter(vencimento, 'day')) return 'Em atraso';
 
     // Entre o fechamento (inclusive) e até o vencimento (inclusive): fechada
@@ -445,7 +450,7 @@ function CreditCards({ token }) {
         : `${apiUrl}/export/credit-cards`;
         
       const res = await fetch(apiEndpoint, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
 
       if (!res.ok) {
@@ -688,7 +693,7 @@ function CreditCards({ token }) {
                       <tr>
                         <td colSpan={8} style={{ background: '#fafbfc', padding: 16 }}>
                           <h4>Despesas deste cartão</h4>
-                          {cardExpenses[card.id] && cardExpenses[card.id].length > 0 ? (
+                          {Array.isArray(cardExpenses[card.id]) && cardExpenses[card.id].length > 0 ? (
                             <table style={{ width: '100%', fontSize: 14, marginTop: 8 }}>
                               <thead>
                                 <tr>
@@ -701,7 +706,7 @@ function CreditCards({ token }) {
                                 </tr>
                               </thead>
                               <tbody>
-                                {cardExpenses[card.id]
+                                {(cardExpenses[card.id] || [])
                                   .filter(exp => {
                                     // Filtro por período da fatura
                                     const { start, end } = getBillPeriod(card, billMonth);
@@ -738,7 +743,7 @@ function CreditCards({ token }) {
                                               delete payload.updatedAt;
                                               const res = await fetch(`${apiBase}/expenses/${exp.id}`, {
                                                 method: 'PUT',
-                                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
                                                 body: JSON.stringify(payload),
                                               });
                                               if (res.ok) {
@@ -770,7 +775,7 @@ function CreditCards({ token }) {
                                               setLoading(true);
                                               await fetch(`${apiBase}/expenses/${exp.id}`, {
                                                 method: 'DELETE',
-                                                headers: { Authorization: `Bearer ${token}` },
+                                                headers: { Authorization: `Bearer ${authToken}` },
                                               });
                                               fetchCardExpenses(card.id);
                                               setLoading(false);

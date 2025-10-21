@@ -366,15 +366,16 @@ exports.getDashboard = async (req, res) => {
         cartao_id: null,
         cartao_nome: '',
       })),
-      ...despesasRecentes.map(d => ({
-        tipo: d.credit_card_id ? 'cartao' : 'despesa',
-        descricao: d.description || d.name || 'Despesa',
+      // Incluir apenas despesas de cartão de crédito (transações efetivadas)
+      ...despesasRecentes.filter(d => d.credit_card_id !== null).map(d => ({
+        tipo: 'despesa_cartao',
+        descricao: d.description || 'Despesa de cartão',
         valor: d.value,
         data: formatDateBR(d.due_date),
-        conta: d.account_id || d.credit_card_id,
-        conta_nome: d.credit_card_id ? (cartoesMap[d.credit_card_id] || '') : (contasMap[d.account_id] || ''),
-        cartao_id: d.credit_card_id || null,
-        cartao_nome: d.credit_card_id ? (cartoesMap[d.credit_card_id] || '') : '',
+        conta: null,
+        conta_nome: `Cartão ${cartoesMap[d.credit_card_id] || d.credit_card_id}`,
+        cartao_id: d.credit_card_id,
+        cartao_nome: cartoesMap[d.credit_card_id] || '',
       })),
       ...transfersRecentes.map(t => ({
         tipo: 'transferencia',

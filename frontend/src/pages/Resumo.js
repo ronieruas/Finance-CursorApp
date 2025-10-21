@@ -68,10 +68,23 @@ function Resumo({ token }) {
   };
 
   const getDaysUntilDue = (dueDate) => {
-    const today = dayjs();
-    const due = dayjs(dueDate);
+    const today = dayjs().startOf('day');
+    const due = dayjs(dueDate).startOf('day');
     const diff = due.diff(today, 'day');
-    return diff;
+    
+    if (diff === 0) {
+      return 'hoje';
+    } else if (diff === 1) {
+      return 'amanhã';
+    } else if (diff === -1) {
+      return 'ontem (atrasado)';
+    } else if (diff < 0) {
+      return `há ${Math.abs(diff)} dia${Math.abs(diff) > 1 ? 's' : ''} (atrasado)`;
+    } else if (diff === 2) {
+      return 'em 2 dias';
+    } else {
+      return `em ${diff} dia${diff > 1 ? 's' : ''}`;
+    }
   };
 
   // Formatação de data em português brasileiro
@@ -392,7 +405,7 @@ function Resumo({ token }) {
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937' }}>{vencimento.descricao}</div>
                   <div style={{ fontSize: 12, color: '#6b7280' }}>
-                    Vence em {getDaysUntilDue(vencimento.vencimento)} dias
+                    Vence {getDaysUntilDue(vencimento.vencimento)}
                   </div>
                 </div>
                 <span style={{ fontSize: 14, fontWeight: 600, color: '#dc2626' }}>
