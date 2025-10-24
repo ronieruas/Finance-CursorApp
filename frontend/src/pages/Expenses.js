@@ -375,7 +375,6 @@ function Expenses({ token }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent', tableLayout: 'fixed', fontSize: '0.9rem' }}>
             <thead>
               <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
-                <th style={{ padding: 8, textAlign: 'left', width: 80 }}>Data</th>
                 <th style={{ padding: 8, textAlign: 'left', width: 98 }}>Conta/Cartão</th>
                 <th style={{ padding: 8, textAlign: 'left', width: 128 }}>Descrição</th>
                 <th style={{ padding: 8, textAlign: 'left', width: 80 }}>Valor</th>
@@ -384,7 +383,6 @@ function Expenses({ token }) {
                 <th style={{ padding: 8, textAlign: 'left', width: 80 }}>Status</th>
                 <th style={{ padding: 8, textAlign: 'left', width: 80 }}>Recorrente</th>
                 <th style={{ padding: 8, textAlign: 'left', width: 80 }}>Débito automático</th>
-                <th style={{ padding: 8, textAlign: 'left', width: 70 }}>Parcelas</th>
                 <th style={{ padding: 8, textAlign: 'left', width: 100 }}>Pago em</th>
                 <th style={{ padding: 8, textAlign: 'left', width: 105 }}>Ações</th>
               </tr>
@@ -437,21 +435,6 @@ function Expenses({ token }) {
                       <td style={{ textAlign: 'center' }}>
                         <input name="auto_debit" type="checkbox" checked={!!editForm.auto_debit} onChange={handleEditChange} />
                       </td>
-                      <td>
-                        {editForm.type === 'cartao' ? (
-                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                            <select name="installment_type" value={editForm.installment_type} onChange={handleEditChange} className="input-glass" style={{ width: '60%' }}>
-                              <option value="avista">À vista</option>
-                              <option value="parcelado">Parcelado</option>
-                            </select>
-                            {editForm.installment_type === 'parcelado' && (
-                              <Input name="installment_total" type="number" min={1} max={36} value={editForm.installment_total} onChange={handleEditChange} style={{ width: '40%' }} />
-                            )}
-                          </div>
-                        ) : (
-                          <span>-</span>
-                        )}
-                      </td>
                       <td><Input name="paid_at" type="date" value={editForm.paid_at ? editForm.paid_at.slice(0,10) : ''} onChange={handleEditChange} style={{ width: '100%' }} /></td>
                       <td style={{ display: 'flex', gap: 8 }}>
                         <Button variant="primary" onClick={handleEditSubmit} loading={loading}>Salvar</Button>
@@ -460,7 +443,6 @@ function Expenses({ token }) {
                     </>
                   ) : (
                     <>
-                      <td style={{ textAlign: 'left' }}>{exp.createdAt ? dayjs(exp.createdAt).format('DD/MM/YYYY') : '-'}</td>
                       <td style={{ textAlign: 'left' }}>
                         {exp.type === 'cartao' 
                           ? (creditCards.find(c => c.id === exp.credit_card_id)?.name || exp.credit_card_id)
@@ -474,7 +456,6 @@ function Expenses({ token }) {
                       <td style={{ textAlign: 'left' }}>{exp.status}</td>
                       <td style={{ textAlign: 'left' }}>{exp.is_recurring ? 'Sim' : 'Não'}</td>
                       <td style={{ textAlign: 'left' }}>{exp.auto_debit ? 'Sim' : 'Não'}</td>
-                      <td style={{ textAlign: 'left' }}>{exp.installment_total > 1 ? `${exp.installment_number}/${exp.installment_total}` : '-'}</td>
                       <td style={{ textAlign: 'left' }}>{exp.paid_at ? dayjs(exp.paid_at).format('DD/MM/YYYY') : '-'}</td>
                       <td style={{ textAlign: 'left' }}>
                         <Button variant="secondary" onClick={() => handleEdit(exp)}>Editar</Button>

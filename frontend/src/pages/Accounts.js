@@ -272,7 +272,6 @@ function Accounts({ token }) {
                 <th style={{ padding: 8, textAlign: 'left' }}>Tipo</th>
                 <th style={{ padding: 8, textAlign: 'left' }}>Saldo</th>
                 <th style={{ padding: 8, textAlign: 'left' }}>Moeda</th>
-                <th style={{ padding: 8, textAlign: 'left' }}>Status</th>
                 <th style={{ padding: 8, textAlign: 'left' }}>Ações</th>
               </tr>
             </thead>
@@ -293,13 +292,9 @@ function Accounts({ token }) {
                       <td style={{ textAlign: 'left' }}><Input name="balance" value={editForm.balance} onChange={handleEditChange} /></td>
                       <td style={{ textAlign: 'left' }}>
                         <select name="currency" value={editForm.currency} onChange={handleEditChange} className="input-glass">
-                          {currencyOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                        </select>
-                      </td>
-                      <td style={{ textAlign: 'left' }}>
-                        <select name="status" value={editForm.status} onChange={handleEditChange} className="input-glass">
-                          <option value="ativa">Ativa</option>
-                          <option value="inativa">Inativa</option>
+                          <option value="BRL">BRL</option>
+                          <option value="USD">USD</option>
+                          <option value="EUR">EUR</option>
                         </select>
                       </td>
                       <td style={{ textAlign: 'left' }}>
@@ -317,7 +312,6 @@ function Accounts({ token }) {
                         {Number((acc.saldo_calculado !== undefined ? acc.saldo_calculado : acc.balance)).toLocaleString(acc.currency === 'BRL' ? 'pt-BR' : acc.currency === 'USD' ? 'en-US' : acc.currency === 'EUR' ? 'de-DE' : undefined, { minimumFractionDigits: 2 })}
                       </td>
                       <td style={{ textAlign: 'left' }}>{acc.currency}</td>
-                      <td style={{ textAlign: 'left' }}>{acc.status}</td>
                       <td style={{ textAlign: 'left' }}>
                         <Button variant="secondary" onClick={() => handleEdit(acc)}>Editar</Button>
                         <Button variant="danger" onClick={() => handleDelete(acc.id)}>Excluir</Button>
