@@ -1,6 +1,6 @@
 console.log('Loading server module...');
 
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env.local') });
 
 console.log('Loading dotenv...');
 

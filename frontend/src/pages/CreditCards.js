@@ -27,6 +27,7 @@ function CreditCards({ token }) {
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [limits, setLimits] = useState({});
   const [payModal, setPayModal] = useState({ open: false, card: null });
+  const [payBillMonth, setPayBillMonth] = useState(dayjs().format('YYYY-MM'));
   const [accounts, setAccounts] = useState([]);
   const [bill, setBill] = useState(null);
   const [payForm, setPayForm] = useState({ account_id: '', value: '', payment_date: '', is_full_payment: true, auto_debit: false });
@@ -144,9 +145,11 @@ function CreditCards({ token }) {
       
       console.log('Despesas retornadas para o cartão', cardId, expenses);
       expenses.forEach((exp, idx) => console.log(`Despesa[${idx}]`, exp));
+      return expenses;
     } catch (error) {
       console.error('Erro ao buscar despesas para o cartão', cardId, error);
       setCardExpenses(prev => ({ ...prev, [cardId]: [] }));
+      return [];
     }
   };
 
@@ -154,6 +157,8 @@ function CreditCards({ token }) {
     console.log('Abrindo modal de pagamento para cartão:', card);
     setPayModal({ open: true, card });
     setPayForm({ account_id: '', value: '', payment_date: dayjs().format('YYYY-MM-DD'), is_full_payment: true, auto_debit: !!card.debito_automatico });
+    await fetchCardExpenses(card.id);
+    setPayBillMonth(billMonth || dayjs().format('YYYY-MM'));
     setBill(null);
     await fetchAccounts();
     await fetchBill(card.id);
@@ -251,7 +256,7 @@ function CreditCards({ token }) {
       // Corrigindo a URL da API para garantir que esteja usando a URL correta
     const apiUrl = apiBase;
       // Garantindo que dayjs está disponível no escopo
-      const currentBillMonth = billMonth || dayjs().format('YYYY-MM');
+      const currentBillMonth = payBillMonth || dayjs().format('YYYY-MM');
       const res = await fetch(`${apiUrl}/creditCards/${payModal.card.id}/pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
@@ -804,12 +809,7 @@ function CreditCards({ token }) {
           <form onSubmit={handlePay}>
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontWeight: 500 }}>Competência da fatura</label>
-              <input type="month" name="payBillMonth" value={billMonth} onChange={e => {
-                setBillMonth(e.target.value);
-                setIsManualMonth(true);
-                localStorage.setItem('creditCards_billMonth', e.target.value);
-                localStorage.setItem('creditCards_isManualMonth', JSON.stringify(true));
-              }} style={{ minWidth: 120, marginLeft: 8 }} />
+              <input type="month" name="payBillMonth" value={payBillMonth} onChange={e => setPayBillMonth(e.target.value)} style={{ minWidth: 120, marginLeft: 8 }} />
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontWeight: 500 }}>Conta para débito</label>
@@ -827,12 +827,20 @@ function CreditCards({ token }) {
               {!payForm.is_full_payment && (
                 <Input name="value" type="number" value={payForm.value} onChange={handlePayFormChange} min={1} required label="Valor a pagar" />
               )}
-              {bill && payForm.is_full_payment && (
-                Array.isArray(bill.atual) && bill.atual.length > 0 ? (
-                  <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>Total da fatura: <b>R$ {bill.atual.reduce((acc, d) => acc + Number(d.value), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></div>
-                ) : (
-                  <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>Nenhuma despesa encontrada para esta fatura.</div>
-                )
+              {payForm.is_full_payment && (
+                (() => {
+                  const { start, end } = getBillPeriod(payModal.card, payBillMonth);
+                  const expenses = (cardExpenses[payModal.card.id] || []).filter(e => e && e.status !== 'paga' && e.due_date);
+                  const selected = expenses.filter(e => {
+                    const due = dayjs(e.due_date);
+                    return start && end && due.isSameOrAfter(start) && due.isSameOrBefore(end);
+                  });
+                  const total = selected.reduce((acc, d) => acc + Number(d.value || 0), 0);
+                  if (selected.length === 0) {
+                    return <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>Nenhuma despesa encontrada para esta fatura.</div>;
+                  }
+                  return <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>Total da fatura: <b>R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></div>;
+                })()
               )}
             </div>
             <div style={{ marginBottom: 16 }}>

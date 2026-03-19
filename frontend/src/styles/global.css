@@ -126,6 +126,7 @@ body, .glass-card, .input-glass, .btn-primary, .btn-secondary, .btn-danger {
     margin-left: 0 !important;
     padding: 16px !important;
     width: 100% !important;
+    padding-bottom: 80px !important;
   }
   
   /* Dashboard flex */

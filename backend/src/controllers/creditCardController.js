@@ -44,25 +44,17 @@ function getBillPeriods(closingDay, dueDay, refDate = new Date()) {
 function getBillPeriodForMonth(closingDay, dueDay, year, month) {
   // month é 0-11 e representa o MÊS DE VENCIMENTO da fatura
   const vencimento = new Date(year, month, dueDay);
-
   let start;
   let end;
-  if (closingDay > dueDay) {
-    // Fechamento ocorre no mês anterior ao vencimento
-    // Ex.: vence em agosto (month=7), período: closingDay de (junho, month-2) até (closingDay-1) de (julho, month-1)
+  if (Number(closingDay) > Number(dueDay)) {
     start = new Date(year, month - 2, closingDay);
-    start.setHours(0, 0, 0, 0);
-    end = new Date(year, month - 1, closingDay - 1);
-    end.setHours(23, 59, 59, 999);
+    end = new Date(year, month - 1, Math.max(Number(closingDay) - 1, 1));
   } else {
-    // Fechamento ocorre no mesmo mês do vencimento
-    // Ex.: vence em agosto (month=7), período: closingDay de (julho, month-1) até (closingDay-1) de (agosto, month)
     start = new Date(year, month - 1, closingDay);
-    start.setHours(0, 0, 0, 0);
-    end = new Date(year, month, closingDay - 1);
-    end.setHours(23, 59, 59, 999);
+    end = new Date(year, month, Math.max(Number(closingDay) - 1, 1));
   }
-
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
   return { start, end, vencimento };
 }
 
@@ -152,26 +144,33 @@ exports.getBill = async (req, res) => {
     const atualEnd = formatDateOnly(periods.atual.end);
     const proximaStart = formatDateOnly(periods.proxima.start);
     const proximaEnd = formatDateOnly(periods.proxima.end);
+    const atualVencimento = formatDateOnly(periods.atual.vencimento);
+    const proximaVencimento = formatDateOnly(periods.proxima.vencimento);
 
-    console.log('[getBill] Filtro atual (due_date):', atualStart, '->', atualEnd);
-    // Fatura atual
+    console.log('[getBill] Filtro atual (período ou vencimento):', { atualStart, atualEnd, atualVencimento });
     const atual = await Expense.findAll({
       where: {
         user_id: req.user.id,
         credit_card_id: card.id,
-        due_date: { [Op.between]: [atualStart, atualEnd] },
         status: { [Op.ne]: 'paga' },
+        [Op.or]: [
+          { due_date: { [Op.between]: [atualStart, atualEnd] } },
+          { due_date: atualVencimento },
+        ],
       },
     });
     console.log('[getBill] Despesas fatura atual:', atual?.length || 0);
 
-    console.log('[getBill] Filtro próxima (due_date):', proximaStart, '->', proximaEnd);
-    // Próxima fatura
+    console.log('[getBill] Filtro próxima (período ou vencimento):', { proximaStart, proximaEnd, proximaVencimento });
     const proxima = await Expense.findAll({
       where: {
         user_id: req.user.id,
         credit_card_id: card.id,
-        due_date: { [Op.between]: [proximaStart, proximaEnd] },
+        status: { [Op.ne]: 'paga' },
+        [Op.or]: [
+          { due_date: { [Op.between]: [proximaStart, proximaEnd] } },
+          { due_date: proximaVencimento },
+        ],
       },
     });
     console.log('[getBill] Despesas próxima fatura:', proxima?.length || 0);
@@ -185,12 +184,14 @@ exports.getBill = async (req, res) => {
           end: periods.atual.end.toISOString(),
           start_date: atualStart,
           end_date: atualEnd,
+          vencimento_date: atualVencimento,
         },
         proxima: {
           start: periods.proxima.start.toISOString(),
           end: periods.proxima.end.toISOString(),
           start_date: proximaStart,
           end_date: proximaEnd,
+          vencimento_date: proximaVencimento,
         },
       },
     });
@@ -228,9 +229,9 @@ exports.pay = async (req, res) => {
       periodoFatura = periods.atual;
       const startStr = formatDateOnly(periodoFatura.start);
       const endStr = formatDateOnly(periodoFatura.end);
-      console.log('[PAGAMENTO] Filtro período (due_date):', startStr, '->', endStr, 'bill_month:', bill_month);
+      const vencStr = formatDateOnly(periodoFatura.vencimento);
+      console.log('[PAGAMENTO] Filtro por período ou vencimento:', { startStr, endStr, vencStr, bill_month });
 
-      // Todas as despesas do cartão (debug)
       const todasDespesas = await Expense.findAll({ where: { user_id: userId, credit_card_id: card.id } });
       console.log('[PAGAMENTO] Total de despesas do cartão (sem filtro):', todasDespesas.length);
 
@@ -238,11 +239,14 @@ exports.pay = async (req, res) => {
         where: {
           user_id: userId,
           credit_card_id: card.id,
-          due_date: { [Op.between]: [startStr, endStr] },
           status: { [Op.ne]: 'paga' },
+          [Op.or]: [
+            { due_date: { [Op.between]: [startStr, endStr] } },
+            { due_date: vencStr },
+          ],
         },
       });
-      console.log('[PAGAMENTO] Despesas no período encontradas:', despesasFatura.length);
+      console.log('[PAGAMENTO] Despesas na fatura encontradas:', despesasFatura.length);
 
       valorPagamento = despesasFatura.reduce((acc, d) => acc + Number(d.value), 0);
       console.log('[PAGAMENTO] Valor total calculado para pagamento:', valorPagamento);

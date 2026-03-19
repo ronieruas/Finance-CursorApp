@@ -1,4 +1,4 @@
-const { Expense, CreditCard, Account } = require('../models');
+const { sequelize, Expense, CreditCard, Account } = require('../models');
 
 // Utilidades para tratar datas "date-only" vindas do front (YYYY-MM-DD)
 const isDateOnly = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -38,39 +38,83 @@ exports.list = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
+  let t;
   try {
-    const { type, account_id, credit_card_id, description, value, due_date, category, status, is_recurring, auto_debit, paid_at, installment_type, installment_total } = req.body;
-    // Validação de due_date
-    if (!due_date || isNaN(new Date(due_date).getTime())) {
-      return res.status(400).json({ error: 'Data de vencimento (due_date) inválida ou ausente.' });
+    if (!req.user) {
+      return res.status(401).json({ error: 'Não autorizado.' });
     }
+    await sequelize.authenticate();
+    const { type, account_id, credit_card_id, description, value, due_date, purchase_date, category, status, is_recurring, auto_debit, paid_at, installment_type, installment_total } = req.body;
+    // Para despesas de cartão, o due_date pode ser calculado no backend a partir de purchase_date
+    if (type !== 'cartao') {
+      if (!due_date || isNaN(new Date(due_date).getTime())) {
+        return res.status(400).json({ error: 'Data de vencimento (due_date) inválida ou ausente.' });
+      }
+    }
+    t = await sequelize.transaction();
+    let result;
     if (type === 'cartao') {
-      // Lançamento em cartão de crédito
+      const card = await CreditCard.findOne({ where: { id: credit_card_id, user_id: req.user.id }, transaction: t, lock: t.LOCK.UPDATE });
+      if (!card) {
+        throw new Error('Cartão não encontrado.');
+      }
+      // Determinar due_date a partir de purchase_date e regras de fechamento/vencimento
+      const parsePurchase = () => {
+        if (purchase_date && isDateOnly(purchase_date)) return toLocalDate(purchase_date);
+        if (purchase_date) {
+          const d = new Date(purchase_date);
+          return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        }
+        // Se não veio purchase_date, usar due_date fornecido (retrocompatibilidade)
+        if (due_date && isDateOnly(due_date)) return toLocalDate(due_date);
+        if (due_date) {
+          const d = new Date(due_date);
+          return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        }
+        throw new Error('purchase_date ou due_date ausente para despesa de cartão.');
+      };
+      const purchase = parsePurchase();
+      const getBillPeriodForMonth = (closingDay, dueDay, year, monthZeroBased) => {
+        const vencimento = new Date(year, monthZeroBased, dueDay);
+        const start = new Date(year, monthZeroBased - 1, closingDay); start.setHours(0,0,0,0);
+        const end = new Date(year, monthZeroBased, Math.max(closingDay - 1, 1)); end.setHours(23,59,59,999);
+        return { start, end, vencimento };
+      };
+      const findDueDate = () => {
+        const y = purchase.getFullYear();
+        const m = purchase.getMonth();
+        for (let delta = -1; delta <= 3; delta++) {
+          const period = getBillPeriodForMonth(card.closing_day, card.due_day, y, m + delta);
+          if (purchase >= period.start && purchase <= period.end) {
+            const yy = period.vencimento.getFullYear();
+            const mm = String(period.vencimento.getMonth() + 1).padStart(2, '0');
+            const dd = String(period.vencimento.getDate()).padStart(2, '0');
+            return `${yy}-${mm}-${dd}`;
+          }
+        }
+        const fallback = getBillPeriodForMonth(card.closing_day, card.due_day, y, m + 1);
+        const yy = fallback.vencimento.getFullYear();
+        const mm = String(fallback.vencimento.getMonth() + 1).padStart(2, '0');
+        const dd = String(fallback.vencimento.getDate()).padStart(2, '0');
+        return `${yy}-${mm}-${dd}`;
+      };
+      const computedDueDate = findDueDate();
       const totalParcelas = installment_type === 'parcelado' ? Number(installment_total) : 1;
       const valorParcela = Number(value) / totalParcelas;
-      let despesas = [];
+      const despesas = [];
       for (let i = 1; i <= totalParcelas; i++) {
-        // Construir data base no fuso local para evitar deslocamento
-        const base = isDateOnly(due_date) ? toLocalDate(due_date) : new Date(due_date);
+        const base = isDateOnly(computedDueDate) ? toLocalDate(computedDueDate) : new Date(computedDueDate);
         const dataParcela = new Date(base);
         dataParcela.setMonth(dataParcela.getMonth() + (i - 1));
         const safeStatus = typeof status !== 'undefined' && status !== null ? status : 'pendente';
         let safePaidAt = typeof paid_at !== 'undefined' ? paid_at : null;
         if (safePaidAt && isDateOnly(safePaidAt)) {
-          // Corrigir o problema de fuso horário usando toLocalDate
           safePaidAt = toLocalDate(safePaidAt);
         } else if (safePaidAt) {
-          // Se não for no formato date-only, usar o construtor Date
-          // mas garantir que seja no fuso horário local
           const dateObj = new Date(safePaidAt);
-          safePaidAt = new Date(
-            dateObj.getFullYear(),
-            dateObj.getMonth(),
-            dateObj.getDate()
-          );
+          safePaidAt = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
         }
-        
-        console.log(`Parcela ${i}/${totalParcelas} - Data de pagamento:`, safePaidAt ? safePaidAt.toISOString() : null);
+        console.log('Criando parcela', { i, totalParcelas, descricao: description, valorParcela, dataParcela: dataParcela.toISOString(), status: safeStatus });
         const expense = await Expense.create({
           user_id: req.user.id,
           credit_card_id,
@@ -84,37 +128,23 @@ exports.create = async (req, res) => {
           paid_at: safePaidAt,
           installment_number: i,
           installment_total: totalParcelas
-        });
-
+        }, { transaction: t });
         despesas.push(expense);
       }
-      // Deduzir limite do cartão (simples: valor total)
-      const card = await CreditCard.findOne({ where: { id: credit_card_id, user_id: req.user.id } });
       if (card) {
         card.used_limit = (Number(card.used_limit) || 0) + Number(value);
-        await card.save();
+        await card.save({ transaction: t });
       }
-      return res.status(201).json(despesas);
+      result = despesas;
     } else {
-      // Lançamento em conta normal
       let normalizedPaidAt = typeof paid_at !== 'undefined' ? paid_at : null;
       if (normalizedPaidAt && isDateOnly(normalizedPaidAt)) {
-        // Corrigir o problema de fuso horário usando toLocalDate
         normalizedPaidAt = toLocalDate(normalizedPaidAt);
       } else if (normalizedPaidAt) {
-        // Se não for no formato date-only, usar o construtor Date
-        // mas garantir que seja no fuso horário local
         const dateObj = new Date(normalizedPaidAt);
-        normalizedPaidAt = new Date(
-          dateObj.getFullYear(),
-          dateObj.getMonth(),
-          dateObj.getDate()
-        );
+        normalizedPaidAt = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
       }
-      
-      console.log('Data de pagamento recebida (criação):', paid_at);
-      console.log('Data de pagamento formatada (criação):', normalizedPaidAt);
-      console.log('Data formatada ISO (criação):', normalizedPaidAt ? normalizedPaidAt.toISOString() : null);
+      console.log('Criando despesa de conta', { description, value, due_date, status, normalizedPaidAt: normalizedPaidAt ? normalizedPaidAt.toISOString() : null });
       const expense = await Expense.create({
         user_id: req.user.id,
         account_id,
@@ -126,24 +156,25 @@ exports.create = async (req, res) => {
         is_recurring: !!is_recurring,
         auto_debit: !!auto_debit,
         paid_at: normalizedPaidAt
-      });
-      // Deduzir valor do saldo da conta apenas se estiver paga
+      }, { transaction: t });
       if (account_id && status === 'paga') {
-        const account = await Account.findOne({ where: { id: account_id, user_id: req.user.id } });
+        const account = await Account.findOne({ where: { id: account_id, user_id: req.user.id }, transaction: t, lock: t.LOCK.UPDATE });
         if (account) {
           account.balance = Number(account.balance) - Number(value);
-          await account.save();
+          await account.save({ transaction: t });
         }
       }
-      return res.status(201).json(expense);
+      result = expense;
     }
+    await t.commit();
+    return res.status(201).json(result);
   } catch (err) {
+    if (t) { try { await t.rollback(); } catch(e) {} }
     console.error('Erro ao criar despesa:', err);
     if (err && err.message) {
-      res.status(400).json({ error: err.message });
-    } else {
-      res.status(400).json({ error: 'Erro desconhecido ao criar despesa.' });
+      return res.status(400).json({ error: err.message });
     }
+    return res.status(400).json({ error: 'Erro desconhecido ao criar despesa.' });
   }
 };
 

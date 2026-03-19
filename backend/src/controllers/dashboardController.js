@@ -14,20 +14,25 @@ function formatDateOnly(date) {
 // Helper para calcular período da fatura por mês de vencimento (month 0-11)
 const getBillPeriodForMonth = (closingDay, dueDay, year, month) => {
   const vencimento = new Date(year, month, dueDay)
-  let start
-  let end
-  if (closingDay > dueDay) {
+  let start, end
+  if (Number(closingDay) > Number(dueDay)) {
     start = new Date(year, month - 2, closingDay)
-    start.setHours(0, 0, 0, 0)
-    end = new Date(year, month - 1, closingDay - 1)
-    end.setHours(23, 59, 59, 999)
+    end = new Date(year, month - 1, Math.max(Number(closingDay) - 1, 1))
   } else {
     start = new Date(year, month - 1, closingDay)
-    start.setHours(0, 0, 0, 0)
-    end = new Date(year, month, closingDay - 1)
-    end.setHours(23, 59, 59, 999)
+    end = new Date(year, month, Math.max(Number(closingDay) - 1, 1))
   }
+  start.setHours(0, 0, 0, 0)
+  end.setHours(23, 59, 59, 999)
   return { start, end, vencimento }
+}
+
+// Data de fechamento efetiva para a fatura que vence em (year, month)
+function getFechamentoDate(closingDay, dueDay, year, month) {
+  if (closingDay > dueDay) {
+    return new Date(year, month - 1, closingDay)
+  }
+  return new Date(year, month, closingDay)
 }
 
 // Helper para obter períodos atual e próxima com base em uma data de referência
@@ -133,46 +138,57 @@ exports.getDashboard = async (req, res) => {
         const refDateBills = new Date()
         const periods = getBillPeriodsFromRef(card.closing_day, card.due_day, refDateBills)
         const openPeriod = periods.atual
-
-        // Fatura atual (valor em aberto): despesas não pagas dentro do período aberto
+        const openStartStr = formatDateOnly(openPeriod.start)
+        const openEndStr = formatDateOnly(openPeriod.end)
         const faturaAtualValor = await models.Expense.sum('value', {
           where: {
             user_id: userId,
             credit_card_id: card.id,
-            due_date: { [Op.between]: [formatDateOnly(openPeriod.start), formatDateOnly(openPeriod.end)] },
+            due_date: { [Op.between]: [openStartStr, openEndStr] },
           },
         }) || 0
+        console.log('[Dashboard] Card', card.name, 'openPeriod', {
+          start: openPeriod.start.toISOString(), end: openPeriod.end.toISOString(), faturaAtualValor: Number(faturaAtualValor)
+        })
 
         // Fatura fechada: período que vence no mês vigente (refMonth)
         const closedPeriod = getBillPeriodForMonth(card.closing_day, card.due_day, refYear, refMonth)
-        const closedStart = formatDateOnly(closedPeriod.start)
-        const closedEnd = formatDateOnly(closedPeriod.end)
+        const closedStartStr = formatDateOnly(closedPeriod.start)
+        const closedEndStr = formatDateOnly(closedPeriod.end)
         const totalFechada = await models.Expense.sum('value', {
           where: {
             user_id: userId,
             credit_card_id: card.id,
-            due_date: { [Op.between]: [closedStart, closedEnd] },
+            due_date: { [Op.between]: [closedStartStr, closedEndStr] },
           },
         }) || 0
         const totalFechadaPaga = await models.Expense.sum('value', {
           where: {
             user_id: userId,
             credit_card_id: card.id,
-            due_date: { [Op.between]: [closedStart, closedEnd] },
+            due_date: { [Op.between]: [closedStartStr, closedEndStr] },
             status: 'paga',
           },
         }) || 0
+        const vencDate = closedPeriod.vencimento
+        const fechamentoDate = getFechamentoDate(card.closing_day, card.due_day, refYear, refMonth)
         let statusFechada = 'pendente'
-        const notPaid = Number(totalFechada) - Number(totalFechadaPaga)
+        const valorPendente = Number(totalFechada) - Number(totalFechadaPaga)
         if (Number(totalFechada) === 0) {
           statusFechada = 'paga'
-        } else if (notPaid <= 0.0001) {
+        } else if (valorPendente <= 0.01) {
           statusFechada = 'paga'
-        } else if (refDateBills > closedPeriod.vencimento) {
+        } else if (formatDateOnly(refDateBills) > formatDateOnly(closedPeriod.vencimento)) {
           statusFechada = 'atrasada'
+        } else if (formatDateOnly(refDateBills) >= formatDateOnly(fechamentoDate) && formatDateOnly(refDateBills) <= formatDateOnly(closedPeriod.vencimento)) {
+          statusFechada = 'fechada'
         } else {
           statusFechada = 'pendente'
         }
+        console.log('[Dashboard] Card', card.name, 'closedPeriod', {
+          start: closedPeriod.start.toISOString(), end: closedPeriod.end.toISOString(), vencimento: formatDateOnly(closedPeriod.vencimento),
+          total: Number(totalFechada), totalPaga: Number(totalFechadaPaga), status: statusFechada
+        })
 
         gastosPorCartao.push({
           card_id: card.id,

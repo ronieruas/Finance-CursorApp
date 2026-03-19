@@ -29,29 +29,43 @@ app.use((req, res, next) => {
   next();
 });
 
-// CORS seguro para produção e testes locais
+const dev = (process.env.NODE_ENV || 'development') !== 'production';
 const allowedOrigins = [
-  'https://finance.ronieruas.com.br', // Frontend em produção (HTTPS)
-  'http://finance.ronieruas.com.br',  // Frontend em produção (HTTP via Cloudflare)
-  'http://192.168.0.223',             // IP local para testes
-  'http://localhost:3000',             // Para desenvolvimento local (opcional)
-  'http://localhost:3002',             // Desenvolvimento local na porta 3002
-  'http://localhost:3003',             // Desenvolvimento local na porta 3003
-  'http://localhost',                  // Para acesso via Nginx no Docker
-  'http://localhost:80'               // Para acesso via Nginx no Docker na porta 80
+  'https://finance.ronieruas.com.br',
+  'http://finance.ronieruas.com.br',
+  'http://192.168.0.223',
+  'http://192.168.0.142:3003',
+  'http://localhost:3000',
+  'http://localhost:3002',
+  'http://localhost:3003',
+  'http://localhost:8081',
+  'http://localhost',
+  'http://localhost:80',
+  'capacitor://localhost',
+  'http://10.0.2.2',
+  'http://10.0.2.2:3002',
+  'http://10.0.2.2:3000'
 ];
 
-app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin) return callback(null, true); // Permite requests sem origin (ex: mobile, curl)
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      return callback(null, true);
-    } else {
-      return callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
+if (dev) {
+  app.use(cors({ origin: true, credentials: true }));
+} else {
+  app.use(cors({
+    origin: function(origin, callback) {
+      console.log(`[${new Date().toISOString()}] CORS Origin: ${origin}`);
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        return callback(null, true);
+      } else {
+        if (origin && origin.startsWith('exp://')) {
+          return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true
+  }));
+}
 
 // Permitir preflight para todos os endpoints
 app.options('*', cors());

@@ -8,6 +8,12 @@ import { useMemo } from 'react';
 export default function useApiBase() {
   const raw = process.env.REACT_APP_API_URL;
   return useMemo(() => {
+    try {
+      const ov = typeof window !== 'undefined' ? (localStorage.getItem('API_BASE') || '').trim() : '';
+      if (ov) {
+        return ov.replace(/\/$/, '');
+      }
+    } catch {}
     const isDevLocal = typeof window !== 'undefined' && window.location && window.location.port === '3000';
     if (isDevLocal) {
       return '/api';

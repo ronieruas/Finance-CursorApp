@@ -5,5 +5,9 @@
   "devDependencies": {
     "@react-native-community/cli": "^20.0.1",
     "playwright": "^1.50.1"
+  },
+  "scripts": {
+    "lint": "npm --prefix mobile run lint && npm --prefix backend run lint",
+    "typecheck": "npm --prefix mobile run typecheck && npm --prefix backend run typecheck"
   }
 }

@@ -1,9 +1,9 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 module.exports = function(app) {
-  // Proxy para /api via o gateway local (Caddy/Nginx) em localhost:80.
-  // Mantemos o prefixo /api para que o gateway faça o strip e encaminhe ao backend.
-  const target = process.env.DEV_PROXY_TARGET || 'http://localhost';
+  // Proxy para /api apontando diretamente para o backend na porta 3001
+  // Para desenvolvimento local sem gateway
+  const target = process.env.DEV_PROXY_TARGET || 'http://localhost:3001';
   app.use(
     '/api',
     createProxyMiddleware({
@@ -12,6 +12,9 @@ module.exports = function(app) {
       // Desativa proxy de WebSocket para evitar interferência com o /ws do CRA
       ws: false,
       logLevel: 'silent',
+      pathRewrite: {
+        '^/api': '', // Remove o prefixo /api ao redirecionar para o backend
+      },
     })
   );
 };

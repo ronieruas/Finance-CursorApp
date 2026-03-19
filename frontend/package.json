@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/cli": "^7.4.4",
+    "@capacitor/core": "^7.4.4",
     "dayjs": "^1.11.13",
     "framer-motion": "^12.23.0",
     "http-proxy-middleware": "^2.0.9",

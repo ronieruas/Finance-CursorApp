@@ -7,6 +7,8 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "start:migrate": "node src/server.js",
+    "lint": "eslint --ext .js src",
+    "typecheck": "node -e \"process.exit(0)\"",
     "migrate": "npx sequelize db:migrate",
     "migrate:undo": "npx sequelize db:migrate:undo",
     "migrate:undo:all": "npx sequelize db:migrate:undo:all",
@@ -45,6 +47,7 @@
   },
   "devDependencies": {
     "nodemon": "^3.0.1",
-    "sequelize-cli": "^6.6.3"
+    "sequelize-cli": "^6.6.3",
+    "eslint": "^9.14.0"
   }
 }

@@ -41,6 +41,8 @@ function Login({ setToken }) {
     setLoading(false);
   };
 
+  
+
   return (
     <div style={{ 
       minHeight: '100vh', 
@@ -392,6 +394,8 @@ function Login({ setToken }) {
               {error}
             </motion.div>
           )}
+
+          
 
           {/* Informações adicionais */}
           <div className="login-tip" style={{ 

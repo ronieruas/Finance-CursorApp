@@ -1,8 +1,27 @@
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+const fs = require('fs');
+
+// Carregar variáveis de ambiente: prioriza backend/.env.local, depois .env na raiz
+(() => {
+  try {
+    const candidates = [
+      path.resolve(__dirname, '../../backend/.env.local'),
+      path.resolve(__dirname, '../../.env'),
+    ];
+    for (const p of candidates) {
+      if (fs.existsSync(p)) {
+        require('dotenv').config({ path: p });
+        break;
+      }
+    }
+  } catch (e) {
+    // silenciosamente segue sem .env
+  }
+})();
 const { Sequelize } = require('sequelize');
 
-const DIALECT = process.env.DB_DIALECT || 'postgres';
+// Fallback: se não houver host configurado, usar sqlite em desenvolvimento
+const DIALECT = process.env.DB_DIALECT || (process.env.DB_HOST ? 'postgres' : 'sqlite');
 
 let sequelize;
 if (DIALECT === 'sqlite') {

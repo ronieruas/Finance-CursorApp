@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, useLocation, useNavigate, Navigate, useLocation as useReactLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
+import MobileNav from './components/MobileNav';
 import Dashboard from './pages/Dashboard';
 import Accounts from './pages/Accounts';
 import Incomes from './pages/Incomes';
@@ -179,6 +180,7 @@ function App() {
           </div>
         </div>
       )}
+      {token && <MobileNav />}
       <AnimatedRoutes token={token} setToken={setToken} />
     </Router>
   );

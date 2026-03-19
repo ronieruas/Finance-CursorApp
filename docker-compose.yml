@@ -48,7 +48,6 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD:-finance123}
       DB_PASS: ${POSTGRES_PASSWORD:-finance123}
       DB_NAME: ${POSTGRES_DB:-finance}
-      JWT_SECRET: ${JWT_SECRET}
       TZ: ${TZ:-America/Sao_Paulo}
     command: ["sh", "-c", "npm run migrate && npm start"]
     depends_on:
@@ -57,6 +56,8 @@ services:
     networks:
       - backend-network
       - frontend-network
+    ports:
+      - "3001:3001"
     deploy:
       resources:
         limits:

@@ -1,0 +1,9 @@
+{
+  "appId": "com.finance.dev",
+  "appName": "Financeiro",
+  "webDir": "build",
+  "bundledWebRuntime": false,
+  "server": {
+    "cleartext": true
+  }
+}
