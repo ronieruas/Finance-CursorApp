@@ -335,22 +335,64 @@ exports.getResumo = async (req, res) => {
 
     // 9. Despesas Parceladas
     const despesasParceladas = [];
+    const periodStartStr = formatDateOnly(primeiroDiaMes);
+    const periodEndStr = formatDateOnly(ultimoDiaMes);
+    const todayStr = formatDateOnly(hojeBrasil);
+    const normalizeInstallmentBase = (s) => {
+      const raw = String(s || '').trim();
+      if (!raw) return '';
+      return raw
+        .replace(/\s*\(parcela\s*\d+\/\d+\)\s*$/i, '')
+        .replace(/\s*\(\d+\/\d+\)\s*$/i, '')
+        .trim();
+    };
     
     // Buscar apenas as parcelas cujo vencimento está no mês vigente
     const despesasParceladasDB = await Expense.findAll({
       where: {
         user_id: userId,
         installment_total: { [Op.gt]: 1 },
-        due_date: { [Op.between]: [primeiroDiaMes, ultimoDiaMes] },
+        due_date: { [Op.between]: [periodStartStr, periodEndStr] },
       },
       include: [
         { model: CreditCard, as: 'credit_card', attributes: ['name'] }
       ],
       order: [['due_date', 'ASC']],
-      limit: 10,
+      limit: 50,
     });
 
+    const groups = new Map();
     for (const despesa of despesasParceladasDB) {
+      const base = normalizeInstallmentBase(despesa.description);
+      const groupKey = `${despesa.credit_card_id || 'conta'}|${base || despesa.description || ''}`;
+      const list = groups.get(groupKey) || [];
+      list.push(despesa);
+      groups.set(groupKey, list);
+    }
+
+    const pickBestFromGroup = (list) => {
+      const normalized = (Array.isArray(list) ? list : []).filter(Boolean);
+      if (normalized.length === 0) return null;
+      const withDate = normalized.map(d => ({
+        row: d,
+        due: String(d.due_date || '').slice(0, 10),
+      })).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x.due));
+      if (withDate.length === 0) return normalized[0];
+
+      const upcoming = withDate.filter(x => x.due >= todayStr).sort((a, b) => a.due.localeCompare(b.due));
+      if (upcoming.length > 0) return upcoming[0].row;
+
+      const latest = withDate.sort((a, b) => b.due.localeCompare(a.due));
+      return latest[0].row;
+    };
+
+    const picked = Array.from(groups.values())
+      .map(pickBestFromGroup)
+      .filter(Boolean)
+      .sort((a, b) => String(a.due_date).localeCompare(String(b.due_date)))
+      .slice(0, 10);
+
+    for (const despesa of picked) {
       despesasParceladas.push({
         item: despesa.description,
         cartao: despesa.credit_card ? despesa.credit_card.name : 'Conta',

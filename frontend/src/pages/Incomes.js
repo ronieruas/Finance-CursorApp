@@ -11,8 +11,31 @@ const API_BASES = [process.env.REACT_APP_API_URL, 'http://localhost:3003', '/api
 
 function formatDateBR(dateStr) {
   if (!dateStr) return '';
-  const [y, m, d] = dateStr.split('-');
-  return `${d}/${m}/${y}`;
+  const s = String(dateStr).trim();
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+  const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m1) return `${m1[3]}/${m1[2]}/${m1[1]}`;
+  const dt = new Date(s);
+  if (!isNaN(dt.getTime())) {
+    const dd = String(dt.getDate()).padStart(2, '0');
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const yyyy = String(dt.getFullYear());
+    return `${dd}/${mm}/${yyyy}`;
+  }
+  return s;
+}
+
+function normalizeISODate(dateStr) {
+  if (!dateStr) return '';
+  const s = String(dateStr).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m1 = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (m1) return `${m1[3]}-${m1[2]}-${m1[1]}`;
+  const m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})[T\s]/);
+  if (m2) return `${m2[1]}-${m2[2]}-${m2[3]}`;
+  const dt = new Date(s);
+  if (!isNaN(dt.getTime())) return dt.toISOString().slice(0, 10);
+  return '';
 }
 
 function Incomes({ token }) {
@@ -109,7 +132,7 @@ function Incomes({ token }) {
     setLoading(false);
   };
 
-  const handleEdit = inc => { setEditingId(inc.id); setEditForm(inc); };
+  const handleEdit = inc => { setEditingId(inc.id); setEditForm({ ...inc, date: normalizeISODate(inc.date) }); };
 
   const handleEditChange = e => {
     const { name, value, type, checked } = e.target;
@@ -218,7 +241,7 @@ function Incomes({ token }) {
                       </td>
                       <td style={{ textAlign: 'left' }}><Input name="description" value={editForm.description} onChange={handleEditChange} /></td>
                       <td style={{ textAlign: 'left' }}><Input name="value" value={editForm.value} onChange={handleEditChange} /></td>
-                      <td style={{ textAlign: 'left' }}><Input name="date" value={formatDateBR(editForm.date)} onChange={handleEditChange} /></td>
+                      <td style={{ textAlign: 'left' }}><Input name="date" type="date" value={editForm.date ? String(editForm.date).slice(0,10) : ''} onChange={handleEditChange} /></td>
                       <td style={{ textAlign: 'left' }}><Input name="category" value={editForm.category} onChange={handleEditChange} /></td>
                       <td style={{ textAlign: 'left' }}><input name="is_recurring" type="checkbox" checked={!!editForm.is_recurring} onChange={e => setEditForm({ ...editForm, is_recurring: e.target.checked })} /></td>
                       <td style={{ textAlign: 'left' }}>

@@ -58,8 +58,7 @@ function Expenses({ token }) {
 
   const fetchExpenses = async () => {
     setLoading(true);
-    // Removido filtro type=conta para mostrar todas as despesas
-    const res = await fetch(`${API_URL}`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${API_URL}?type=conta`, { headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
     setExpenses(data);
     setLoading(false);
@@ -283,7 +282,7 @@ function Expenses({ token }) {
     const params = new URLSearchParams();
     if (filters.start) params.append('start', filters.start);
     if (filters.end) params.append('end', filters.end);
-    // Removido filtro forçado type=conta para mostrar todas as despesas
+    params.append('type', 'conta');
     if (filters.account_id) params.append('account_id', filters.account_id);
     if (filters.category) params.append('category', filters.category);
     if (filters.status) params.append('status', filters.status);
