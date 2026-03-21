@@ -58,7 +58,7 @@ exports.create = async (req, res) => {
       if (!card) {
         throw new Error('Cartão não encontrado.');
       }
-      // Determinar due_date a partir de purchase_date e regras de fechamento/vencimento
+      // Para cartão, tratar due_date como data da compra (retrocompatível com o front atual)
       const parsePurchase = () => {
         if (purchase_date && isDateOnly(purchase_date)) return toLocalDate(purchase_date);
         if (purchase_date) {
@@ -74,37 +74,13 @@ exports.create = async (req, res) => {
         throw new Error('purchase_date ou due_date ausente para despesa de cartão.');
       };
       const purchase = parsePurchase();
-      const getBillPeriodForMonth = (closingDay, dueDay, year, monthZeroBased) => {
-        const vencimento = new Date(year, monthZeroBased, dueDay);
-        const start = new Date(year, monthZeroBased - 1, closingDay); start.setHours(0,0,0,0);
-        const end = new Date(year, monthZeroBased, Math.max(closingDay - 1, 1)); end.setHours(23,59,59,999);
-        return { start, end, vencimento };
-      };
-      const findDueDate = () => {
-        const y = purchase.getFullYear();
-        const m = purchase.getMonth();
-        for (let delta = -1; delta <= 3; delta++) {
-          const period = getBillPeriodForMonth(card.closing_day, card.due_day, y, m + delta);
-          if (purchase >= period.start && purchase <= period.end) {
-            const yy = period.vencimento.getFullYear();
-            const mm = String(period.vencimento.getMonth() + 1).padStart(2, '0');
-            const dd = String(period.vencimento.getDate()).padStart(2, '0');
-            return `${yy}-${mm}-${dd}`;
-          }
-        }
-        const fallback = getBillPeriodForMonth(card.closing_day, card.due_day, y, m + 1);
-        const yy = fallback.vencimento.getFullYear();
-        const mm = String(fallback.vencimento.getMonth() + 1).padStart(2, '0');
-        const dd = String(fallback.vencimento.getDate()).padStart(2, '0');
-        return `${yy}-${mm}-${dd}`;
-      };
-      const computedDueDate = findDueDate();
+      const pad2 = (n) => String(n).padStart(2, '0');
+      const formatDateOnlyLocal = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
       const totalParcelas = installment_type === 'parcelado' ? Number(installment_total) : 1;
       const valorParcela = Number(value) / totalParcelas;
       const despesas = [];
       for (let i = 1; i <= totalParcelas; i++) {
-        const base = isDateOnly(computedDueDate) ? toLocalDate(computedDueDate) : new Date(computedDueDate);
-        const dataParcela = new Date(base);
+        const dataParcela = new Date(purchase);
         dataParcela.setMonth(dataParcela.getMonth() + (i - 1));
         const safeStatus = typeof status !== 'undefined' && status !== null ? status : 'pendente';
         let safePaidAt = typeof paid_at !== 'undefined' ? paid_at : null;
@@ -120,7 +96,7 @@ exports.create = async (req, res) => {
           credit_card_id,
           description: `${description}${totalParcelas > 1 ? ` (${i}/${totalParcelas})` : ''}`,
           value: valorParcela,
-          due_date: dataParcela,
+          due_date: formatDateOnlyLocal(dataParcela),
           category,
           status: safeStatus,
           is_recurring: !!is_recurring,
