@@ -41,6 +41,11 @@ CreditCard.hasMany(Budget, { foreignKey: 'credit_card_id', as: 'budgets' });
 Budget.belongsTo(CreditCard, { foreignKey: 'credit_card_id', as: 'credit_card', required: false });
 
 const syncDb = async () => {
+  const dialect = sequelize.getDialect();
+  if (dialect === 'sqlite') {
+    await sequelize.sync({ alter: true });
+    return;
+  }
   await sequelize.sync();
 };
 

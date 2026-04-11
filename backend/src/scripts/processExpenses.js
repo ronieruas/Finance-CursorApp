@@ -2,7 +2,7 @@ const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const { Expense, Account, sequelize } = require('../models');
 const { Op } = require('sequelize');
-const dayjs = require('dayjs');
+const { generateNextRecurringExpenses } = require('../services/recurringExpenses');
 
 async function processExpenses() {
   try {
@@ -54,61 +54,8 @@ async function processExpenses() {
       }
     }
 
-    // 2. Processar despesas recorrentes
-    const recurringExpenses = await Expense.findAll({
-      where: {
-        is_recurring: true,
-        status: 'paga',
-        account_id: {
-          [Op.ne]: null
-        }
-      }
-    });
-
-    console.log(`Encontradas ${recurringExpenses.length} despesas recorrentes para verificar`);
-
-    for (const expense of recurringExpenses) {
-      try {
-        const lastDueDate = dayjs(expense.due_date);
-        const nextDueDate = lastDueDate.add(1, 'month');
-        
-        // Verificar se já existe uma despesa para o próximo mês
-        const existingExpense = await Expense.findOne({
-          where: {
-            user_id: expense.user_id,
-            account_id: expense.account_id,
-            description: expense.description,
-            due_date: {
-              [Op.between]: [
-                nextDueDate.startOf('month').toDate(),
-                nextDueDate.endOf('month').toDate()
-              ]
-            }
-          }
-        });
-
-        if (!existingExpense) {
-          // Criar nova despesa para o próximo mês
-          const newExpense = await Expense.create({
-            user_id: expense.user_id,
-            account_id: expense.account_id,
-            description: expense.description,
-            value: expense.value,
-            due_date: nextDueDate.toDate(),
-            category: expense.category,
-            status: 'pendente',
-            is_recurring: true,
-            auto_debit: expense.auto_debit,
-            installment_number: expense.installment_number,
-            installment_total: expense.installment_total
-          });
-
-          console.log(`Nova despesa recorrente criada: ${newExpense.id} - ${newExpense.description} - Vencimento: ${nextDueDate.format('DD/MM/YYYY')}`);
-        }
-      } catch (err) {
-        console.error(`Erro ao processar despesa recorrente ${expense.id}:`, err.message);
-      }
-    }
+    const recurringResult = await generateNextRecurringExpenses({ Expense });
+    console.log(`Despesas recorrentes geradas: ${recurringResult.created}`);
 
 
     // 3. Processar despesas com débito automático

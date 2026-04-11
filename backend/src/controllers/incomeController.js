@@ -1,5 +1,15 @@
 const { Income } = require('../models');
 const Account = require('../models/account');
+const dayjs = require('dayjs');
+const {
+  deleteRecurringIncomeOccurrenceOnly,
+  deleteRecurringIncomeSeries,
+  ensureRecurringIncomesThrough,
+  normalizeFrequency,
+  normalizeInterval,
+  stopRecurringIncomeSeriesFrom,
+  toISODateOnly
+} = require('../services/recurringIncomes');
 
 // Helper: retorna true se a data (DATEONLY ou Date) for hoje ou passada
 function isEffective(dateInput) {
@@ -26,6 +36,12 @@ exports.list = async (req, res) => {
   const where = { user_id: req.user.id };
   const { Op } = require('sequelize');
   if (start && end) {
+    const endIso = toISODateOnly(end);
+    if (endIso) {
+      try {
+        await ensureRecurringIncomesThrough({ userId: req.user.id, throughDate: endIso, Income });
+      } catch {}
+    }
     where.date = { [Op.gte]: start, [Op.lte]: end };
   }
   const incomes = await Income.findAll({ where });
@@ -34,8 +50,12 @@ exports.list = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { account_id, description, value, date, category, is_recurring } = req.body;
+    const { account_id, description, value, date, category, is_recurring, recurrence_frequency, recurrence_interval, recurrence_until } = req.body;
     const willBeApplied = isEffective(date);
+    const recurring = !!is_recurring;
+    const frequency = recurring ? (normalizeFrequency(recurrence_frequency) || 'monthly') : null;
+    const interval = recurring ? normalizeInterval(recurrence_interval) : null;
+    const until = recurring ? toISODateOnly(recurrence_until) : null;
     const income = await Income.create({
       user_id: req.user.id,
       account_id,
@@ -43,9 +63,20 @@ exports.create = async (req, res) => {
       value,
       date,
       category,
-      is_recurring: !!is_recurring,
+      is_recurring: recurring,
+      recurrence_frequency: frequency,
+      recurrence_interval: interval,
+      recurrence_until: until,
+      recurrence_exceptions: null,
       posted: willBeApplied,
     });
+    if (recurring) {
+      try {
+        await income.update({ recurrence_id: income.id });
+        const horizon = dayjs().add(1, 'month').endOf('month').format('YYYY-MM-DD');
+        await ensureRecurringIncomesThrough({ userId: req.user.id, throughDate: horizon, Income });
+      } catch {}
+    }
     // Atualiza saldo da conta somente se a data for hoje ou passada (posted=true)
     if (account_id && willBeApplied) {
       const account = await Account.findOne({ where: { id: account_id, user_id: req.user.id } });
@@ -62,7 +93,7 @@ exports.create = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
-    const { description, value, date, category, is_recurring, account_id } = req.body;
+    const { description, value, date, category, is_recurring, account_id, recurrence_frequency, recurrence_interval, recurrence_until } = req.body;
     const income = await Income.findOne({ where: { id: req.params.id, user_id: req.user.id } });
     if (!income) return res.status(404).json({ error: 'Receita não encontrada' });
 
@@ -121,7 +152,35 @@ exports.update = async (req, res) => {
       }
     }
 
-    await income.update({ description, value, date, category, is_recurring, account_id: newAccountId, posted: willBeApplied });
+    const recurring = is_recurring !== undefined ? !!is_recurring : !!income.is_recurring;
+    const frequency = recurring ? (normalizeFrequency(recurrence_frequency !== undefined ? recurrence_frequency : income.recurrence_frequency) || 'monthly') : null;
+    const interval = recurring ? normalizeInterval(recurrence_interval !== undefined ? recurrence_interval : income.recurrence_interval) : null;
+    const until = recurring ? toISODateOnly(recurrence_until !== undefined ? recurrence_until : income.recurrence_until) : null;
+
+    await income.update({
+      description,
+      value,
+      date,
+      category,
+      is_recurring: recurring,
+      recurrence_frequency: frequency,
+      recurrence_interval: interval,
+      recurrence_until: until,
+      recurrence_exceptions: recurring ? income.recurrence_exceptions : null,
+      account_id: newAccountId,
+      posted: willBeApplied,
+      ...(recurring ? {} : { recurrence_id: null }),
+    });
+
+    if (recurring) {
+      try {
+        if (!income.recurrence_id) {
+          await income.update({ recurrence_id: income.id });
+        }
+        const horizon = dayjs().add(1, 'month').endOf('month').format('YYYY-MM-DD');
+        await ensureRecurringIncomesThrough({ userId: req.user.id, throughDate: horizon, Income });
+      } catch {}
+    }
     res.json(income);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -131,6 +190,18 @@ exports.update = async (req, res) => {
 exports.remove = async (req, res) => {
   const income = await Income.findOne({ where: { id: req.params.id, user_id: req.user.id } });
   if (!income) return res.status(404).json({ error: 'Receita não encontrada' });
+
+  if (income.is_recurring) {
+    const deleteMode = String(req.query.deleteMode || req.query.mode || 'future').toLowerCase();
+    if (deleteMode === 'single') {
+      await deleteRecurringIncomeOccurrenceOnly({ income, Income, Account });
+    } else if (deleteMode === 'all') {
+      await deleteRecurringIncomeSeries({ income, Income, Account });
+    } else {
+      await stopRecurringIncomeSeriesFrom({ income, Income, Account });
+    }
+    return res.json({ success: true });
+  }
 
   // Se a receita já estava aplicada (posted=true OU, fallback, data hoje/passada), reverter do saldo
   const applied = (income.posted !== undefined) ? !!income.posted : isEffective(income.date);

@@ -3,6 +3,7 @@ import '../styles/global.css';
 import { motion } from 'framer-motion';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import Modal from '../components/Modal';
 import Toast from '../components/Toast';
 import useApiBase from '../hooks/useApiBase';
 
@@ -45,6 +46,7 @@ function Incomes({ token }) {
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, income: null });
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   // Token e base dinâmica da API
   const authToken = token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
@@ -112,11 +114,11 @@ function Incomes({ token }) {
     setLoading(false);
   };
 
-  const handleDelete = async id => {
-    if (!window.confirm('Deseja realmente excluir esta receita?')) return;
+  const handleDelete = async (id, deleteMode = 'future', skipConfirm = false) => {
+    if (!skipConfirm && !window.confirm('Deseja realmente excluir esta receita?')) return;
     setLoading(true);
     try {
-      const res = await fetch(`${apiBase}/incomes/${id}`, {
+      const res = await fetch(`${apiBase}/incomes/${id}?deleteMode=${encodeURIComponent(deleteMode)}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${authToken}` },
       });
@@ -130,6 +132,21 @@ function Incomes({ token }) {
       setToast({ show: true, message: 'Erro ao excluir receita.', type: 'error' });
     }
     setLoading(false);
+  };
+
+  const requestDelete = income => {
+    if (income?.is_recurring) {
+      setDeleteDialog({ open: true, income });
+      return;
+    }
+    handleDelete(income.id, 'single');
+  };
+
+  const confirmDeleteMode = async deleteMode => {
+    const income = deleteDialog.income;
+    setDeleteDialog({ open: false, income: null });
+    if (!income) return;
+    await handleDelete(income.id, deleteMode, true);
   };
 
   const handleEdit = inc => { setEditingId(inc.id); setEditForm({ ...inc, date: normalizeISODate(inc.date) }); };
@@ -259,7 +276,7 @@ function Incomes({ token }) {
                       <td style={{ textAlign: 'left' }}>{inc.is_recurring ? 'Sim' : 'Não'}</td>
                       <td style={{ textAlign: 'left' }}>
                         <Button variant="secondary" onClick={() => handleEdit(inc)}>Editar</Button>
-                        <Button variant="danger" onClick={() => handleDelete(inc.id)}>Excluir</Button>
+                        <Button variant="danger" onClick={() => requestDelete(inc)}>Excluir</Button>
                       </td>
                     </>
                   )}
@@ -269,6 +286,19 @@ function Incomes({ token }) {
           </table>
         </motion.div>
       )}
+      <Modal open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, income: null })} title="Excluir receita recorrente" width={520}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            {deleteDialog.income ? `Escolha como excluir "${deleteDialog.income.description}" de ${formatDateBR(deleteDialog.income.date)}.` : ''}
+          </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <Button variant="danger" onClick={() => confirmDeleteMode('single')}>Só esta</Button>
+            <Button variant="danger" onClick={() => confirmDeleteMode('future')}>Esta e próximas</Button>
+            <Button variant="danger" onClick={() => confirmDeleteMode('all')}>Toda a série</Button>
+            <Button variant="secondary" onClick={() => setDeleteDialog({ open: false, income: null })}>Cancelar</Button>
+          </div>
+        </div>
+      </Modal>
       <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
     </div>
   );

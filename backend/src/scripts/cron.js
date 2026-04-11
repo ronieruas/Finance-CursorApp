@@ -1,5 +1,6 @@
 const cron = require('node-cron');
 const { processExpenses } = require('./processExpenses');
+const { processIncomes } = require('./processIncomes');
 const { Income, Account, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
@@ -8,6 +9,7 @@ cron.schedule('1 */3 * * *', async () => {
   console.log('Executando processamento automático de despesas (a cada 3 horas)...');
   try {
     await processExpenses();
+    await processIncomes({ horizonMonths: 1 });
     console.log('Processamento automático concluído com sucesso!');
   } catch (err) {
     console.error('Erro no processamento automático:', err);
@@ -50,6 +52,19 @@ cron.schedule('10 2 * * *', async () => {
     console.log('[CRON] Aplicação de receitas concluída.');
   } catch (err) {
     console.error('[CRON] Erro ao aplicar receitas agendadas:', err);
+  }
+}, {
+  scheduled: true,
+  timezone: 'America/Sao_Paulo'
+});
+
+cron.schedule('20 2 * * *', async () => {
+  console.log('[CRON] Gerando receitas recorrentes futuras (diariamente às 02:20)...');
+  try {
+    const r = await processIncomes({ horizonMonths: 1 });
+    console.log(`[CRON] Receitas recorrentes geradas: ${r.created} (horizon=${r.horizon})`);
+  } catch (err) {
+    console.error('[CRON] Erro ao gerar receitas recorrentes futuras:', err);
   }
 }, {
   scheduled: true,

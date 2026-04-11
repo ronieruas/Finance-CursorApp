@@ -1,4 +1,9 @@
 const { sequelize, Expense, CreditCard, Account } = require('../models');
+const {
+  deleteRecurringExpenseOccurrenceOnly,
+  deleteRecurringExpenseSeries,
+  stopRecurringExpenseSeriesFrom
+} = require('../services/recurringExpenses');
 
 // Utilidades para tratar datas "date-only" vindas do front (YYYY-MM-DD)
 const isDateOnly = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -105,6 +110,9 @@ exports.create = async (req, res) => {
           installment_number: i,
           installment_total: totalParcelas
         }, { transaction: t });
+        if (expense.is_recurring && !expense.recurrence_id) {
+          await expense.update({ recurrence_id: expense.id }, { transaction: t });
+        }
         despesas.push(expense);
       }
       if (card) {
@@ -130,9 +138,13 @@ exports.create = async (req, res) => {
         category,
         status,
         is_recurring: !!is_recurring,
+        recurrence_exceptions: null,
         auto_debit: !!auto_debit,
         paid_at: normalizedPaidAt
       }, { transaction: t });
+      if (expense.is_recurring && !expense.recurrence_id) {
+        await expense.update({ recurrence_id: expense.id }, { transaction: t });
+      }
       if (account_id && status === 'paga') {
         const account = await Account.findOne({ where: { id: account_id, user_id: req.user.id }, transaction: t, lock: t.LOCK.UPDATE });
         if (account) {
@@ -250,7 +262,20 @@ exports.update = async (req, res) => {
     console.log('Data de pagamento formatada:', normalizedPaidAt);
     console.log('Data formatada ISO:', normalizedPaidAt ? normalizedPaidAt.toISOString() : null);
     
-    await expense.update({ account_id, description, value: newValue, due_date, category, status: newStatus, is_recurring, auto_debit, paid_at: normalizedPaidAt });
+    await expense.update({
+      account_id,
+      description,
+      value: newValue,
+      due_date,
+      category,
+      status: newStatus,
+      is_recurring,
+      recurrence_id: (is_recurring ?? expense.is_recurring) ? (expense.recurrence_id || expense.id) : null,
+      recurrence_until: (is_recurring ?? expense.is_recurring) ? expense.recurrence_until : null,
+      recurrence_exceptions: (is_recurring ?? expense.is_recurring) ? expense.recurrence_exceptions : null,
+      auto_debit,
+      paid_at: normalizedPaidAt
+    });
     res.json(expense);
   } catch (err) {
     console.error('Erro ao editar despesa:', err);
@@ -261,6 +286,18 @@ exports.update = async (req, res) => {
 exports.remove = async (req, res) => {
   const expense = await Expense.findOne({ where: { id: req.params.id, user_id: req.user.id } });
   if (!expense) return res.status(404).json({ error: 'Despesa não encontrada' });
+
+  if (expense.is_recurring) {
+    const deleteMode = String(req.query.deleteMode || req.query.mode || 'future').toLowerCase();
+    if (deleteMode === 'single') {
+      await deleteRecurringExpenseOccurrenceOnly({ expense, Expense, Account, CreditCard });
+    } else if (deleteMode === 'all') {
+      await deleteRecurringExpenseSeries({ expense, Expense, Account, CreditCard });
+    } else {
+      await stopRecurringExpenseSeriesFrom({ expense, Expense, Account, CreditCard });
+    }
+    return res.json({ success: true });
+  }
 
   // Se for despesa de conta paga, estorna o valor para a conta
   if (expense.account_id && expense.status === 'paga') {

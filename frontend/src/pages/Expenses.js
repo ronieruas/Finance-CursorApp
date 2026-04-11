@@ -3,6 +3,7 @@ import '../styles/global.css';
 import { motion } from 'framer-motion';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import Modal from '../components/Modal';
 import Toast from '../components/Toast';
 import dayjs from 'dayjs';
 import useApiBase from '../hooks/useApiBase';
@@ -33,6 +34,7 @@ function Expenses({ token }) {
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, expense: null });
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [filters, setFilters] = useState(() => {
     const today = new Date();
@@ -146,11 +148,11 @@ function Expenses({ token }) {
     setLoading(false);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Deseja realmente excluir esta despesa?')) return;
+  const handleDelete = async (id, deleteMode = 'future', skipConfirm = false) => {
+    if (!skipConfirm && !window.confirm('Deseja realmente excluir esta despesa?')) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/${id}`, {
+      const res = await fetch(`${API_URL}/${id}?deleteMode=${encodeURIComponent(deleteMode)}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -164,6 +166,21 @@ function Expenses({ token }) {
       setToast({ show: true, message: 'Erro ao excluir despesa.', type: 'error' });
     }
     setLoading(false);
+  };
+
+  const requestDelete = expense => {
+    if (expense?.is_recurring) {
+      setDeleteDialog({ open: true, expense });
+      return;
+    }
+    handleDelete(expense.id, 'single');
+  };
+
+  const confirmDeleteMode = async deleteMode => {
+    const expense = deleteDialog.expense;
+    setDeleteDialog({ open: false, expense: null });
+    if (!expense) return;
+    await handleDelete(expense.id, deleteMode, true);
   };
 
   const handleTestProcess = async () => {
@@ -457,7 +474,7 @@ function Expenses({ token }) {
                       <td style={{ textAlign: 'left' }}>{exp.paid_at ? dayjs(exp.paid_at).format('DD/MM/YYYY') : '-'}</td>
                       <td style={{ textAlign: 'left' }}>
                         <Button variant="secondary" onClick={() => handleEdit(exp)}>Editar</Button>
-                        <Button variant="danger" onClick={() => handleDelete(exp.id)}>Excluir</Button>
+                        <Button variant="danger" onClick={() => requestDelete(exp)}>Excluir</Button>
                       </td>
                     </>
                   )}
@@ -467,6 +484,19 @@ function Expenses({ token }) {
           </table>
         </motion.div>
       )}
+      <Modal open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, expense: null })} title="Excluir despesa recorrente" width={520}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            {deleteDialog.expense ? `Escolha como excluir "${deleteDialog.expense.description}" de ${deleteDialog.expense.due_date ? dayjs(deleteDialog.expense.due_date).format('DD/MM/YYYY') : ''}.` : ''}
+          </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <Button variant="danger" onClick={() => confirmDeleteMode('single')}>Só esta</Button>
+            <Button variant="danger" onClick={() => confirmDeleteMode('future')}>Esta e próximas</Button>
+            <Button variant="danger" onClick={() => confirmDeleteMode('all')}>Toda a série</Button>
+            <Button variant="secondary" onClick={() => setDeleteDialog({ open: false, expense: null })}>Cancelar</Button>
+          </div>
+        </div>
+      </Modal>
       <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
     </div>
   );
