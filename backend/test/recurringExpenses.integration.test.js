@@ -5,6 +5,7 @@ const { Sequelize, DataTypes, Model } = require('sequelize');
 const {
   deleteRecurringExpenseOccurrenceOnly,
   deleteRecurringExpenseSeries,
+  ensureRecurringExpensesThrough,
   generateNextRecurringExpenses,
   stopRecurringExpenseSeriesFrom
 } = require('../src/services/recurringExpenses');
@@ -26,6 +27,8 @@ function defineExpense(sequelize) {
       status: { type: DataTypes.STRING, allowNull: false, defaultValue: 'pendente' },
       is_recurring: { type: DataTypes.BOOLEAN, defaultValue: false },
       recurrence_id: { type: DataTypes.INTEGER, allowNull: true },
+      recurrence_frequency: { type: DataTypes.STRING, allowNull: true },
+      recurrence_interval: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 1 },
       recurrence_until: { type: DataTypes.DATEONLY, allowNull: true },
       recurrence_exceptions: { type: DataTypes.TEXT, allowNull: true },
       auto_debit: { type: DataTypes.BOOLEAN, defaultValue: false },
@@ -66,16 +69,87 @@ test('generateNextRecurringExpenses cria a próxima despesa recorrente mensal um
     status: 'paga',
     is_recurring: true,
     recurrence_id: 1,
+    recurrence_frequency: 'monthly',
+    recurrence_interval: 1,
   });
 
-  const firstRun = await generateNextRecurringExpenses({ Expense });
-  const secondRun = await generateNextRecurringExpenses({ Expense });
+  const now = new Date('2026-01-02T12:00:00Z');
+  const firstRun = await generateNextRecurringExpenses({ Expense, now, horizonMonths: 1 });
+  const secondRun = await generateNextRecurringExpenses({ Expense, now, horizonMonths: 1 });
 
   assert.equal(firstRun.created, 1);
   assert.equal(secondRun.created, 0);
 
   const rows = await Expense.findAll({ where: { user_id: 1 }, order: [['due_date', 'ASC']] });
   assert.deepEqual(rows.map((x) => x.due_date), ['2026-01-10', '2026-02-10']);
+
+  await sequelize.close();
+});
+
+test('ensureRecurringExpensesThrough gera despesas recorrentes para meses subsequentes mesmo se a última estiver pendente', async () => {
+  const sequelize = new Sequelize({ dialect: 'sqlite', storage: ':memory:', logging: false });
+  const Expense = defineExpense(sequelize);
+  defineAccount(sequelize);
+  await sequelize.sync({ force: true });
+
+  await Expense.create({
+    user_id: 10,
+    account_id: 100,
+    description: 'Internet',
+    value: 120,
+    due_date: '2026-01-20',
+    category: 'Casa',
+    status: 'pendente',
+    is_recurring: true,
+    recurrence_id: 1,
+    recurrence_frequency: 'monthly',
+    recurrence_interval: 1,
+  });
+
+  const r = await ensureRecurringExpensesThrough({
+    userId: 10,
+    throughDate: '2026-03-31',
+    Expense,
+    now: new Date('2026-01-05T00:00:00Z'),
+  });
+  assert.equal(r.created, 2);
+
+  const rows = await Expense.findAll({ where: { user_id: 10 }, order: [['due_date', 'ASC']] });
+  assert.deepEqual(rows.map((x) => x.due_date), ['2026-01-20', '2026-02-20', '2026-03-20']);
+
+  await sequelize.close();
+});
+
+test('ensureRecurringExpensesThrough suporta recorrência semanal', async () => {
+  const sequelize = new Sequelize({ dialect: 'sqlite', storage: ':memory:', logging: false });
+  const Expense = defineExpense(sequelize);
+  defineAccount(sequelize);
+  await sequelize.sync({ force: true });
+
+  await Expense.create({
+    user_id: 11,
+    account_id: 110,
+    description: 'Semanal',
+    value: 10,
+    due_date: '2026-01-01',
+    category: 'Outros',
+    status: 'pendente',
+    is_recurring: true,
+    recurrence_id: 1,
+    recurrence_frequency: 'weekly',
+    recurrence_interval: 1,
+  });
+
+  const r = await ensureRecurringExpensesThrough({
+    userId: 11,
+    throughDate: '2026-01-31',
+    Expense,
+    now: new Date('2026-01-02T00:00:00Z'),
+  });
+  assert.equal(r.created, 4);
+
+  const rows = await Expense.findAll({ where: { user_id: 11 }, order: [['due_date', 'ASC']] });
+  assert.deepEqual(rows.map((x) => x.due_date), ['2026-01-01', '2026-01-08', '2026-01-15', '2026-01-22', '2026-01-29']);
 
   await sequelize.close();
 });
@@ -125,7 +199,7 @@ test('stopRecurringExpenseSeriesFrom remove a ocorrência selecionada e impede r
   const afterDelete = await Expense.findAll({ where: { user_id: 2 }, order: [['due_date', 'ASC']] });
   assert.deepEqual(afterDelete.map((x) => x.due_date), ['2026-01-15']);
 
-  const generateAgain = await generateNextRecurringExpenses({ Expense });
+  const generateAgain = await generateNextRecurringExpenses({ Expense, now: new Date('2026-02-01T12:00:00Z'), horizonMonths: 1 });
   assert.equal(generateAgain.created, 0);
 
   const finalRows = await Expense.findAll({ where: { user_id: 2 }, order: [['due_date', 'ASC']] });
@@ -173,7 +247,7 @@ test('deleteRecurringExpenseOccurrenceOnly remove só a despesa selecionada e ma
   const result = await deleteRecurringExpenseOccurrenceOnly({ expense: febExpense, Expense, Account });
   assert.equal(result.deleted, 1);
 
-  const generateAgain = await generateNextRecurringExpenses({ Expense });
+  const generateAgain = await generateNextRecurringExpenses({ Expense, now: new Date('2026-02-01T12:00:00Z'), horizonMonths: 1 });
   assert.equal(generateAgain.created, 1);
 
   const finalRows = await Expense.findAll({ where: { user_id: 3 }, order: [['due_date', 'ASC']] });

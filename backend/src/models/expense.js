@@ -18,6 +18,8 @@ Expense.init(
     status: { type: DataTypes.ENUM('paga', 'pendente', 'atrasada'), defaultValue: 'pendente' },
     is_recurring: { type: DataTypes.BOOLEAN, defaultValue: false },
     recurrence_id: { type: DataTypes.INTEGER, allowNull: true },
+    recurrence_frequency: { type: DataTypes.STRING, allowNull: true },
+    recurrence_interval: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 1 },
     recurrence_until: { type: DataTypes.DATEONLY, allowNull: true },
     recurrence_exceptions: { type: DataTypes.TEXT, allowNull: true },
     auto_debit: { type: DataTypes.BOOLEAN, defaultValue: false },

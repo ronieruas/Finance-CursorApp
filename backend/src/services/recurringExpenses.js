@@ -1,5 +1,6 @@
 const dayjs = require('dayjs');
 const { Op } = require('sequelize');
+const { nextOccurrenceAfter, normalizeFrequency, normalizeInterval, toISODateOnly } = require('./recurringIncomes');
 
 function buildSeriesWhere(expense) {
   const seriesId = expense.recurrence_id || expense.id;
@@ -25,7 +26,7 @@ function parseExceptions(value) {
 }
 
 function serializeExceptions(values) {
-  const unique = [...new Set((values || []).filter(Boolean))].sort();
+  const unique = [...new Set((values || []).map(toISODateOnly).filter(Boolean))].sort();
   return unique.length ? JSON.stringify(unique) : null;
 }
 
@@ -53,9 +54,11 @@ async function deleteRecurringExpenseOccurrenceOnly({ expense, Expense, Account,
   }
 
   const seriesWhere = buildSeriesWhere(expense);
-  const currentExceptions = parseExceptions(expense.recurrence_exceptions);
+  const currentExceptions = parseExceptions(expense.recurrence_exceptions).map(toISODateOnly).filter(Boolean);
   const nextExceptions = serializeExceptions([...currentExceptions, expense.due_date]);
-  const nextDueDateStr = dayjs(expense.due_date).add(1, 'month').format('YYYY-MM-DD');
+  const frequency = normalizeFrequency(expense.recurrence_frequency) || 'monthly';
+  const interval = normalizeInterval(expense.recurrence_interval);
+  const nextDueDateStr = nextOccurrenceAfter(expense.due_date, frequency, interval, expense.due_date);
   const hasOtherOccurrences = await Expense.count({
     where: {
       ...seriesWhere,
@@ -73,7 +76,7 @@ async function deleteRecurringExpenseOccurrenceOnly({ expense, Expense, Account,
 
   if (!hasOtherOccurrences) {
     const until = expense.recurrence_until ? dayjs(expense.recurrence_until) : null;
-    if ((!until || !dayjs(nextDueDateStr).isAfter(until, 'day')) && !currentExceptions.includes(nextDueDateStr)) {
+    if (nextDueDateStr && (!until || !dayjs(nextDueDateStr).isAfter(until, 'day')) && !currentExceptions.includes(nextDueDateStr)) {
       await Expense.create({
         user_id: expense.user_id,
         account_id: expense.account_id,
@@ -85,6 +88,8 @@ async function deleteRecurringExpenseOccurrenceOnly({ expense, Expense, Account,
         status: 'pendente',
         is_recurring: true,
         recurrence_id: expense.recurrence_id || expense.id,
+        recurrence_frequency: frequency,
+        recurrence_interval: interval,
         recurrence_until: expense.recurrence_until,
         recurrence_exceptions: nextExceptions,
         auto_debit: expense.auto_debit,
@@ -165,75 +170,123 @@ async function deleteRecurringExpenseSeries({ expense, Expense, Account, CreditC
   return { deleted: affected.length };
 }
 
-async function generateNextRecurringExpenses({ Expense }) {
-  const recurringExpenses = await Expense.findAll({
+async function ensureRecurringExpensesThrough({ userId, throughDate, Expense, now = new Date() }) {
+  const through = toISODateOnly(throughDate);
+  if (!userId || !through) return { created: 0 };
+
+  const todayStr = dayjs(now).format('YYYY-MM-DD');
+  if (dayjs(through).isBefore(todayStr, 'day')) return { created: 0 };
+
+  const recurring = await Expense.findAll({
     where: {
+      user_id: userId,
       is_recurring: true,
-      status: 'paga',
       account_id: { [Op.ne]: null },
+      credit_card_id: null,
     },
+    order: [
+      ['recurrence_id', 'ASC'],
+      ['due_date', 'DESC'],
+      ['id', 'DESC'],
+    ],
   });
 
+  const latestBySeries = new Map();
+  for (const exp of recurring) {
+    const sid = exp.recurrence_id || exp.id;
+    if (!latestBySeries.has(sid)) {
+      latestBySeries.set(sid, exp);
+    }
+  }
+
   let created = 0;
+  for (const [seriesId, latest] of latestBySeries.entries()) {
+    if (!latest.recurrence_id) {
+      try {
+        await latest.update({ recurrence_id: latest.id });
+      } catch {}
+    }
 
-  for (const expense of recurringExpenses) {
-    const until = expense.recurrence_until ? dayjs(expense.recurrence_until) : null;
-    const exceptions = new Set(parseExceptions(expense.recurrence_exceptions));
-    let candidate = dayjs(expense.due_date).add(1, 'month');
+    const frequency = normalizeFrequency(latest.recurrence_frequency) || 'monthly';
+    const interval = normalizeInterval(latest.recurrence_interval);
+    const untilStr = toISODateOnly(latest.recurrence_until);
+    const until = untilStr ? dayjs(untilStr) : null;
+    const exceptions = new Set(parseExceptions(latest.recurrence_exceptions).map(toISODateOnly).filter(Boolean));
 
-    while (true) {
-      if (until && candidate.isAfter(until, 'day')) {
-        break;
-      }
-
-      const candidateStr = candidate.format('YYYY-MM-DD');
-      if (exceptions.has(candidateStr)) {
-        candidate = candidate.add(1, 'month');
+    let nextStr = nextOccurrenceAfter(latest.due_date, frequency, interval, latest.due_date);
+    while (nextStr && (dayjs(nextStr).isBefore(through, 'day') || dayjs(nextStr).isSame(through, 'day'))) {
+      if (until && dayjs(nextStr).isAfter(until, 'day')) break;
+      if (exceptions.has(nextStr)) {
+        nextStr = dayjs(nextStr).add(interval, { daily: 'day', weekly: 'week', monthly: 'month', yearly: 'year' }[frequency]).format('YYYY-MM-DD');
         continue;
       }
 
-      const existingExpense = await Expense.findOne({
+      const existing = await Expense.findOne({
         where: {
-          ...buildSeriesWhere(expense),
-          due_date: candidateStr,
+          user_id: userId,
+          is_recurring: true,
+          recurrence_id: seriesId,
+          due_date: nextStr,
         },
       });
 
-      if (existingExpense) {
-        break;
+      if (!existing) {
+        const createdExpense = await Expense.create({
+          user_id: userId,
+          account_id: latest.account_id,
+          credit_card_id: latest.credit_card_id,
+          description: latest.description,
+          value: latest.value,
+          due_date: nextStr,
+          category: latest.category,
+          status: 'pendente',
+          is_recurring: true,
+          recurrence_id: seriesId,
+          recurrence_frequency: frequency,
+          recurrence_interval: interval,
+          recurrence_until: untilStr,
+          recurrence_exceptions: latest.recurrence_exceptions,
+          auto_debit: latest.auto_debit,
+          installment_number: latest.installment_number,
+          installment_total: latest.installment_total,
+          paid_at: null,
+        });
+        if (!createdExpense.recurrence_id) {
+          await createdExpense.update({ recurrence_id: createdExpense.id });
+        }
+        created += 1;
       }
 
-      const createdExpense = await Expense.create({
-        user_id: expense.user_id,
-        account_id: expense.account_id,
-        credit_card_id: expense.credit_card_id,
-        description: expense.description,
-        value: expense.value,
-        due_date: candidateStr,
-        category: expense.category,
-        status: 'pendente',
-        is_recurring: true,
-        recurrence_id: expense.recurrence_id || expense.id,
-        recurrence_until: expense.recurrence_until,
-        recurrence_exceptions: expense.recurrence_exceptions,
-        auto_debit: expense.auto_debit,
-        installment_number: expense.installment_number,
-        installment_total: expense.installment_total,
-      });
-      if (!createdExpense.recurrence_id) {
-        await createdExpense.update({ recurrence_id: createdExpense.id });
-      }
-      created += 1;
-      break;
+      nextStr = dayjs(nextStr).add(interval, { daily: 'day', weekly: 'week', monthly: 'month', yearly: 'year' }[frequency]).format('YYYY-MM-DD');
     }
   }
 
   return { created };
 }
 
+async function generateNextRecurringExpenses({ Expense, now = new Date(), horizonMonths = 1 }) {
+  const horizon = dayjs(now).add(horizonMonths, 'month').endOf('month').format('YYYY-MM-DD');
+  const users = await Expense.findAll({
+    where: { is_recurring: true, account_id: { [Op.ne]: null }, credit_card_id: null },
+    attributes: ['user_id'],
+    group: ['user_id'],
+  });
+
+  let created = 0;
+  for (const u of users) {
+    const userId = u.user_id;
+    if (!userId) continue;
+    const r = await ensureRecurringExpensesThrough({ userId, throughDate: horizon, Expense, now });
+    created += r.created || 0;
+  }
+
+  return { created, horizon };
+}
+
 module.exports = {
   deleteRecurringExpenseOccurrenceOnly,
   deleteRecurringExpenseSeries,
+  ensureRecurringExpensesThrough,
   generateNextRecurringExpenses,
   stopRecurringExpenseSeriesFrom,
 };

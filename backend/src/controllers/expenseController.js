@@ -2,8 +2,10 @@ const { sequelize, Expense, CreditCard, Account } = require('../models');
 const {
   deleteRecurringExpenseOccurrenceOnly,
   deleteRecurringExpenseSeries,
+  ensureRecurringExpensesThrough,
   stopRecurringExpenseSeriesFrom
 } = require('../services/recurringExpenses');
+const { normalizeFrequency, normalizeInterval, toISODateOnly } = require('../services/recurringIncomes');
 
 // Utilidades para tratar datas "date-only" vindas do front (YYYY-MM-DD)
 const isDateOnly = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -17,6 +19,9 @@ exports.list = async (req, res) => {
   const where = { user_id: req.user.id };
   const { Op } = require('sequelize');
   if (start && end) {
+    try {
+      await ensureRecurringExpensesThrough({ userId: req.user.id, throughDate: end, Expense });
+    } catch {}
     where.due_date = { [Op.between]: [start, end] };
   }
   if (type === 'conta') {
@@ -49,7 +54,25 @@ exports.create = async (req, res) => {
       return res.status(401).json({ error: 'Não autorizado.' });
     }
     await sequelize.authenticate();
-    const { type, account_id, credit_card_id, description, value, due_date, purchase_date, category, status, is_recurring, auto_debit, paid_at, installment_type, installment_total } = req.body;
+    const {
+      type,
+      account_id,
+      credit_card_id,
+      description,
+      value,
+      due_date,
+      purchase_date,
+      category,
+      status,
+      is_recurring,
+      recurrence_frequency,
+      recurrence_interval,
+      recurrence_until,
+      auto_debit,
+      paid_at,
+      installment_type,
+      installment_total
+    } = req.body;
     // Para despesas de cartão, o due_date pode ser calculado no backend a partir de purchase_date
     if (type !== 'cartao') {
       if (!due_date || isNaN(new Date(due_date).getTime())) {
@@ -58,6 +81,10 @@ exports.create = async (req, res) => {
     }
     t = await sequelize.transaction();
     let result;
+    const recurring = !!is_recurring;
+    const frequency = recurring ? (normalizeFrequency(recurrence_frequency) || 'monthly') : null;
+    const interval = recurring ? normalizeInterval(recurrence_interval) : null;
+    const until = recurring ? toISODateOnly(recurrence_until) : null;
     if (type === 'cartao') {
       const card = await CreditCard.findOne({ where: { id: credit_card_id, user_id: req.user.id }, transaction: t, lock: t.LOCK.UPDATE });
       if (!card) {
@@ -104,7 +131,10 @@ exports.create = async (req, res) => {
           due_date: formatDateOnlyLocal(dataParcela),
           category,
           status: safeStatus,
-          is_recurring: !!is_recurring,
+          is_recurring: recurring,
+          recurrence_frequency: frequency,
+          recurrence_interval: interval,
+          recurrence_until: until,
           auto_debit: !!auto_debit,
           paid_at: safePaidAt,
           installment_number: i,
@@ -137,7 +167,10 @@ exports.create = async (req, res) => {
         due_date,
         category,
         status,
-        is_recurring: !!is_recurring,
+        is_recurring: recurring,
+        recurrence_frequency: frequency,
+        recurrence_interval: interval,
+        recurrence_until: until,
         recurrence_exceptions: null,
         auto_debit: !!auto_debit,
         paid_at: normalizedPaidAt
@@ -168,7 +201,7 @@ exports.create = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
-    const { account_id, description, value, due_date, category, status, is_recurring, auto_debit, paid_at } = req.body;
+    const { account_id, description, value, due_date, category, status, is_recurring, recurrence_frequency, recurrence_interval, recurrence_until, auto_debit, paid_at } = req.body;
     const expense = await Expense.findOne({ where: { id: req.params.id, user_id: req.user.id } });
     if (!expense) return res.status(404).json({ error: 'Despesa não encontrada' });
     
@@ -262,6 +295,11 @@ exports.update = async (req, res) => {
     console.log('Data de pagamento formatada:', normalizedPaidAt);
     console.log('Data formatada ISO:', normalizedPaidAt ? normalizedPaidAt.toISOString() : null);
     
+    const recurring = is_recurring !== undefined ? !!is_recurring : !!expense.is_recurring;
+    const frequency = recurring ? (normalizeFrequency(recurrence_frequency !== undefined ? recurrence_frequency : expense.recurrence_frequency) || 'monthly') : null;
+    const interval = recurring ? normalizeInterval(recurrence_interval !== undefined ? recurrence_interval : expense.recurrence_interval) : null;
+    const until = recurring ? toISODateOnly(recurrence_until !== undefined ? recurrence_until : expense.recurrence_until) : null;
+
     await expense.update({
       account_id,
       description,
@@ -269,10 +307,12 @@ exports.update = async (req, res) => {
       due_date,
       category,
       status: newStatus,
-      is_recurring,
-      recurrence_id: (is_recurring ?? expense.is_recurring) ? (expense.recurrence_id || expense.id) : null,
-      recurrence_until: (is_recurring ?? expense.is_recurring) ? expense.recurrence_until : null,
-      recurrence_exceptions: (is_recurring ?? expense.is_recurring) ? expense.recurrence_exceptions : null,
+      is_recurring: recurring,
+      recurrence_id: recurring ? (expense.recurrence_id || expense.id) : null,
+      recurrence_frequency: frequency,
+      recurrence_interval: interval,
+      recurrence_until: until,
+      recurrence_exceptions: recurring ? expense.recurrence_exceptions : null,
       auto_debit,
       paid_at: normalizedPaidAt
     });
