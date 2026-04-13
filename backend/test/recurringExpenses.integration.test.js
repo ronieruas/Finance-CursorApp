@@ -154,6 +154,57 @@ test('ensureRecurringExpensesThrough suporta recorrência semanal', async () => 
   await sequelize.close();
 });
 
+test('ensureRecurringExpensesThrough não cria duas despesas no mesmo mês quando já existe uma ocorrência com outra data', async () => {
+  const sequelize = new Sequelize({ dialect: 'sqlite', storage: ':memory:', logging: false });
+  const Expense = defineExpense(sequelize);
+  defineAccount(sequelize);
+  await sequelize.sync({ force: true });
+
+  await Expense.bulkCreate([
+    {
+      id: 1,
+      user_id: 20,
+      account_id: 200,
+      description: 'Internet',
+      value: 100,
+      due_date: '2026-01-20',
+      category: 'Casa',
+      status: 'pendente',
+      is_recurring: true,
+      recurrence_id: 1,
+      recurrence_frequency: 'monthly',
+      recurrence_interval: 1,
+    },
+    {
+      id: 2,
+      user_id: 20,
+      account_id: 200,
+      description: 'Internet',
+      value: 105,
+      due_date: '2026-02-10',
+      category: 'Casa',
+      status: 'pendente',
+      is_recurring: true,
+      recurrence_id: 1,
+      recurrence_frequency: 'monthly',
+      recurrence_interval: 1,
+    },
+  ]);
+
+  const r = await ensureRecurringExpensesThrough({
+    userId: 20,
+    throughDate: '2026-02-28',
+    Expense,
+    now: new Date('2026-01-05T00:00:00Z'),
+  });
+  assert.equal(r.created, 0);
+
+  const rows = await Expense.findAll({ where: { user_id: 20 }, order: [['due_date', 'ASC']] });
+  assert.deepEqual(rows.map((x) => x.due_date), ['2026-01-20', '2026-02-10']);
+
+  await sequelize.close();
+});
+
 test('stopRecurringExpenseSeriesFrom remove a ocorrência selecionada e impede recriação futura', async () => {
   const sequelize = new Sequelize({ dialect: 'sqlite', storage: ':memory:', logging: false });
   const Expense = defineExpense(sequelize);

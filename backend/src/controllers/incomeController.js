@@ -56,6 +56,18 @@ exports.create = async (req, res) => {
     const frequency = recurring ? (normalizeFrequency(recurrence_frequency) || 'monthly') : null;
     const interval = recurring ? normalizeInterval(recurrence_interval) : null;
     const until = recurring ? toISODateOnly(recurrence_until) : null;
+    const existing = await Income.findOne({
+      where: {
+        user_id: req.user.id,
+        account_id,
+        description,
+        value,
+        date,
+      },
+    });
+    if (existing) {
+      return res.status(409).json({ error: 'Receita duplicada detectada. Operação cancelada.' });
+    }
     const income = await Income.create({
       user_id: req.user.id,
       account_id,

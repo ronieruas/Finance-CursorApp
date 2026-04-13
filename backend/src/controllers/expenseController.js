@@ -19,16 +19,19 @@ exports.list = async (req, res) => {
   const where = { user_id: req.user.id };
   const { Op } = require('sequelize');
   if (start && end) {
-    try {
-      await ensureRecurringExpensesThrough({ userId: req.user.id, throughDate: end, Expense });
-    } catch {}
+    if (type !== 'cartao') {
+      try {
+        await ensureRecurringExpensesThrough({ userId: req.user.id, throughDate: end, Expense });
+      } catch {}
+    }
     where.due_date = { [Op.between]: [start, end] };
   }
-  if (type === 'conta') {
-    where.account_id = { [Op.ne]: null };
-    where.credit_card_id = null;
-  } else if (type === 'cartao') {
+  if (type === 'cartao') {
     where.credit_card_id = { [Op.ne]: null };
+    where.account_id = { [Op.is]: null };
+  } else {
+    where.account_id = { [Op.ne]: null };
+    where.credit_card_id = { [Op.is]: null };
   }
   if (account_id) {
     where.account_id = account_id;
@@ -43,7 +46,7 @@ exports.list = async (req, res) => {
     where.status = status;
   }
   // Busca despesas filtradas
-  const expenses = await require('../models/expense').findAll({ where });
+  const expenses = await Expense.findAll({ where });
   res.json(expenses);
 };
 
@@ -123,12 +126,32 @@ exports.create = async (req, res) => {
           safePaidAt = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
         }
         console.log('Criando parcela', { i, totalParcelas, descricao: description, valorParcela, dataParcela: dataParcela.toISOString(), status: safeStatus });
+        const dueDateStr = formatDateOnlyLocal(dataParcela);
+        const existing = await Expense.findOne({
+          where: {
+            user_id: req.user.id,
+            credit_card_id,
+            account_id: null,
+            description: `${description}${totalParcelas > 1 ? ` (${i}/${totalParcelas})` : ''}`,
+            value: valorParcela,
+            due_date: dueDateStr,
+            installment_number: i,
+            installment_total: totalParcelas,
+          },
+          transaction: t,
+          lock: t.LOCK.UPDATE,
+        });
+        if (existing) {
+          const e = new Error('Despesa duplicada detectada. Operação cancelada.');
+          e.statusCode = 409;
+          throw e;
+        }
         const expense = await Expense.create({
           user_id: req.user.id,
           credit_card_id,
           description: `${description}${totalParcelas > 1 ? ` (${i}/${totalParcelas})` : ''}`,
           value: valorParcela,
-          due_date: formatDateOnlyLocal(dataParcela),
+          due_date: dueDateStr,
           category,
           status: safeStatus,
           is_recurring: recurring,
@@ -159,6 +182,25 @@ exports.create = async (req, res) => {
         normalizedPaidAt = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
       }
       console.log('Criando despesa de conta', { description, value, due_date, status, normalizedPaidAt: normalizedPaidAt ? normalizedPaidAt.toISOString() : null });
+      const existing = await Expense.findOne({
+        where: {
+          user_id: req.user.id,
+          account_id,
+          credit_card_id: null,
+          description,
+          value,
+          due_date,
+          installment_number: 1,
+          installment_total: 1,
+        },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (existing) {
+        const e = new Error('Despesa duplicada detectada. Operação cancelada.');
+        e.statusCode = 409;
+        throw e;
+      }
       const expense = await Expense.create({
         user_id: req.user.id,
         account_id,
@@ -193,7 +235,7 @@ exports.create = async (req, res) => {
     if (t) { try { await t.rollback(); } catch(e) {} }
     console.error('Erro ao criar despesa:', err);
     if (err && err.message) {
-      return res.status(400).json({ error: err.message });
+      return res.status(err.statusCode || 400).json({ error: err.message });
     }
     return res.status(400).json({ error: 'Erro desconhecido ao criar despesa.' });
   }

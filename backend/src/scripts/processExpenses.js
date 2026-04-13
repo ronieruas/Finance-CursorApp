@@ -1,110 +1,23 @@
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
-const { Expense, Account, sequelize } = require('../models');
-const { Op } = require('sequelize');
+const { Expense, Account, FinancialAuditLog, sequelize } = require('../models');
 const { generateNextRecurringExpenses } = require('../services/recurringExpenses');
+const { processExpensesAutomatic } = require('../services/expenseAutoProcessor');
 
 async function processExpenses() {
-  try {
-    console.log('Iniciando processamento de despesas automáticas...');
-    console.log(`[EXPENSES] TZ=${process.env.TZ || 'N/A'} | now=${new Date().toString()}`);
-
-    // 1. Processar despesas pendentes cuja data de pagamento chegou
-    const pendingExpenses = await Expense.findAll({
-      where: {
-        status: 'pendente',
-        account_id: { [Op.ne]: null },
-        [Op.or]: [
-          // Agendadas explicitamente via paid_at (considerando somente a parte de data)
-          sequelize.where(sequelize.cast(sequelize.col('paid_at'), 'date'), '<=', sequelize.literal('CURRENT_DATE')),
-          // Não agendadas (paid_at nulo), mas com vencimento atingido (não débito automático)
-          {
-            [Op.and]: [
-              { paid_at: { [Op.is]: null } },
-              sequelize.where(sequelize.col('due_date'), '<=', sequelize.literal('CURRENT_DATE')),
-              { [Op.or]: [ { auto_debit: false }, { auto_debit: { [Op.is]: null } } ] }
-            ]
-          }
-        ]
-      }
-    });
-
-    console.log(`Encontradas ${pendingExpenses.length} despesas pendentes para processar`);
-
-    for (const expense of pendingExpenses) {
-      try {
-        // Atualizar status para paga
-        await expense.update({
-          status: 'paga',
-          paid_at: expense.paid_at || new Date()
-        });
-
-        // Debitar da conta
-        const account = await Account.findOne({
-          where: { id: expense.account_id, user_id: expense.user_id }
-        });
-
-        if (account) {
-          account.balance = Number(account.balance) - Number(expense.value);
-          await account.save();
-          console.log(`Despesa ${expense.id} processada - debitado R$ ${expense.value} da conta ${account.name}`);
-        }
-      } catch (err) {
-        console.error(`Erro ao processar despesa ${expense.id}:`, err.message);
-      }
-    }
-
-    const recurringResult = await generateNextRecurringExpenses({ Expense });
-    console.log(`Despesas recorrentes geradas: ${recurringResult.created}`);
-
-
-    // 3. Processar despesas com débito automático
-    const autoDebitExpenses = await Expense.findAll({
-      where: {
-        auto_debit: true,
-        status: 'pendente',
-        account_id: { [Op.ne]: null },
-        [Op.and]: [
-          sequelize.where(sequelize.col('due_date'), '<=', sequelize.literal('CURRENT_DATE'))
-        ]
-      }
-    });
-
-    console.log(`Encontradas ${autoDebitExpenses.length} despesas com débito automático para processar`);
-
-    for (const expense of autoDebitExpenses) {
-      try {
-        const account = await Account.findOne({
-          where: { id: expense.account_id, user_id: expense.user_id }
-        });
-
-        if (account && Number(account.balance) >= Number(expense.value)) {
-          // Saldo suficiente, processar pagamento
-          account.balance = Number(account.balance) - Number(expense.value);
-          await account.save();
-
-          await expense.update({
-            status: 'paga',
-            paid_at: new Date()
-          });
-
-          console.log(`Despesa ${expense.id} paga por débito automático. Debitado R$ ${expense.value} da conta ${account.name}`);
-
-        } else {
-          // Saldo insuficiente
-          console.log(`Saldo insuficiente na conta ${account ? account.name : 'desconhecida'} para pagar a despesa ${expense.id}.`);
-          // Opcional: Criar uma notificação para o usuário aqui
-        }
-      } catch (err) {
-        console.error(`Erro ao processar débito automático da despesa ${expense.id}:`, err.message);
-      }
-    }
-
-    console.log('Processamento de despesas automáticas concluído!');
-  } catch (err) {
-    console.error('Erro no processamento de despesas automáticas:', err);
-  }
+  console.log('Iniciando processamento de despesas automáticas...');
+  console.log(`[EXPENSES] TZ=${process.env.TZ || 'N/A'} | now=${new Date().toString()}`);
+  const result = await processExpensesAutomatic({
+    Expense,
+    Account,
+    FinancialAuditLog,
+    sequelize,
+    generateNextRecurringExpenses: () => generateNextRecurringExpenses({ Expense }),
+    now: new Date(),
+  });
+  console.log(`[EXPENSES] Resultado: ${JSON.stringify(result)}`);
 }
+
 
 // Executar se chamado diretamente
 if (require.main === module) {

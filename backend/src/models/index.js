@@ -9,6 +9,7 @@ const Budget = require('./budget');
 const Transfer = require('./transfer');
 const CreditCardPayment = require('./creditCardPayment');
 const Notification = require('./notification');
+const FinancialAuditLog = require('./financialAuditLog');
 
 // Definir associações
 User.hasMany(Account, { foreignKey: 'user_id', as: 'accounts' });
@@ -61,5 +62,6 @@ module.exports = {
   Transfer,
   CreditCardPayment,
   Notification,
+  FinancialAuditLog,
   syncDb,
 };

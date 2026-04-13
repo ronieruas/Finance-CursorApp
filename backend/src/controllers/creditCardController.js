@@ -1,4 +1,4 @@
-const { CreditCard, Expense, CreditCardPayment, Account } = require('../models');
+const { CreditCard, Expense, CreditCardPayment, Account, FinancialAuditLog, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const dayjs = require('dayjs');
 
@@ -255,16 +255,6 @@ exports.pay = async (req, res) => {
     if (!isFinite(valorPagamento) || Number(valorPagamento) <= 0) {
       return res.status(400).json({ error: 'Não há despesas a pagar no período selecionado ou valor inválido.' });
     }
-    if (account.balance < valorPagamento) {
-      return res.status(400).json({ error: 'Saldo insuficiente na conta' });
-    }
-
-    await account.update({ balance: account.balance - valorPagamento });
-
-    // Normalizar a data de pagamento como "date-only" (YYYY-MM-DD), sem ajuste artificial de fuso
-    console.log('Data recebida do frontend:', payment_date);
-    console.log('Tipo da data recebida:', typeof payment_date);
-
     const normalizeDateOnly = (input) => {
       if (!input) return formatDateOnly(new Date());
       const s = String(input).trim();
@@ -283,32 +273,104 @@ exports.pay = async (req, res) => {
 
     const paymentDateFormatted = normalizeDateOnly(payment_date);
     console.log('Data normalizada para salvar (YYYY-MM-DD):', paymentDateFormatted);
-    
-    const payment = await CreditCardPayment.create({
-      card_id: card.id,
-      user_id: userId,
-      account_id,
-      value: valorPagamento,
-      payment_date: paymentDateFormatted,
-      is_full_payment: !!is_full_payment,
-      auto_debit: !!auto_debit,
+
+    let createdPayment;
+    await sequelize.transaction(async (t) => {
+      const lockedAccount = await Account.findOne({
+        where: { id: account_id, user_id: userId },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (!lockedAccount) {
+        const err = new Error('Conta não encontrada');
+        err.statusCode = 404;
+        throw err;
+      }
+
+      const existingPayment = await CreditCardPayment.findOne({
+        where: {
+          card_id: card.id,
+          user_id: userId,
+          account_id,
+          value: valorPagamento,
+          payment_date: paymentDateFormatted,
+        },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+
+      if (existingPayment) {
+        const err = new Error('Pagamento duplicado detectado. Operação cancelada.');
+        err.statusCode = 409;
+        throw err;
+      }
+
+      if (Number(lockedAccount.balance) < Number(valorPagamento)) {
+        const err = new Error('Saldo insuficiente na conta');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      await lockedAccount.update(
+        { balance: Number(lockedAccount.balance) - Number(valorPagamento) },
+        { transaction: t }
+      );
+
+      createdPayment = await CreditCardPayment.create(
+        {
+          card_id: card.id,
+          user_id: userId,
+          account_id,
+          value: valorPagamento,
+          payment_date: paymentDateFormatted,
+          is_full_payment: !!is_full_payment,
+          auto_debit: !!auto_debit,
+        },
+        { transaction: t }
+      );
+
+      if (is_full_payment && periodoFatura) {
+        const paidAtLocal = toLocalDate(paymentDateFormatted);
+        const ids = despesasFatura.map((d) => d.id);
+        if (ids.length) {
+          await Expense.update(
+            { status: 'paga', paid_at: paidAtLocal },
+            { where: { id: { [Op.in]: ids }, user_id: userId }, transaction: t }
+          );
+        }
+      }
+
+      if (auto_debit !== undefined) {
+        await card.update({ debito_automatico: !!auto_debit, conta_debito_id: account_id }, { transaction: t });
+      }
+
+      try {
+        await FinancialAuditLog.create(
+          {
+            user_id: userId,
+            action: 'credit_card_payment_created',
+            entity_type: 'credit_card_payment',
+            entity_id: createdPayment.id,
+            details: JSON.stringify({
+              card_id: card.id,
+              account_id,
+              value: String(valorPagamento),
+              payment_date: paymentDateFormatted,
+              is_full_payment: !!is_full_payment,
+              bill_month: bill_month || null,
+            }),
+          },
+          { transaction: t }
+        );
+      } catch {}
     });
 
-    if (is_full_payment && periodoFatura) {
-      // Atualiza todas as despesas da fatura como pagas
-      // Salva paid_at como Date local para evitar retroceder 1 dia em exibições
-      const paidAtLocal = toLocalDate(paymentDateFormatted);
-      await Promise.all(
-        despesasFatura.map(despesa => despesa.update({ status: 'paga', paid_at: paidAtLocal }))
-      );
-      console.log(`[PAGAMENTO] ${despesasFatura.length} despesas marcadas como pagas com data ${paymentDateFormatted} (local)`);
-    }
-    if (auto_debit !== undefined) {
-      await card.update({ debito_automatico: !!auto_debit, conta_debito_id: account_id });
-    }
-    res.status(201).json(payment);
+    res.status(201).json(createdPayment);
   } catch (err) {
     console.error('Erro ao pagar fatura:', err);
+    if (err && err.statusCode) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
     res.status(400).json({ error: err.message });
   }
 };

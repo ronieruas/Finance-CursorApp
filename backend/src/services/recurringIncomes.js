@@ -118,6 +118,7 @@ async function ensureRecurringIncomesThrough({ userId, throughDate, Income, now 
 
     const frequency = normalizeFrequency(latest.recurrence_frequency) || 'monthly';
     const interval = normalizeInterval(latest.recurrence_interval);
+    const unit = UNIT_BY_FREQUENCY[frequency] || 'month';
     const untilStr = toISODateOnly(latest.recurrence_until);
     const until = untilStr ? dayjs(untilStr) : null;
     const exceptions = new Set(parseExceptions(latest.recurrence_exceptions));
@@ -132,32 +133,38 @@ async function ensureRecurringIncomesThrough({ userId, throughDate, Income, now 
         continue;
       }
 
+      const rangeStart = dayjs(nextStr).startOf(unit).format('YYYY-MM-DD');
+      const rangeEnd = dayjs(nextStr).endOf(unit).format('YYYY-MM-DD');
       const existing = await Income.findOne({
         where: {
           user_id: userId,
           is_recurring: true,
           recurrence_id: seriesId,
-          date: nextStr,
+          date: { [Op.between]: [rangeStart, rangeEnd] },
         },
       });
 
       if (!existing) {
-        await Income.create({
-          user_id: userId,
-          account_id: latest.account_id,
-          description: latest.description,
-          value: latest.value,
-          date: nextStr,
-          category: latest.category,
-          is_recurring: true,
-          recurrence_id: seriesId,
-          recurrence_frequency: frequency,
-          recurrence_interval: interval,
-          recurrence_until: untilStr,
-          recurrence_exceptions: latest.recurrence_exceptions,
-          posted: false,
-        });
-        created += 1;
+        try {
+          await Income.create({
+            user_id: userId,
+            account_id: latest.account_id,
+            description: latest.description,
+            value: latest.value,
+            date: nextStr,
+            category: latest.category,
+            is_recurring: true,
+            recurrence_id: seriesId,
+            recurrence_frequency: frequency,
+            recurrence_interval: interval,
+            recurrence_until: untilStr,
+            recurrence_exceptions: latest.recurrence_exceptions,
+            posted: false,
+          });
+          created += 1;
+        } catch (err) {
+          if (!err || err.name !== 'SequelizeUniqueConstraintError') throw err;
+        }
       }
 
       nextStr = dayjs(nextStr).add(interval, UNIT_BY_FREQUENCY[frequency]).format('YYYY-MM-DD');
@@ -193,21 +200,49 @@ async function deleteRecurringIncomeOccurrenceOnly({ income, Income, Account }) 
   if (!hasOtherOccurrences && nextDate) {
     const until = income.recurrence_until ? dayjs(income.recurrence_until) : null;
     if (!until || !dayjs(nextDate).isAfter(until, 'day')) {
-      await Income.create({
-        user_id: income.user_id,
-        account_id: income.account_id,
-        description: income.description,
-        value: income.value,
-        date: nextDate,
-        category: income.category,
-        is_recurring: true,
-        recurrence_id: income.recurrence_id || income.id,
-        recurrence_frequency: frequency,
-        recurrence_interval: interval,
-        recurrence_until: income.recurrence_until,
-        recurrence_exceptions: nextExceptions,
-        posted: false,
+      const unit = UNIT_BY_FREQUENCY[frequency] || 'month';
+      const rangeStart = dayjs(nextDate).startOf(unit).format('YYYY-MM-DD');
+      const rangeEnd = dayjs(nextDate).endOf(unit).format('YYYY-MM-DD');
+      const existsInPeriod = await Income.findOne({
+        where: {
+          ...seriesWhere,
+          date: { [Op.between]: [rangeStart, rangeEnd] },
+        },
       });
+      if (existsInPeriod) {
+        let reversedBalance = 0;
+        if (income.account_id && !!income.posted) {
+          const account = await Account.findOne({
+            where: { id: income.account_id, user_id: income.user_id },
+          });
+          if (account) {
+            account.balance = Number(account.balance) - Number(income.value);
+            await account.save();
+            reversedBalance = Number(income.value);
+          }
+        }
+        await income.destroy();
+        return { deleted: 1, reversedBalance };
+      }
+      try {
+        await Income.create({
+          user_id: income.user_id,
+          account_id: income.account_id,
+          description: income.description,
+          value: income.value,
+          date: nextDate,
+          category: income.category,
+          is_recurring: true,
+          recurrence_id: income.recurrence_id || income.id,
+          recurrence_frequency: frequency,
+          recurrence_interval: interval,
+          recurrence_until: income.recurrence_until,
+          recurrence_exceptions: nextExceptions,
+          posted: false,
+        });
+      } catch (err) {
+        if (!err || err.name !== 'SequelizeUniqueConstraintError') throw err;
+      }
     }
   }
 

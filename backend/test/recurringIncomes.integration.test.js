@@ -105,6 +105,54 @@ test('ensureRecurringIncomesThrough suporta recorrência semanal', async () => {
   await sequelize.close();
 });
 
+test('ensureRecurringIncomesThrough não cria duas receitas no mesmo mês quando já existe uma ocorrência com outra data', async () => {
+  const sequelize = new Sequelize({ dialect: 'sqlite', storage: ':memory:', logging: false });
+  const Income = defineIncome(sequelize);
+  const Account = defineAccount(sequelize);
+  await sequelize.sync({ force: true });
+
+  await Account.create({ id: 60, user_id: 6, name: 'Conta Principal', balance: 0 });
+
+  await Income.bulkCreate([
+    {
+      id: 1,
+      user_id: 6,
+      account_id: 60,
+      description: 'Salário',
+      value: 1000,
+      date: '2026-01-05',
+      category: 'Salário',
+      is_recurring: true,
+      recurrence_id: 1,
+      recurrence_frequency: 'monthly',
+      recurrence_interval: 1,
+      posted: true,
+    },
+    {
+      id: 2,
+      user_id: 6,
+      account_id: 60,
+      description: 'Salário',
+      value: 1100,
+      date: '2026-02-10',
+      category: 'Salário',
+      is_recurring: true,
+      recurrence_id: 1,
+      recurrence_frequency: 'monthly',
+      recurrence_interval: 1,
+      posted: false,
+    },
+  ]);
+
+  const r = await ensureRecurringIncomesThrough({ userId: 6, throughDate: '2026-02-28', Income, now: new Date('2026-01-10T00:00:00Z') });
+  assert.equal(r.created, 0);
+
+  const rows = await Income.findAll({ where: { user_id: 6 }, order: [['date', 'ASC']] });
+  assert.deepEqual(rows.map((x) => x.date), ['2026-01-05', '2026-02-10']);
+
+  await sequelize.close();
+});
+
 test('stopRecurringIncomeSeriesFrom remove a ocorrência selecionada e futuras sem recriar ao filtrar novamente', async () => {
   const sequelize = new Sequelize({ dialect: 'sqlite', storage: ':memory:', logging: false });
   const Income = defineIncome(sequelize);
