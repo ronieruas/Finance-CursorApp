@@ -1,4 +1,4 @@
-const { Income } = require('../models');
+const { Income, FinancialAuditLog, sequelize } = require('../models');
 const Account = require('../models/account');
 const dayjs = require('dayjs');
 const {
@@ -10,6 +10,7 @@ const {
   stopRecurringIncomeSeriesFrom,
   toISODateOnly
 } = require('../services/recurringIncomes');
+const { createIncome } = require('../services/incomeCreator');
 
 // Helper: retorna true se a data (DATEONLY ou Date) for hoje ou passada
 function isEffective(dateInput) {
@@ -50,56 +51,29 @@ exports.list = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { account_id, description, value, date, category, is_recurring, recurrence_frequency, recurrence_interval, recurrence_until } = req.body;
-    const willBeApplied = isEffective(date);
-    const recurring = !!is_recurring;
-    const frequency = recurring ? (normalizeFrequency(recurrence_frequency) || 'monthly') : null;
-    const interval = recurring ? normalizeInterval(recurrence_interval) : null;
-    const until = recurring ? toISODateOnly(recurrence_until) : null;
-    const existing = await Income.findOne({
-      where: {
-        user_id: req.user.id,
-        account_id,
-        description,
-        value,
-        date,
-      },
+    const { income, recurring } = await createIncome({
+      userId: req.user.id,
+      body: req.body,
+      Income,
+      Account,
+      FinancialAuditLog,
+      sequelize,
+      isEffective,
+      normalizeFrequency,
+      normalizeInterval,
+      toISODateOnly,
     });
-    if (existing) {
-      return res.status(409).json({ error: 'Receita duplicada detectada. Operação cancelada.' });
-    }
-    const income = await Income.create({
-      user_id: req.user.id,
-      account_id,
-      description,
-      value,
-      date,
-      category,
-      is_recurring: recurring,
-      recurrence_frequency: frequency,
-      recurrence_interval: interval,
-      recurrence_until: until,
-      recurrence_exceptions: null,
-      posted: willBeApplied,
-    });
+
     if (recurring) {
       try {
-        await income.update({ recurrence_id: income.id });
         const horizon = dayjs().add(1, 'month').endOf('month').format('YYYY-MM-DD');
         await ensureRecurringIncomesThrough({ userId: req.user.id, throughDate: horizon, Income });
       } catch {}
     }
-    // Atualiza saldo da conta somente se a data for hoje ou passada (posted=true)
-    if (account_id && willBeApplied) {
-      const account = await Account.findOne({ where: { id: account_id, user_id: req.user.id } });
-      if (account) {
-        account.balance = Number(account.balance) + Number(value);
-        await account.save();
-      }
-    }
+
     res.status(201).json(income);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(err.statusCode || 400).json({ error: err.message });
   }
 };
 
