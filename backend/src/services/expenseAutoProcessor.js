@@ -25,16 +25,8 @@ async function processExpensesAutomatic({ Expense, Account, FinancialAuditLog, s
       where: {
         status: 'pendente',
         account_id: { [Op.ne]: null },
-        [Op.or]: [
-          sequelize.where(sequelize.cast(sequelize.col('paid_at'), 'date'), '<=', sequelize.literal('CURRENT_DATE')),
-          {
-            [Op.and]: [
-              { paid_at: { [Op.is]: null } },
-              sequelize.where(sequelize.col('due_date'), '<=', sequelize.literal('CURRENT_DATE')),
-              { [Op.or]: [{ auto_debit: false }, { auto_debit: { [Op.is]: null } }] },
-            ],
-          },
-        ],
+        paid_at: { [Op.ne]: null },
+        [Op.and]: [sequelize.where(sequelize.cast(sequelize.col('paid_at'), 'date'), '<=', sequelize.literal('CURRENT_DATE'))],
       },
     });
 
@@ -48,10 +40,7 @@ async function processExpensesAutomatic({ Expense, Account, FinancialAuditLog, s
         });
         if (!lockedExpense || lockedExpense.status !== 'pendente' || !lockedExpense.account_id) return;
 
-        await lockedExpense.update(
-          { status: 'paga', paid_at: lockedExpense.paid_at || now },
-          { transaction: t }
-        );
+        await lockedExpense.update({ status: 'paga' }, { transaction: t });
 
         const account = await Account.findOne({
           where: { id: lockedExpense.account_id, user_id: lockedExpense.user_id },
@@ -155,4 +144,3 @@ async function processExpensesAutomatic({ Expense, Account, FinancialAuditLog, s
 }
 
 module.exports = { processExpensesAutomatic };
-

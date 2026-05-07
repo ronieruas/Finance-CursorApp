@@ -61,8 +61,28 @@ test('processExpensesAutomatic é idempotente quando executado mais de uma vez',
     value: 100,
     due_date: '2000-01-01',
     status: 'pendente',
+    auto_debit: true,
+    paid_at: null,
+  });
+  await Expense.create({
+    id: 11,
+    user_id: 1,
+    account_id: 1,
+    value: 200,
+    due_date: '2000-01-01',
+    status: 'pendente',
     auto_debit: false,
     paid_at: null,
+  });
+  await Expense.create({
+    id: 12,
+    user_id: 1,
+    account_id: 1,
+    value: 50,
+    due_date: '2099-01-01',
+    status: 'pendente',
+    auto_debit: false,
+    paid_at: new Date('2000-01-02T00:00:00Z'),
   });
 
   const first = await processExpensesAutomatic({
@@ -83,10 +103,19 @@ test('processExpensesAutomatic é idempotente quando executado mais de uma vez',
   });
 
   const account = await Account.findByPk(1);
-  assert.equal(Number(account.balance), 900);
+  assert.equal(Number(account.balance), 850);
 
-  const expense = await Expense.findByPk(10);
-  assert.equal(expense.status, 'paga');
+  const autoDebitExpense = await Expense.findByPk(10);
+  assert.equal(autoDebitExpense.status, 'paga');
+
+  const normalOverdueExpense = await Expense.findByPk(11);
+  assert.equal(normalOverdueExpense.status, 'pendente');
+
+  const paidAtExpense = await Expense.findByPk(12);
+  assert.equal(paidAtExpense.status, 'paga');
+
+  assert.equal(first.auto_debit_paid, 1);
+  assert.equal(second.auto_debit_paid, 0);
   assert.equal(first.paid, 1);
   assert.equal(second.paid, 0);
 
