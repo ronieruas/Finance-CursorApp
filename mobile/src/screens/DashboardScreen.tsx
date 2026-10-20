@@ -99,6 +99,10 @@ export const DashboardScreen: React.FC = () => {
     navigation.navigate('CreditCards' as never);
   };
 
+  const handleImportacoes = () => {
+    navigation.navigate('NotificationImports' as never);
+  };
+
   const handleRelatorios = () => {
     navigation.navigate('Reports' as never);
   };
@@ -186,6 +190,11 @@ export const DashboardScreen: React.FC = () => {
                 <TouchableOpacity style={styles.menuItem} onPress={handleCartoes}>
                   <Text style={styles.menuIcon}>🏦</Text>
                   <Text style={styles.menuText}>Cartões</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.menuItem} onPress={handleImportacoes}>
+                  <Text style={styles.menuIcon}>🔔</Text>
+                  <Text style={styles.menuText}>Importações</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.menuItem} onPress={handleRelatorios}>

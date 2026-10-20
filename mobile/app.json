@@ -14,7 +14,7 @@
     ],
     "sdkVersion": "54.0.0",
     "extra": {
-      "API_BASE_URL": "http://10.0.2.2:3001",
+      "API_BASE_URL": "https://finance.ronieruas.com.br/api",
       "eas": {
         "projectId": "73ae1043-3956-4d83-bcd7-a7cd94934cfd"
       }

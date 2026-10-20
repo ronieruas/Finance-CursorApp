@@ -14,6 +14,7 @@ export const TransfersScreen: React.FC = () => {
   const [fromId, setFromId] = useState<number | 'terceiros' | null>(null)
   const [toId, setToId] = useState<number | 'terceiros' | null>(null)
   const [desc, setDesc] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
   const [newFromId, setNewFromId] = useState<number | 'terceiros' | null>(null)
   const [newToId, setNewToId] = useState<number | 'terceiros' | null>(null)
@@ -37,6 +38,27 @@ export const TransfersScreen: React.FC = () => {
     return s
   }
 
+  // Data da transferência sempre em DD/MM/AAAA
+  const formatDate = (value: any) => {
+    if (!value) return ''
+    const raw = String(value)
+    const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/)
+    if (m) return `${m[3]}/${m[2]}/${m[1]}`
+    const d = new Date(raw)
+    return isNaN(d.getTime()) ? raw : d.toLocaleDateString('pt-BR')
+  }
+
+  // Nome/banco da conta envolvida; null representa terceiros
+  const accountLabel = (accountId: any) => {
+    if (accountId === null || accountId === undefined || accountId === '') return 'Terceiros'
+    const account = accounts.find((a) => String(a.id) === String(accountId))
+    if (!account) return 'Terceiros'
+    return account.bank ? `${account.name} (${account.bank})` : account.name
+  }
+
+  const formatValue = (value: any) =>
+    `R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
   if (loading) return (
     <SafeAreaView style={styles.container}><View style={styles.loading}><ActivityIndicator size="large" /><Text>Carregando transferências...</Text></View></SafeAreaView>
   )
@@ -52,29 +74,47 @@ export const TransfersScreen: React.FC = () => {
           <Text style={{fontSize:14, color:'#2563EB'}}>Adicionar</Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.filters}>
-        <DateInput label="Início" value={start} onChange={setStart} />
-        <DateInput label="Fim" value={end} onChange={setEnd} />
-        <View style={{flexDirection:'row', flexWrap:'wrap', gap:8, marginTop:8}}>
-          <Text style={styles.filterLabel}>Origem</Text>
-          <TouchableOpacity style={[styles.chip, fromId==='terceiros' && styles.chipActive]} onPress={()=>setFromId('terceiros')}><Text style={[styles.chipText, fromId==='terceiros' && styles.chipTextActive]}>Terceiros</Text></TouchableOpacity>
-          {accounts.map(a=> (
-            <TouchableOpacity key={`f-${a.id}`} style={[styles.chip, fromId===a.id && styles.chipActive]} onPress={()=>setFromId(a.id)}><Text style={[styles.chipText, fromId===a.id && styles.chipTextActive]}>{a.name}</Text></TouchableOpacity>
-          ))}
+
+      <TouchableOpacity style={styles.filtersToggle} onPress={()=>setShowFilters(v=>!v)}>
+        <Text style={styles.filtersToggleText}>Filtros {showFilters ? '▲' : '▼'}</Text>
+      </TouchableOpacity>
+
+      {showFilters ? (
+        <View style={styles.filters}>
+          <DateInput label="Início" value={start} onChange={setStart} />
+          <DateInput label="Fim" value={end} onChange={setEnd} />
+          <View style={{flexDirection:'row', flexWrap:'wrap', gap:8, marginTop:8}}>
+            <Text style={styles.filterLabel}>Origem</Text>
+            <TouchableOpacity style={[styles.chip, fromId==='terceiros' && styles.chipActive]} onPress={()=>setFromId('terceiros')}><Text style={[styles.chipText, fromId==='terceiros' && styles.chipTextActive]}>Terceiros</Text></TouchableOpacity>
+            {accounts.map(a=> (
+              <TouchableOpacity key={`f-${a.id}`} style={[styles.chip, fromId===a.id && styles.chipActive]} onPress={()=>setFromId(a.id)}><Text style={[styles.chipText, fromId===a.id && styles.chipTextActive]}>{a.name}</Text></TouchableOpacity>
+            ))}
+          </View>
+          <View style={{flexDirection:'row', flexWrap:'wrap', gap:8, marginTop:8}}>
+            <Text style={styles.filterLabel}>Destino</Text>
+            <TouchableOpacity style={[styles.chip, toId==='terceiros' && styles.chipActive]} onPress={()=>setToId('terceiros')}><Text style={[styles.chipText, toId==='terceiros' && styles.chipTextActive]}>Terceiros</Text></TouchableOpacity>
+            {accounts.map(a=> (
+              <TouchableOpacity key={`t-${a.id}`} style={[styles.chip, toId===a.id && styles.chipActive]} onPress={()=>setToId(a.id)}><Text style={[styles.chipText, toId===a.id && styles.chipTextActive]}>{a.name}</Text></TouchableOpacity>
+            ))}
+          </View>
+          <TextInput style={styles.input} placeholder="Descrição" placeholderTextColor="#999" value={desc} onChangeText={setDesc} />
+          <TouchableOpacity style={styles.applyBtn} onPress={load}><Text style={styles.applyBtnText}>Aplicar filtros</Text></TouchableOpacity>
         </View>
-        <View style={{flexDirection:'row', flexWrap:'wrap', gap:8, marginTop:8}}>
-          <Text style={styles.filterLabel}>Destino</Text>
-          <TouchableOpacity style={[styles.chip, toId==='terceiros' && styles.chipActive]} onPress={()=>setToId('terceiros')}><Text style={[styles.chipText, toId==='terceiros' && styles.chipTextActive]}>Terceiros</Text></TouchableOpacity>
-          {accounts.map(a=> (
-            <TouchableOpacity key={`t-${a.id}`} style={[styles.chip, toId===a.id && styles.chipActive]} onPress={()=>setToId(a.id)}><Text style={[styles.chipText, toId===a.id && styles.chipTextActive]}>{a.name}</Text></TouchableOpacity>
-          ))}
-        </View>
-        <TextInput style={styles.input} placeholder="Descrição" placeholderTextColor="#999" value={desc} onChangeText={setDesc} />
-        <TouchableOpacity style={styles.applyBtn} onPress={load}><Text style={styles.applyBtnText}>Aplicar filtros</Text></TouchableOpacity>
-      </View>
+      ) : null}
+
       <FlatList data={items} keyExtractor={(item)=>String(item.id)} contentContainerStyle={{padding:16}}
+        ListEmptyComponent={<Text style={styles.emptyText}>Nenhuma transferência encontrada</Text>}
         renderItem={({item})=> (
-          <View style={styles.card}><Text style={styles.label}>{item.description}</Text><Text style={styles.value}>R$ {Number(item.value).toLocaleString('pt-BR',{minimumFractionDigits:2})}</Text></View>
+          <View style={styles.card}>
+            <View style={styles.cardTop}>
+              <Text style={styles.label} numberOfLines={1}>{item.description || 'Transferência'}</Text>
+              <Text style={styles.value}>{formatValue(item.value)}</Text>
+            </View>
+            <Text style={styles.cardDate}>{formatDate(item.date)}</Text>
+            <Text style={styles.cardAccount}>
+              {accountLabel(item.from_account_id)} → {accountLabel(item.to_account_id)}
+            </Text>
+          </View>
         )}
       />
 
@@ -132,8 +172,14 @@ const styles = StyleSheet.create({
   title:{fontSize:20, fontWeight:'bold'},
   loading:{flex:1, alignItems:'center', justifyContent:'center'},
   card:{backgroundColor:'#fff', borderRadius:12, padding:16, marginBottom:12},
-  label:{color:'#666'},
+  cardTop:{flexDirection:'row', justifyContent:'space-between', alignItems:'center', gap:12},
+  cardDate:{color:'#6B7280', fontSize:12, marginTop:6},
+  cardAccount:{color:'#374151', fontSize:13, marginTop:2},
+  label:{color:'#111', fontWeight:'600', flex:1},
   value:{fontWeight:'700', color:'#333'},
+  emptyText:{textAlign:'center', color:'#6B7280', marginTop:24},
+  filtersToggle:{backgroundColor:'#fff', paddingVertical:12, paddingHorizontal:16, borderBottomWidth:1, borderBottomColor:'#eee', alignItems:'center'},
+  filtersToggleText:{color:'#2563EB', fontWeight:'700'},
   filters:{backgroundColor:'#fff', padding:16, borderBottomWidth:1, borderBottomColor:'#eee'},
   input:{borderWidth:1, borderColor:'#ddd', borderRadius:8, paddingHorizontal:12, paddingVertical:8, fontSize:14, backgroundColor:'#f9f9f9', color:'#111', marginTop:8},
   filterLabel:{fontSize:12, color:'#555', marginRight:8, alignSelf:'center'},

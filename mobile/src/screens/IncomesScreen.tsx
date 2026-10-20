@@ -16,19 +16,23 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { apiService, Income } from '../services/api';
 import DateInput from '../components/DateInput'
 
+// Intervalo do mês atual em DD/MM/AAAA
+const currentMonthRange = () => {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const fmt = (d: Date) =>
+    `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  return { start: fmt(first), end: fmt(last) };
+};
+
 export const IncomesScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [start, setStart] = useState('');
-  const [end, setEnd] = useState('');
-
-  useFocusEffect(
-    React.useCallback(() => {
-      loadIncomes();
-    }, [])
-  );
+  const [start, setStart] = useState(() => currentMonthRange().start);
+  const [end, setEnd] = useState(() => currentMonthRange().end);
 
   // Recarregar dados quando a tela receber foco
   useFocusEffect(
@@ -36,15 +40,6 @@ export const IncomesScreen: React.FC = () => {
       loadIncomes();
     }, [])
   );
-
-  React.useEffect(() => {
-    const now = new Date();
-    const first = new Date(now.getFullYear(), now.getMonth(), 1);
-    const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    const fmt = (d: Date) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-    setStart(fmt(first));
-    setEnd(fmt(last));
-  }, []);
 
   const loadIncomes = async () => {
     try {

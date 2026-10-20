@@ -105,7 +105,7 @@ exports.getDashboard = async (req, res) => {
     const despesasMesTotal = (despesasConta || 0) + (despesasCartao || 0)
 
     // Valor da fatura do cartão do mês (parcelas com due_date no mês)
-    const creditCards = await models.CreditCard.findAll({ where: { user_id: userId, status: 'ativa' } })
+    const creditCards = await models.CreditCard.findAll({ where: { user_id: userId, status: { [Op.or]: ['ativa', 'ativo', 'active'] } } })
     const cardIds = creditCards.map(c => c.id)
     let faturaCartaoMes = 0
     let gastosPorCartao = []

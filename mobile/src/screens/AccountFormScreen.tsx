@@ -25,7 +25,7 @@ export const AccountFormScreen: React.FC = () => {
   const { account } = (route.params as RouteParams) || {};
   
   const [name, setName] = useState(account?.name || '');
-  const [type, setType] = useState(account?.type || 'checking');
+  const [type, setType] = useState(account?.type || 'corrente');
   const [description, setDescription] = useState(account?.description || '');
   const [initialBalance, setInitialBalance] = useState(
     account?.balance?.toString() || '0'
@@ -34,11 +34,11 @@ export const AccountFormScreen: React.FC = () => {
 
   const isEditing = !!account;
 
+  // Valores de tipo iguais ao ENUM do banco: corrente | poupanca | investimento
   const accountTypes = [
-    { value: 'checking', label: 'Conta Corrente', icon: 'card-outline' },
-    { value: 'savings', label: 'Poupança', icon: 'wallet-outline' },
-    { value: 'investment', label: 'Investimento', icon: 'trending-up-outline' },
-    { value: 'other', label: 'Outro', icon: 'cash-outline' }
+    { value: 'corrente', label: 'Conta Corrente', icon: 'card-outline' },
+    { value: 'poupanca', label: 'Poupança', icon: 'wallet-outline' },
+    { value: 'investimento', label: 'Investimento', icon: 'trending-up-outline' }
   ];
 
   const handleSave = async () => {
@@ -51,11 +51,10 @@ export const AccountFormScreen: React.FC = () => {
 
     try {
       setLoading(true);
-      
-      const backendType = type === 'checking' ? 'corrente' : type === 'savings' ? 'poupanca' : type === 'investment' ? 'investimento' : 'corrente';
+
       const accountData = {
         name: name.trim(),
-        type: backendType,
+        type,
         description: description.trim(),
         balance
       };

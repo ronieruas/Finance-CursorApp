@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,17 @@ export const LoginScreen: React.FC = () => {
   const [testing, setTesting] = useState(false);
   
   const { signIn, signUp } = useBackendAuth();
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const currentBase = await apiService.getConfiguredBaseURL();
+      if (mounted) setApiBase(currentBase);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleSubmit = async () => {
     console.log('handleSubmit chamado', { email, password, name, isSignUp });
@@ -158,7 +169,7 @@ export const LoginScreen: React.FC = () => {
               <Text style={styles.label}>Base da API</Text>
               <TextInput
                 style={styles.input}
-                placeholder={Platform.OS === 'android' ? 'http://192.168.0.142:3001' : 'http://localhost:3001'}
+                placeholder={Platform.OS === 'web' ? 'http://localhost:3001' : 'https://finance.ronieruas.com.br/api'}
                 placeholderTextColor="#999"
                 value={apiBase}
                 onChangeText={setApiBase}

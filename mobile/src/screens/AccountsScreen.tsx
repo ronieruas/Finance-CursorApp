@@ -87,20 +87,33 @@ export const AccountsScreen: React.FC = () => {
     );
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
+  // Símbolos por moeda cadastrada no banco de dados
+  const CURRENCY_SYMBOLS: { [key: string]: string } = {
+    BRL: 'R$',
+    USD: '$',
+    EUR: '€',
+    GBP: '£',
+    ARS: '$',
   };
 
+  const formatCurrency = (value: number, currency?: string) => {
+    const code = (currency || 'BRL').toUpperCase();
+    const symbol = CURRENCY_SYMBOLS[code] || code;
+    const amount = Number(value || 0).toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return `${symbol} ${amount}`;
+  };
+
+  // Valores de tipo conforme o ENUM do banco: corrente | poupanca | investimento
   const getAccountTypeIcon = (type: string) => {
     switch (type) {
-      case 'checking':
+      case 'corrente':
         return 'card-outline';
-      case 'savings':
+      case 'poupanca':
         return 'wallet-outline';
-      case 'investment':
+      case 'investimento':
         return 'trending-up-outline';
       default:
         return 'cash-outline';
@@ -109,11 +122,11 @@ export const AccountsScreen: React.FC = () => {
 
   const getAccountTypeLabel = (type: string) => {
     switch (type) {
-      case 'checking':
+      case 'corrente':
         return 'Conta Corrente';
-      case 'savings':
+      case 'poupanca':
         return 'Poupança';
-      case 'investment':
+      case 'investimento':
         return 'Investimento';
       default:
         return 'Outro';
@@ -199,7 +212,7 @@ export const AccountsScreen: React.FC = () => {
                   styles.balanceValue,
                   { color: account.balance >= 0 ? '#34C759' : '#FF3B30' }
                 ]}>
-                  {formatCurrency(account.balance)}
+                  {formatCurrency(account.balance, account.currency)}
                 </Text>
               </View>
 

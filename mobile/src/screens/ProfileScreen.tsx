@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, SafeAreaView, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native'
 import { useBackendAuth } from '../contexts/BackendAuthContext'
 import { apiService } from '../services/api'
+import { useNavigation } from '@react-navigation/native'
 
 export const ProfileScreen: React.FC = () => {
+  const navigation = useNavigation()
   const { user, signOut } = useBackendAuth()
   const [apiBase, setApiBase] = useState(apiService.getBaseURL())
   const [pinging, setPinging] = useState(false)
@@ -12,10 +14,18 @@ export const ProfileScreen: React.FC = () => {
   const [newPwd, setNewPwd] = useState('')
   const [savingPwd, setSavingPwd] = useState(false)
 
-  useEffect(() => { setApiBase(apiService.getBaseURL()) }, [])
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      const currentBase = await apiService.getConfiguredBaseURL()
+      if (mounted) setApiBase(currentBase)
+    })()
+    return () => { mounted = false }
+  }, [])
 
   const save = async () => {
     await apiService.setBaseURL(apiBase)
+    setApiBase(await apiService.getConfiguredBaseURL())
     Alert.alert('Configuração', 'Base da API atualizada')
   }
 
@@ -33,7 +43,11 @@ export const ProfileScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}><Text style={styles.title}>Configurações</Text></View>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={()=> (navigation as any).goBack?.()} style={{padding:8}}><Text style={{fontSize:18, color:'#007AFF'}}>‹</Text></TouchableOpacity>
+        <Text style={styles.title}>Configurações</Text>
+        <View style={{width:32}} />
+      </View>
       <View style={styles.content}>
         <View style={styles.card}>
           <Text style={styles.label}>Usuário</Text>
@@ -43,7 +57,7 @@ export const ProfileScreen: React.FC = () => {
           <Text style={styles.label}>Base da API</Text>
           <TextInput
             style={styles.input}
-            placeholder="http://10.0.2.2:3001"
+            placeholder="https://finance.ronieruas.com.br/api"
             placeholderTextColor="#999"
             value={apiBase}
             onChangeText={setApiBase}

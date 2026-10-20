@@ -13,6 +13,7 @@ import { ExpenseFormScreen } from '../screens/ExpenseFormScreen';
 import { IncomesScreen } from '../screens/IncomesScreen';
 import { IncomeFormScreen } from '../screens/IncomeFormScreen';
 import { CreditCardsScreen } from '../screens/CreditCardsScreen';
+import { NotificationImportsScreen } from '../screens/NotificationImportsScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { TransfersScreen } from '../screens/TransfersScreen';
@@ -80,6 +81,11 @@ export const AppNavigator: React.FC = () => {
             name="CreditCards" 
             component={CreditCardsScreen} 
             options={{ title: 'Cartões' }} 
+          />
+          <Stack.Screen
+            name="NotificationImports"
+            component={NotificationImportsScreen}
+            options={{ title: 'Importações' }}
           />
           <Stack.Screen 
             name="Reports" 

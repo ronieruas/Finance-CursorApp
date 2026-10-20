@@ -3,19 +3,43 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 // Configuração da API
+const PUBLIC_API_HOST = 'finance.ronieruas.com.br';
+const DEFAULT_PUBLIC_API_BASE_URL = `https://${PUBLIC_API_HOST}/api`;
+
+function normalizeApiBaseUrl(rawUrl: string): string {
+  let input = (rawUrl || '').trim();
+  if (!input) return input;
+
+  input = input.replace(/\/+$/, '');
+
+  try {
+    const parsed = new URL(input);
+    const host = parsed.hostname.toLowerCase();
+    const path = parsed.pathname.replace(/\/+$/, '');
+    const isPublicHost = host === PUBLIC_API_HOST;
+    if (isPublicHost && (path === '' || path === '/')) {
+      parsed.pathname = '/api';
+      return parsed.toString().replace(/\/$/, '');
+    }
+    return input;
+  } catch {
+    return input;
+  }
+}
+
 function resolveApiBaseUrl(): string {
   const isWeb = Platform.OS === 'web';
 
   const envCommon = process.env.EXPO_PUBLIC_API_URL as string | undefined;
-  if (envCommon && envCommon.length > 0) return envCommon;
+  if (envCommon && envCommon.length > 0) return normalizeApiBaseUrl(envCommon);
 
   const webEnv = process.env.EXPO_PUBLIC_WEB_API_BASE_URL as string | undefined;
   const nativeEnv = process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined;
-  if (isWeb && webEnv && webEnv.length > 0) return webEnv;
-  if (!isWeb && nativeEnv && nativeEnv.length > 0) return nativeEnv;
+  if (isWeb && webEnv && webEnv.length > 0) return normalizeApiBaseUrl(webEnv);
+  if (!isWeb && nativeEnv && nativeEnv.length > 0) return normalizeApiBaseUrl(nativeEnv);
 
   const extra = (Constants?.expoConfig as any)?.extra || (Constants as any)?.manifest?.extra;
-  if (!isWeb && extra && extra.API_BASE_URL) return String(extra.API_BASE_URL);
+  if (!isWeb && extra && extra.API_BASE_URL) return normalizeApiBaseUrl(String(extra.API_BASE_URL));
 
   const hostUri: string | undefined =
     (Constants as any)?.manifest?.debuggerHost || (Constants?.expoConfig as any)?.hostUri;
@@ -24,9 +48,9 @@ function resolveApiBaseUrl(): string {
     return `http://${ip}:3001`;
   }
 
-  if (isWeb) return 'http://localhost:3001';
-  if (Platform.OS === 'android') return 'http://10.0.2.2:3001';
-  return 'http://localhost:3001';
+  if (isWeb) return DEFAULT_PUBLIC_API_BASE_URL;
+  if (Platform.OS === 'android') return DEFAULT_PUBLIC_API_BASE_URL;
+  return DEFAULT_PUBLIC_API_BASE_URL;
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
@@ -50,6 +74,8 @@ export interface Account {
   type: string;
   balance: number;
   user_id: number;
+  bank?: string;
+  currency?: string;
   description?: string;
 }
 
@@ -70,6 +96,7 @@ export interface Expense {
   value: number;
   due_date: string;
   category: string;
+  status?: string;
   account_id: number;
   user_id: number;
 }
@@ -87,11 +114,13 @@ export interface Income {
 // Classe para gerenciar as chamadas da API
 class ApiService {
   private baseURL: string;
+  private explicitBaseURL?: string;
   private overrideURL?: string;
   private overrideLoaded?: boolean;
 
   constructor() {
     this.baseURL = API_BASE_URL;
+    this.explicitBaseURL = API_BASE_URL;
     this.overrideURL = undefined;
     this.overrideLoaded = false;
     
@@ -101,18 +130,35 @@ class ApiService {
     } catch {}
   }
 
+  private async ensureOverrideLoaded(): Promise<void> {
+    if (this.overrideLoaded) return;
+    try {
+      const ov = await AsyncStorage.getItem('API_BASE');
+      if (ov && ov.trim()) {
+        const normalized = normalizeApiBaseUrl(ov.trim());
+        const isLegacyLocalBase =
+          /^http:\/\/(10\.0\.2\.2|localhost|127\.0\.0\.1):\d{2,5}$/i.test(normalized) ||
+          /^http:\/\/192\.168\.\d+\.\d+:\d{2,5}$/i.test(normalized);
+        if (this.explicitBaseURL && normalized !== ov.trim()) {
+          this.overrideURL = normalized;
+          try { await AsyncStorage.setItem('API_BASE', normalized); } catch {}
+        } else if (this.explicitBaseURL && isLegacyLocalBase && normalized !== this.explicitBaseURL) {
+          this.overrideURL = this.explicitBaseURL;
+          try { await AsyncStorage.setItem('API_BASE', this.explicitBaseURL); } catch {}
+        } else {
+          this.overrideURL = normalized;
+        }
+      }
+    } catch {}
+    this.overrideLoaded = true;
+  }
+
   // Método para fazer requisições HTTP
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    if (!this.overrideLoaded) {
-      try {
-        const ov = await AsyncStorage.getItem('API_BASE');
-        if (ov && ov.trim()) this.overrideURL = ov.trim();
-      } catch {}
-      this.overrideLoaded = true;
-    }
+    await this.ensureOverrideLoaded();
     const effectiveBase = (this.overrideURL && this.overrideURL.length > 0) ? this.overrideURL : this.baseURL;
     const url = `${effectiveBase}${endpoint}`;
     // Log da URL completa da requisição para facilitar debug
@@ -148,7 +194,7 @@ class ApiService {
       const msg = String(error?.message || '');
       const hostUri: string | undefined = (Constants as any)?.manifest?.debuggerHost || (Constants?.expoConfig as any)?.hostUri;
       const shouldFallback = msg.includes('Network request failed') || msg.includes('Failed to fetch') || msg.includes('ECONNREFUSED') || msg.includes('connect');
-      if (Platform.OS !== 'web' && hostUri && shouldFallback) {
+      if (Platform.OS !== 'web' && hostUri && shouldFallback && !this.explicitBaseURL) {
         const ip = hostUri.split(':')[0];
         const fallbackBase = `http://${ip}:3001`;
         if (effectiveBase !== fallbackBase) {
@@ -301,10 +347,16 @@ class ApiService {
           value: Number(e.value ?? 0),
           due_date: e.due_date ?? e.date,
           category: e.category ?? 'other',
+          status: e.status ?? 'pendente',
           account_id: e.account_id,
           user_id: e.user_id,
         }))
       : [];
+  }
+
+  async getExpenseCategories(): Promise<string[]> {
+    const list = await this.request<any[]>('/expenses/categories');
+    return Array.isArray(list) ? list.filter(Boolean).map(String) : [];
   }
 
   async createExpense(expense: { description: string; amount: number; category: string; date: string; accountId: number }): Promise<Expense> {
@@ -494,6 +546,32 @@ class ApiService {
     };
   }
 
+  // Resumo geral (mesmos dados da aba Resumo da versão web)
+  async getResumo(): Promise<{
+    proximosVencimentos: Array<{ descricao: string; valor: number; vencimento: string }>;
+    despesasParceladas: Array<{ item: string; cartao: string; parcelaAtual: number; totalParcelas: number; valor: number; vencimento: string }>;
+  }> {
+    const raw = await this.request<any>('/resumo');
+    const proximosVencimentos = Array.isArray(raw?.proximosVencimentos)
+      ? raw.proximosVencimentos.map((v: any) => ({
+          descricao: String(v?.descricao ?? ''),
+          valor: Number(v?.valor ?? 0),
+          vencimento: String(v?.vencimento ?? ''),
+        }))
+      : [];
+    const despesasParceladas = Array.isArray(raw?.despesasParceladas)
+      ? raw.despesasParceladas.map((p: any) => ({
+          item: String(p?.item ?? ''),
+          cartao: String(p?.cartao ?? ''),
+          parcelaAtual: Number(p?.parcelaAtual ?? 1),
+          totalParcelas: Number(p?.totalParcelas ?? 1),
+          valor: Number(p?.valor ?? 0),
+          vencimento: String(p?.vencimento ?? ''),
+        }))
+      : [];
+    return { proximosVencimentos, despesasParceladas };
+  }
+
   // Método para verificar se o usuário está autenticado
   async isAuthenticated(): Promise<boolean> {
     const token = await AsyncStorage.getItem('authToken');
@@ -510,19 +588,28 @@ class ApiService {
     return (this.overrideURL && this.overrideURL.length > 0) ? this.overrideURL : this.baseURL;
   }
 
+  async getConfiguredBaseURL(): Promise<string> {
+    await this.ensureOverrideLoaded();
+    return this.getBaseURL();
+  }
+
   async setBaseURL(url: string): Promise<void> {
     let input = (url || '').trim().replace(/\/$/, '');
     if (!input) return;
     const isPortOnly = /^\d{2,5}$/.test(input) || /^:?\d{2,5}$/.test(input);
     const hasScheme = /^https?:\/\//i.test(input);
-    const hasHost = /^(https?:\/\/)?[^:]+(:\d{2,5})?$/.test(input);
+    const hasHost = /^(https?:\/\/)?[^:\/]+(:\d{2,5})?$/.test(input);
     const hostUri: string | undefined = (Constants as any)?.manifest?.debuggerHost || (Constants?.expoConfig as any)?.hostUri;
     if (isPortOnly && hostUri) {
       const ip = hostUri.split(':')[0];
       input = `http://${ip}:${input.replace(/^:/,'')}`;
     } else if (!hasScheme && hasHost) {
-      input = `http://${input}`;
+      const isLocalHost =
+        /^(localhost|127\.0\.0\.1|10\.0\.2\.2)$/i.test(input) ||
+        /^192\.168\.\d+\.\d+(:\d{2,5})?$/i.test(input);
+      input = `${isLocalHost ? 'http' : 'https'}://${input}`;
     }
+    input = normalizeApiBaseUrl(input);
     this.overrideURL = input;
     this.overrideLoaded = true;
     try { await AsyncStorage.setItem('API_BASE', input); } catch {}

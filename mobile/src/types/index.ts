@@ -75,6 +75,7 @@ export type RootStackParamList = {
   Incomes: undefined;
   IncomeForm: { incomeId?: string };
   CreditCards: undefined;
+  NotificationImports: undefined;
   Reports: undefined;
   Profile: undefined;
   Transfers: undefined;

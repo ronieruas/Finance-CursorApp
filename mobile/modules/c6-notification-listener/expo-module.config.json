@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["C6NotificationListenerModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.c6notificationlistener.C6NotificationListenerModule"]
+  }
+}
