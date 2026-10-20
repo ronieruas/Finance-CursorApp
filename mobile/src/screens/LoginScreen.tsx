@@ -8,8 +8,10 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  Image
 } from 'react-native';
+import logo from '../../assets/logo.png';
 import { useBackendAuth } from '../contexts/BackendAuthContext';
 import { apiService } from '../services/api';
 
@@ -90,6 +92,7 @@ export const LoginScreen: React.FC = () => {
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.formContainer}>
+          <Image source={logo} style={styles.logo} resizeMode="contain" />
           <Text style={styles.title}>
             {isSignUp ? 'Criar Conta' : 'Entrar'}
           </Text>
@@ -213,6 +216,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    alignSelf: 'center',
+    marginBottom: 16,
   },
   title: {
     fontSize: 28,

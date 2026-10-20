@@ -260,6 +260,21 @@ class ApiService {
     return this.request<Account[]>('/accounts');
   }
 
+  // Extrato da conta: receitas, despesas pagas, transferências e faturas no período
+  async getAccountStatement(
+    accountId: number,
+    filters?: { start?: string; end?: string }
+  ): Promise<Array<{ tipo: string; id: number; descricao: string; valor: number; data: string; categoria: string }>> {
+    const params = new URLSearchParams();
+    if (filters?.start) params.append('start', filters.start);
+    if (filters?.end) params.append('end', filters.end);
+    const qs = params.toString();
+    const res = await this.request<{ extrato: any[] }>(
+      `/accounts/${accountId}/extrato${qs ? `?${qs}` : ''}`
+    );
+    return Array.isArray(res?.extrato) ? res.extrato : [];
+  }
+
   async getCreditCards(): Promise<CreditCard[]> {
     return this.request<CreditCard[]>('/creditCards');
   }

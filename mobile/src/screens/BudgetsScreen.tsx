@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, SafeAreaView, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Modal, Alert, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Modal, Alert } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { apiService } from '../services/api'
-import { useNavigation } from '@react-navigation/native'
 import DateInput from '../components/DateInput'
+import { BackButton } from '../components/BackButton'
 
 export const BudgetsScreen: React.FC = () => {
-  const navigation = useNavigation()
   const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [cards, setCards] = useState<any[]>([])
@@ -28,44 +28,99 @@ export const BudgetsScreen: React.FC = () => {
   useEffect(()=>{ load() },[])
   useEffect(()=>{ (async()=>{ try { const c = await apiService.getCreditCards(); setCards(c) } catch{} })() },[])
 
+  // Percentual utilizado do orçamento (pode passar de 100%)
+  const getUsage = (item: any) => {
+    const plannedValue = Number(item.planned_value || 0)
+    const used = Number(item.utilizado || 0)
+    const pct = plannedValue > 0 ? (used / plannedValue) * 100 : 0
+    return { plannedValue, used, pct }
+  }
+
+  const totalPlanned = items.reduce((s, x) => s + Number(x.planned_value || 0), 0)
+  const totalUsed = items.reduce((s, x) => s + Number(x.utilizado || 0), 0)
+
   if (loading) return (
     <SafeAreaView style={styles.container}><View style={styles.loading}><ActivityIndicator size="large" /><Text>Carregando orçamentos...</Text></View></SafeAreaView>
   )
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={()=>navigation.goBack()} style={{padding:8}}><Text style={{fontSize:18}}>‹</Text></TouchableOpacity>
+        <BackButton />
         <Text style={styles.title}>Orçamentos</Text>
         <TouchableOpacity onPress={()=>{ setEditing(null); setName(''); setType('geral'); setCreditCardId(null); setStart(''); setEnd(''); setPlanned(''); setShowForm(true) }} style={{padding:8}}>
           <Text style={{fontSize:14, color:'#2563EB'}}>Adicionar</Text>
         </TouchableOpacity>
       </View>
-      <FlatList data={items} keyExtractor={(item)=>String(item.id)} contentContainerStyle={{padding:16}}
-        renderItem={({item})=> (
-          <View style={styles.card}>
-            <Text style={styles.label}>{item.name} {item.type==='cartao' && item.credit_card?.name ? `• ${item.credit_card.name}` : ''}</Text>
-            <Text style={styles.value}>R$ {Number(item.planned_value ?? 0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</Text>
-            <View style={{marginTop:8}}>
-              <Text style={{fontSize:12, color:'#555'}}>Utilizado</Text>
-              <View style={{height:10, backgroundColor:'#E5E7EB', borderRadius:999}}>
-                <View style={{height:10, width:`${Math.min(100, Math.round(((Number(item.utilizado||0))/(Math.max(1, Number(item.planned_value||0))))*100))}%`, backgroundColor:'#2563EB', borderRadius:999}} />
+      <FlatList
+        data={items}
+        keyExtractor={(item)=>String(item.id)}
+        contentContainerStyle={{padding:16, paddingBottom:32}}
+        ListEmptyComponent={<Text style={styles.emptyText}>Nenhum orçamento cadastrado</Text>}
+        renderItem={({item})=> {
+          const { plannedValue, used, pct } = getUsage(item)
+          const barWidth = Math.min(100, pct)
+          const overLimit = pct > 100
+          return (
+            <View style={styles.card}>
+              <Text style={styles.label}>{item.name} {item.type==='cartao' && item.credit_card?.name ? `• ${item.credit_card.name}` : ''}</Text>
+              <Text style={styles.value}>R$ {plannedValue.toLocaleString('pt-BR',{minimumFractionDigits:2})}</Text>
+              <View style={{marginTop:8}}>
+                <View style={styles.progressHeader}>
+                  <Text style={{fontSize:12, color:'#555'}}>Utilizado</Text>
+                  <Text style={[styles.progressPercent, overLimit && styles.progressPercentOver]}>{Math.round(pct)}%</Text>
+                </View>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width:`${barWidth}%`, backgroundColor: overLimit ? '#DC2626' : '#2563EB' }]} />
+                </View>
+                <Text style={{fontSize:12, color:'#333', marginTop:4}}>R$ {used.toLocaleString('pt-BR',{minimumFractionDigits:2})} de R$ {plannedValue.toLocaleString('pt-BR',{minimumFractionDigits:2})}</Text>
               </View>
-              <Text style={{fontSize:12, color:'#333', marginTop:4}}>R$ {Number(item.utilizado||0).toLocaleString('pt-BR',{minimumFractionDigits:2})} de R$ {Number(item.planned_value||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</Text>
+              <View style={{flexDirection:'row', gap:8, marginTop:8}}>
+                <TouchableOpacity style={[styles.smallBtn,{backgroundColor:'#374151'}]} onPress={()=>{
+                  setEditing(item); setName(item.name||''); setType(item.type||'geral'); setCreditCardId(item.credit_card_id||null); setStart(item.period_start ? item.period_start.split('-').reverse().join('/') : ''); setEnd(item.period_end ? item.period_end.split('-').reverse().join('/') : ''); setPlanned(String(item.planned_value||'')); setShowForm(true)
+                }}><Text style={styles.smallBtnText}>Editar</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.smallBtn,{backgroundColor:'#EF4444'}]} onPress={()=>{
+                  Alert.alert('Excluir orçamento','Confirma a exclusão?',[
+                    { text:'Cancelar', style:'cancel' },
+                    { text:'Excluir', style:'destructive', onPress: async ()=>{ await apiService.deleteBudget(item.id); await load() } }
+                  ])
+                }}><Text style={styles.smallBtnText}>Excluir</Text></TouchableOpacity>
+              </View>
             </View>
-            <View style={{flexDirection:'row', gap:8, marginTop:8}}>
-              <TouchableOpacity style={[styles.smallBtn,{backgroundColor:'#374151'}]} onPress={()=>{
-                setEditing(item); setName(item.name||''); setType(item.type||'geral'); setCreditCardId(item.credit_card_id||null); setStart(item.period_start ? item.period_start.split('-').reverse().join('/') : ''); setEnd(item.period_end ? item.period_end.split('-').reverse().join('/') : ''); setPlanned(String(item.planned_value||'')); setShowForm(true)
-              }}><Text style={styles.smallBtnText}>Editar</Text></TouchableOpacity>
-              <TouchableOpacity style={[styles.smallBtn,{backgroundColor:'#EF4444'}]} onPress={()=>{
-                Alert.alert('Excluir orçamento','Confirma a exclusão?',[
-                  { text:'Cancelar', style:'cancel' },
-                  { text:'Excluir', style:'destructive', onPress: async ()=>{ await apiService.deleteBudget(item.id); await load() } }
-                ])
-              }}><Text style={styles.smallBtnText}>Excluir</Text></TouchableOpacity>
+          )
+        }}
+        ListFooterComponent={
+          items.length === 0 ? null : (
+            <View style={styles.reportSection}>
+              <Text style={styles.reportTitle}>Relatórios</Text>
+              <View style={styles.reportCard}>
+                <Text style={styles.reportLabel}>Total planejado</Text>
+                <Text style={styles.reportValue}>R$ {totalPlanned.toLocaleString('pt-BR',{minimumFractionDigits:2})}</Text>
+                <Text style={[styles.reportLabel, { marginTop:8 }]}>Total utilizado</Text>
+                <Text style={styles.reportValue}>R$ {totalUsed.toLocaleString('pt-BR',{minimumFractionDigits:2})}</Text>
+                <View style={{marginTop:12}}>
+                  {items.map((b)=>{
+                    const { pct } = getUsage(b)
+                    const overLimit = pct > 100
+                    return (
+                      <View key={b.id} style={{marginVertical:6}}>
+                        <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center'}}>
+                          <Text style={{flex:1}}>{b.name}</Text>
+                          <Text style={[styles.progressPercent, overLimit && styles.progressPercentOver]}>
+                            {Math.round(pct)}%
+                          </Text>
+                        </View>
+                        <View style={styles.progressTrack}>
+                          <View style={[styles.progressFill, { width:`${Math.min(100, pct)}%`, backgroundColor: overLimit ? '#DC2626' : '#10B981' }]} />
+                        </View>
+                      </View>
+                    )
+                  })}
+                </View>
+              </View>
             </View>
-          </View>
-        )}
+          )
+        }
       />
 
       <Modal visible={showForm} animationType="slide" transparent>
@@ -109,47 +164,31 @@ export const BudgetsScreen: React.FC = () => {
           </View>
         </View></View></View>
       </Modal>
-
-      <View style={{padding:16}}>
-        <Text style={{fontSize:16, fontWeight:'700', marginBottom:8}}>Relatórios</Text>
-        <View style={{backgroundColor:'#fff', borderRadius:12, padding:12}}>
-          <Text style={{fontSize:12, color:'#555'}}>Total planejado</Text>
-          <Text style={{fontSize:14, fontWeight:'700', color:'#333'}}>R$ {Number(items.reduce((s,x)=> s + Number(x.planned_value||0),0)).toLocaleString('pt-BR',{minimumFractionDigits:2})}</Text>
-          <Text style={{fontSize:12, color:'#555', marginTop:8}}>Total utilizado</Text>
-          <Text style={{fontSize:14, fontWeight:'700', color:'#333'}}>R$ {Number(items.reduce((s,x)=> s + Number(x.utilizado||0),0)).toLocaleString('pt-BR',{minimumFractionDigits:2})}</Text>
-          <View style={{marginTop:12}}>
-            {items.map((b)=>{
-              const totalAll = items.reduce((s,x)=> s + Number(x.planned_value||0),0)
-              const pct = totalAll ? Math.min(100, Math.round(((Number(b.planned_value||0))/totalAll)*100)) : 0
-              return (
-                <View key={b.id} style={{marginVertical:6}}>
-                  <View style={{flexDirection:'row', justifyContent:'space-between'}}>
-                    <Text>{b.name}</Text>
-                    <Text>R$ {Number(b.planned_value||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</Text>
-                  </View>
-                  <View style={{height:10, backgroundColor:'#E5E7EB', borderRadius:999}}>
-                    <View style={{height:10, width:`${pct}%`, backgroundColor:'#10B981', borderRadius:999}} />
-                  </View>
-                </View>
-              )
-            })}
-          </View>
-        </View>
-      </View>
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
   container:{flex:1, backgroundColor:'#F2F2F7'},
-  header:{flexDirection:'row', alignItems:'center', justifyContent:'space-between', padding:16, backgroundColor:'#fff', borderBottomWidth:1, borderBottomColor:'#eee'},
+  header:{flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:16, paddingVertical:14, backgroundColor:'#fff', borderBottomWidth:1, borderBottomColor:'#eee'},
   title:{fontSize:20, fontWeight:'bold'},
   loading:{flex:1, alignItems:'center', justifyContent:'center'},
+  emptyText:{textAlign:'center', color:'#6B7280', marginTop:24},
   card:{backgroundColor:'#fff', borderRadius:12, padding:16, marginBottom:12},
   label:{color:'#666'},
   value:{fontWeight:'700', color:'#333'},
+  progressHeader:{flexDirection:'row', justifyContent:'space-between', alignItems:'center'},
+  progressPercent:{fontSize:12, fontWeight:'700', color:'#333'},
+  progressPercentOver:{color:'#DC2626'},
+  progressTrack:{height:10, backgroundColor:'#E5E7EB', borderRadius:999, overflow:'hidden'},
+  progressFill:{height:10, borderRadius:999},
   smallBtn:{ paddingHorizontal:10, paddingVertical:8, borderRadius:8 },
   smallBtnText:{ color:'#fff', fontWeight:'700' },
+  reportSection:{marginTop:8},
+  reportTitle:{fontSize:16, fontWeight:'700', marginBottom:8},
+  reportCard:{backgroundColor:'#fff', borderRadius:12, padding:12},
+  reportLabel:{fontSize:12, color:'#555'},
+  reportValue:{fontSize:14, fontWeight:'700', color:'#333'},
   modalBackdrop:{flex:1, backgroundColor:'#0006', alignItems:'center', justifyContent:'center'},
   modalContainer:{width:'100%', paddingHorizontal:16},
   modalCard:{backgroundColor:'#fff', borderRadius:12, padding:16},

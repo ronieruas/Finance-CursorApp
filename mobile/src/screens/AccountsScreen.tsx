@@ -3,18 +3,24 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
   RefreshControl,
   ActivityIndicator,
-  ScrollView
+  ScrollView,
+  Modal,
+  FlatList
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { apiService, Account } from '../services/api';
 import { useBackendAuth } from '../contexts/BackendAuthContext';
+import { BackButton } from '../components/BackButton';
+import { BankLogo } from '../components/BankLogo';
+import DateInput from '../components/DateInput';
+
+type ExtratoItem = { tipo: string; id: number; descricao: string; valor: number; data: string; categoria: string };
 
 export const AccountsScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -22,6 +28,14 @@ export const AccountsScreen: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Extrato
+  const [extratoConta, setExtratoConta] = useState<Account | null>(null);
+  const [extrato, setExtrato] = useState<ExtratoItem[]>([]);
+  const [extratoLoading, setExtratoLoading] = useState(false);
+  const [extratoError, setExtratoError] = useState('');
+  const [extratoStart, setExtratoStart] = useState('');
+  const [extratoEnd, setExtratoEnd] = useState('');
 
   useEffect(() => {
     loadAccounts();
@@ -106,20 +120,54 @@ export const AccountsScreen: React.FC = () => {
     return `${symbol} ${amount}`;
   };
 
-  // Valores de tipo conforme o ENUM do banco: corrente | poupanca | investimento
-  const getAccountTypeIcon = (type: string) => {
-    switch (type) {
-      case 'corrente':
-        return 'card-outline';
-      case 'poupanca':
-        return 'wallet-outline';
-      case 'investimento':
-        return 'trending-up-outline';
-      default:
-        return 'cash-outline';
+  const formatValue = (value: number) =>
+    `R$ ${Math.abs(Number(value || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
+  // Extrato usa o mesmo formato do web: DD/MM/AAAA -> AAAA-MM-DD
+  const toISO = (s: string) => {
+    const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+    return s;
+  };
+
+  const getTipoLabel = (tipo: string) => {
+    if (tipo === 'pagamento_cartao') return 'Fatura Cartão';
+    return tipo.replace('_', ' ');
+  };
+
+  const fetchExtrato = async (account: Account, start = extratoStart, end = extratoEnd) => {
+    try {
+      setExtratoLoading(true);
+      setExtratoError('');
+      const data = await apiService.getAccountStatement(account.id, {
+        start: start ? toISO(start) : undefined,
+        end: end ? toISO(end) : undefined,
+      });
+      setExtrato(data);
+    } catch (err: any) {
+      setExtrato([]);
+      setExtratoError(err?.message || 'Erro ao buscar extrato.');
+    } finally {
+      setExtratoLoading(false);
     }
   };
 
+  const openExtrato = (account: Account) => {
+    setExtratoConta(account);
+    setExtrato([]);
+    setExtratoStart('');
+    setExtratoEnd('');
+    setExtratoError('');
+    fetchExtrato(account, '', '');
+  };
+
+  const closeExtrato = () => {
+    setExtratoConta(null);
+    setExtrato([]);
+    setExtratoError('');
+  };
+
+  // Valores de tipo conforme o ENUM do banco: corrente | poupanca | investimento
   const getAccountTypeLabel = (type: string) => {
     switch (type) {
       case 'corrente':
@@ -143,15 +191,9 @@ export const AccountsScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <TouchableOpacity
-          accessibilityLabel="Voltar"
-          onPress={() => navigation.goBack()}
-          style={{ paddingRight: 12, paddingVertical: 6 }}
-        >
-          <Ionicons name="arrow-back" size={28} color="#007AFF" />
-        </TouchableOpacity>
+        <BackButton />
         <Text style={styles.title}>Minhas Contas</Text>
         <TouchableOpacity style={styles.addButton} onPress={handleCreateAccount}>
           <Ionicons name="add" size={24} color="#FFFFFF" />
@@ -160,6 +202,7 @@ export const AccountsScreen: React.FC = () => {
 
       <ScrollView
         style={styles.content}
+        contentContainerStyle={styles.contentContainer}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -177,16 +220,14 @@ export const AccountsScreen: React.FC = () => {
             <View key={account.id} style={styles.accountCard}>
               <View style={styles.accountHeader}>
                 <View style={styles.accountInfo}>
-                  <Ionicons
-                    name={getAccountTypeIcon(account.type)}
-                    size={24}
-                    color="#007AFF"
-                    style={styles.accountIcon}
-                  />
+                  <View style={styles.accountIcon}>
+                    <BankLogo name={`${account.name} ${account.bank ?? ''}`} size={32} />
+                  </View>
                   <View>
                     <Text style={styles.accountName}>{account.name}</Text>
                     <Text style={styles.accountType}>
                       {getAccountTypeLabel(account.type)}
+                      {account.bank ? ` • ${account.bank}` : ''}
                     </Text>
                   </View>
                 </View>
@@ -221,10 +262,85 @@ export const AccountsScreen: React.FC = () => {
                   {account.description}
                 </Text>
               )}
+
+              <TouchableOpacity
+                style={styles.statementButton}
+                onPress={() => openExtrato(account)}
+              >
+                <Ionicons name="list-outline" size={18} color="#2563EB" />
+                <Text style={styles.statementButtonText}>Extrato</Text>
+              </TouchableOpacity>
             </View>
           ))
         )}
       </ScrollView>
+
+      <Modal visible={!!extratoConta} animationType="slide" transparent onRequestClose={closeExtrato}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle} numberOfLines={1}>
+                Extrato: {extratoConta?.name}{extratoConta?.bank ? ` (${extratoConta.bank})` : ''}
+              </Text>
+              <TouchableOpacity onPress={closeExtrato} style={styles.modalClose}>
+                <Ionicons name="close" size={22} color="#111827" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.periodRow}>
+              <View style={{ flex: 1 }}>
+                <DateInput label="Início" value={extratoStart} onChange={setExtratoStart} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <DateInput label="Fim" value={extratoEnd} onChange={setExtratoEnd} />
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => extratoConta && fetchExtrato(extratoConta)}
+            >
+              <Text style={styles.filterButtonText}>Filtrar</Text>
+            </TouchableOpacity>
+
+            {extratoLoading ? (
+              <View style={styles.extratoLoading}>
+                <ActivityIndicator size="large" color="#2563EB" />
+                <Text style={styles.loadingText}>Carregando extrato...</Text>
+              </View>
+            ) : extratoError ? (
+              <Text style={styles.extratoError}>{extratoError}</Text>
+            ) : (
+              <FlatList
+                data={extrato}
+                keyExtractor={(item, index) => `${item.tipo}-${item.id}-${index}`}
+                style={styles.extratoList}
+                contentContainerStyle={{ paddingBottom: 12 }}
+                ListEmptyComponent={
+                  <Text style={styles.extratoEmpty}>Nenhuma movimentação encontrada.</Text>
+                }
+                renderItem={({ item }) => (
+                  <View style={styles.extratoRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.extratoDate}>{item.data}</Text>
+                      <Text style={styles.extratoDesc} numberOfLines={2}>{item.descricao}</Text>
+                      <Text style={styles.extratoMeta}>
+                        {item.categoria} • {getTipoLabel(item.tipo)}
+                      </Text>
+                    </View>
+                    <Text style={[
+                      styles.extratoValue,
+                      { color: item.valor < 0 ? '#DC2626' : '#059669' }
+                    ]}>
+                      {item.valor < 0 ? '-' : '+'}{formatValue(item.valor)}
+                    </Text>
+                  </View>
+                )}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -256,7 +372,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E5EA',
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#000000',
   },
@@ -271,6 +387,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
+  },
+  contentContainer: {
+    paddingBottom: 32,
   },
   emptyContainer: {
     flex: 1,
@@ -354,5 +473,109 @@ const styles = StyleSheet.create({
     color: '#666666',
     marginTop: 8,
     fontStyle: 'italic',
+  },
+  statementButton: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 10,
+    paddingVertical: 10,
+  },
+  statementButtonText: {
+    color: '#2563EB',
+    fontWeight: '700',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 16,
+    maxHeight: '88%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    flex: 1,
+  },
+  modalClose: {
+    padding: 6,
+  },
+  periodRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  filterButton: {
+    marginTop: 10,
+    backgroundColor: '#2563EB',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  filterButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  extratoLoading: {
+    paddingVertical: 32,
+    alignItems: 'center',
+  },
+  extratoError: {
+    color: '#DC2626',
+    textAlign: 'center',
+    paddingVertical: 16,
+  },
+  extratoEmpty: {
+    textAlign: 'center',
+    color: '#6B7280',
+    paddingVertical: 24,
+  },
+  extratoList: {
+    marginTop: 8,
+  },
+  extratoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  extratoDate: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  extratoDesc: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    marginTop: 2,
+  },
+  extratoMeta: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+    textTransform: 'capitalize',
+  },
+  extratoValue: {
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

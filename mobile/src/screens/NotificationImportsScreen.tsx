@@ -2,16 +2,17 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import C6NotificationListener, { CapturedNotification } from '../../modules/c6-notification-listener';
 import { apiService, CreditCard } from '../services/api';
+import { BackButton } from '../components/BackButton';
 
 type ParsedNotification = {
   bankKey: 'c6' | 'nubank' | null;
@@ -101,7 +102,6 @@ const findMatchingCard = (cards: CreditCard[], bankKey: ParsedNotification['bank
 };
 
 export const NotificationImportsScreen: React.FC = () => {
-  const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [importingId, setImportingId] = useState<string | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
@@ -221,11 +221,9 @@ export const NotificationImportsScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backText}>‹</Text>
-        </TouchableOpacity>
+        <BackButton />
         <Text style={styles.title}>Importações</Text>
         <TouchableOpacity onPress={loadData} style={styles.headerAction}>
           <Text style={styles.headerActionText}>Atualizar</Text>

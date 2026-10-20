@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { apiService } from '../services/api'
 import { Linking } from 'react-native'
-import { useNavigation } from '@react-navigation/native'
+import { BackButton } from '../components/BackButton'
 
 type ProximoVencimento = { descricao: string; valor: number; vencimento: string }
 type DespesaParcelada = { item: string; cartao: string; parcelaAtual: number; totalParcelas: number; valor: number; vencimento: string }
 
 export const ReportsScreen: React.FC = () => {
-  const navigation = useNavigation()
   const [summary, setSummary] = useState<{ totalIncomes: number; totalExpenses: number; totalCreditCardBills: number; balance: number } | null>(null)
   const [proximosVencimentos, setProximosVencimentos] = useState<ProximoVencimento[]>([])
   const [despesasParceladas, setDespesasParceladas] = useState<DespesaParcelada[]>([])
@@ -57,11 +57,11 @@ export const ReportsScreen: React.FC = () => {
 
   if (loading || !summary) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={()=> (navigation as any).goBack?.()} style={{padding:8}}><Text style={{fontSize:18, color:'#007AFF'}}>‹</Text></TouchableOpacity>
+          <BackButton />
           <Text style={styles.title}>Relatórios</Text>
-          <View style={{width:32}} />
+          <View style={{width:40}} />
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
@@ -72,15 +72,15 @@ export const ReportsScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={()=> (navigation as any).goBack?.()} style={{padding:8}}><Text style={{fontSize:18, color:'#007AFF'}}>‹</Text></TouchableOpacity>
+        <BackButton />
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerBtn} onPress={() => setCurrent(new Date(current.getFullYear(), current.getMonth()-1, 1))}><Text style={styles.headerBtnText}>◀︎</Text></TouchableOpacity>
           <Text style={styles.monthText}>{current.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</Text>
           <TouchableOpacity style={styles.headerBtn} onPress={() => setCurrent(new Date(current.getFullYear(), current.getMonth()+1, 1))}><Text style={styles.headerBtnText}>▶︎</Text></TouchableOpacity>
         </View>
-        <View style={{width:32}} />
+        <View style={{width:40}} />
       </View>
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         <View style={styles.card}><Text style={styles.label}>Receitas no mês</Text><Text style={styles.value}>{fmt(summary.totalIncomes)}</Text></View>
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   headerBtnText: { fontSize: 16, fontWeight: '700', color: '#111' },
   monthText: { marginHorizontal: 12, fontSize: 16, fontWeight: '600', color: '#333' },
   content: { flex: 1, padding: 20 },
-  contentContainer: { paddingBottom: 32 },
+  contentContainer: { paddingBottom: 48 },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, elevation: 2 },
   label: { fontSize: 14, color: '#666', marginBottom: 4 },
   value: { fontSize: 20, fontWeight: '700', color: '#333' },

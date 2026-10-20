@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, SafeAreaView, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Modal, Alert, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Modal, Alert, KeyboardAvoidingView, Platform } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { apiService } from '../services/api'
 import { useNavigation } from '@react-navigation/native'
 import DateInput from '../components/DateInput'
+import { BackButton } from '../components/BackButton'
 
 export const TransfersScreen: React.FC = () => {
   const navigation = useNavigation()
@@ -64,9 +66,9 @@ export const TransfersScreen: React.FC = () => {
   )
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={()=>navigation.goBack()} style={{padding:8}}><Text style={{fontSize:18}}>‹</Text></TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.title}>Transferências</Text>
         <TouchableOpacity onPress={()=>{
           setNewFromId(null); setNewToId(null); setNewDate(''); setNewValue(''); setNewDesc(''); setShowAdd(true)
@@ -102,7 +104,7 @@ export const TransfersScreen: React.FC = () => {
         </View>
       ) : null}
 
-      <FlatList data={items} keyExtractor={(item)=>String(item.id)} contentContainerStyle={{padding:16}}
+      <FlatList data={items} keyExtractor={(item)=>String(item.id)} contentContainerStyle={{padding:16, paddingBottom:32}}
         ListEmptyComponent={<Text style={styles.emptyText}>Nenhuma transferência encontrada</Text>}
         renderItem={({item})=> (
           <View style={styles.card}>

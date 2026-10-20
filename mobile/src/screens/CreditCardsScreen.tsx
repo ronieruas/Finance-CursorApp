@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { apiService, CreditCard } from '../services/api'
 import DateInput from '../components/DateInput'
 import { useNavigation } from '@react-navigation/native'
+import { BackButton } from '../components/BackButton'
+import { BankLogo } from '../components/BankLogo'
 
 export const CreditCardsScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -241,7 +243,7 @@ export const CreditCardsScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}> 
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}> 
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
           <Text style={styles.loadingText}>Carregando cartões...</Text>
@@ -251,13 +253,11 @@ export const CreditCardsScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={()=>navigation.goBack()} style={{padding:8}}>
-          <Text style={{fontSize:18}}>‹</Text>
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.title}>Cartões</Text>
-        <View style={{width:32}} />
+        <View style={{width:40}} />
       </View>
       <View style={styles.actionsBar}>
         <TouchableOpacity style={[styles.actionBtn,{backgroundColor:'#10B981'}]} onPress={()=>{
@@ -284,18 +284,20 @@ export const CreditCardsScreen: React.FC = () => {
         keyExtractor={(item) => String(item.card_id)}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         contentContainerStyle={styles.listContainer}
-        renderItem={({ item }) => (
+        renderItem={({ item }) => {
+          const meta = cardsMeta.find(c=>c.name===item.card_name)
+          const brand = meta?.brand ? ` • ${meta.brand}` : ''
+          const bank = meta?.bank ? ` (${meta.bank})` : ''
+          return (
           <View style={[styles.cardItem, highlightCardId===item.card_id && { backgroundColor:'#E8F5E8', borderWidth:1, borderColor:'#86EFAC' }]}>
+            <View style={styles.cardRowHeader}>
+              <BankLogo name={`${item.card_name} ${meta?.bank ?? ''}`} size={40} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.cardName}>{item.card_name}</Text>
+                <Text style={styles.metaText}>{`Cartão${brand}${bank}`}</Text>
+              </View>
+            </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardName}>{item.card_name}</Text>
-              <Text style={styles.metaText}>{
-                (() => {
-                  const meta = cardsMeta.find(c=>c.name===item.card_name)
-                  const brand = meta?.brand ? ` • ${meta.brand}` : ''
-                  const bank = meta?.bank ? ` (${meta.bank})` : ''
-                  return `Cartão${brand}${bank}`
-                })()
-              }</Text>
               <Text style={styles.field}><Text style={styles.label}>Gastos do mês:</Text> <Text style={styles.value}>{fmt(item.gastos_mes)}</Text></Text>
               <Text style={styles.field}><Text style={styles.label}>Fatura atual:</Text> <Text style={styles.value}>{fmt(item.fatura_atual)}</Text></Text>
               <Text style={styles.field}><Text style={styles.label}>Fatura fechada:</Text> <Text style={styles.value}>{fmt(item.fatura_fechada_valor)}</Text> <Text style={styles.badge}>{item.fatura_fechada_status?.toUpperCase?.()}</Text></Text>
@@ -380,7 +382,8 @@ export const CreditCardsScreen: React.FC = () => {
               </View>
             </View>
           </View>
-        )}
+          )
+        }}
       />
 
       <Modal visible={showForm} animationType="slide" transparent>
@@ -739,15 +742,16 @@ export const CreditCardsScreen: React.FC = () => {
   container: { flex: 1, backgroundColor: '#F2F2F7' },
   header: { paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E5E5EA' },
   title: { fontSize: 24, fontWeight: 'bold', color: '#000' },
-  listContainer: { padding: 16 },
+  listContainer: { padding: 16, paddingBottom: 32 },
   searchRow: { paddingHorizontal: 16, marginTop: 12 },
   search: { borderWidth: 1, borderColor: '#ddd', borderRadius: 10, padding: 10, fontSize: 16, backgroundColor: '#f9f9f9', color: '#111' },
   statusRow: { flexDirection: 'row', marginTop: 8, gap: 8 },
   statusChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: '#ddd', color: '#555' },
   statusChipActive: { backgroundColor: '#E5E7EB', borderColor: '#bbb', color: '#111', fontWeight: '700' },
   cardItem: { backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 12, elevation: 2 },
-  cardName: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
-  metaText: { fontSize: 12, color: '#666', marginBottom: 8 },
+  cardRowHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  cardName: { fontSize: 18, fontWeight: '600' },
+  metaText: { fontSize: 12, color: '#666', marginTop: 2 },
   field: { fontSize: 14, marginBottom: 4 },
   label: { color: '#666' },
   value: { fontWeight: '700', color: '#333' },
