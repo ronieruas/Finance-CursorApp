@@ -11,6 +11,7 @@ import {
   ScrollView,
   Image
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import logo from '../../assets/logo.png';
 import { useBackendAuth } from '../contexts/BackendAuthContext';
 import { apiService } from '../services/api';
@@ -18,6 +19,7 @@ import { apiService } from '../services/api';
 export const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -130,15 +132,29 @@ export const LoginScreen: React.FC = () => {
 
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Senha</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Sua senha"
-              placeholderTextColor="#999"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Sua senha"
+                placeholderTextColor="#999"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowPassword(!showPassword)}
+                accessibilityLabel={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={22}
+                  color="#666"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TouchableOpacity
@@ -248,6 +264,24 @@ const styles = StyleSheet.create({
   },
   fieldGroup: {
     marginBottom: 12,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    backgroundColor: '#f9f9f9',
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 15,
+    fontSize: 16,
+    color: '#111',
+  },
+  eyeButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   label: {
     fontSize: 14,

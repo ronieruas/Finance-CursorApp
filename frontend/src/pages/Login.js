@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import '../styles/global.css';
 import useApiBase from '../hooks/useApiBase';
+import { appLogo } from '../assets/logos';
 
 function Login({ setToken }) {
   const apiBase = useApiBase();
@@ -82,30 +83,14 @@ function Login({ setToken }) {
             overflow: 'hidden'
           }}
         >
-          {/* Logo */}
           <div style={{ marginBottom: '40px', textAlign: 'center' }}>
-            <div style={{
-              width: '80px',
-              height: '80px',
-              background: 'rgba(255, 255, 255, 0.2)',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 20px',
-              fontSize: '40px',
-              backdropFilter: 'blur(10px)',
-              border: '2px solid rgba(255, 255, 255, 0.3)'
-            }}>
-              💰
-            </div>
             <h1 style={{ 
               fontSize: '32px', 
               fontWeight: '700', 
               margin: '0 0 8px',
               textShadow: '0 2px 4px rgba(0,0,0,0.3)'
             }}>
-              Financeiro
+              Finance
             </h1>
             <p style={{ 
               fontSize: '16px', 
@@ -233,6 +218,18 @@ function Login({ setToken }) {
           }}
         >
           <div style={{ marginBottom: '40px', textAlign: 'center' }}>
+            <img
+              src={appLogo}
+              alt="Finance"
+              style={{
+                width: '96px',
+                height: '96px',
+                objectFit: 'contain',
+                margin: '0 auto 20px',
+                display: 'block',
+                borderRadius: '20px'
+              }}
+            />
             <h2 style={{ 
               fontSize: '28px', 
               fontWeight: '700', 

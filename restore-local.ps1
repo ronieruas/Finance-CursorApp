@@ -74,14 +74,7 @@ if ($Confirm -ne "sim") {
 # Restaurar o backup
 Log "Restaurando banco de dados..."
 
-# Passo 1: Limpar schema public
-docker exec -i finance-db env PGCLIENTENCODING=UTF8 psql -U $DbUser -d $DbName -v ON_ERROR_STOP=1 -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
-if ($LASTEXITCODE -ne 0) {
-    Log "ERRO: Falha ao limpar o banco de dados"
-    exit 1
-}
-
-# Passo 2: Copiar o arquivo de backup diretamente para dentro do container para evitar conversões de encoding do PowerShell
+# Passo 1: Copiar o arquivo de backup diretamente para dentro do container para evitar conversões de encoding do PowerShell
 $ContainerBackupPath = "/tmp/restore.sql"
 Log "Copiando backup para o container: $ContainerBackupPath"
 docker cp $SelectedBackup.FullName finance-db:$ContainerBackupPath
@@ -90,7 +83,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# Passo 2.5: Detectar se o backup contém comandos de nível de banco (DROP/CREATE DATABASE ou \connect)
+# Passo 2: Detectar se o backup contém comandos de nível de banco (DROP/CREATE DATABASE ou \connect)
 $ContainsDbLevelOps = Select-String -Path $SelectedBackup.FullName -Pattern 'DROP\s+DATABASE|CREATE\s+DATABASE|\\connect\s+finance' -Quiet
 if ($ContainsDbLevelOps) {
     $TargetDb = "postgres"
@@ -98,6 +91,20 @@ if ($ContainsDbLevelOps) {
 } else {
     $TargetDb = $DbName
     Log "Backup sem comandos de nível de banco; conectando ao banco '$TargetDb'."
+
+    # Para dumps sem CREATE DATABASE, recria o banco-alvo antes de aplicar
+    Log "Recriando banco '$DbName'..."
+    docker exec -i finance-db env PGCLIENTENCODING=UTF8 psql -U $DbUser -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $DbName WITH (FORCE);"
+    if ($LASTEXITCODE -ne 0) {
+        Log "ERRO: Falha ao remover o banco '$DbName'"
+        exit 1
+    }
+
+    docker exec -i finance-db env PGCLIENTENCODING=UTF8 psql -U $DbUser -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE $DbName;"
+    if ($LASTEXITCODE -ne 0) {
+        Log "ERRO: Falha ao criar o banco '$DbName'"
+        exit 1
+    }
 }
 
 # Passo 3: Executar o psql dentro do container lendo o arquivo diretamente

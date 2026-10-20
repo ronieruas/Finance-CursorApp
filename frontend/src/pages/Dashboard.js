@@ -6,6 +6,7 @@ import Input from '../components/Input';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import useApiBase from '../hooks/useApiBase';
+import BankLogo from '../components/BankLogo';
 dayjs.extend(customParseFormat);
 
 function Dashboard({ token }) {
@@ -238,7 +239,12 @@ function Dashboard({ token }) {
               {gastosPorCartao?.length === 0 && <tr><td colSpan={4} style={{ color: '#888', padding: '5px 3px', fontSize: '0.85rem' }}>Nenhum gasto no período.</td></tr>}
               {gastosPorCartao?.map?.(c => (
                 <tr key={c.card_id}>
-                  <td style={{ padding: '5px 3px', fontSize: '0.85rem' }}>{c.card_name}</td>
+                  <td style={{ padding: '5px 3px', fontSize: '0.85rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <BankLogo name={c.card_name} size={20} />
+                      <span>{c.card_name}</span>
+                    </div>
+                  </td>
                   <td style={{ color: 'var(--color-cartao)', fontWeight: 600, padding: '5px 3px', fontSize: '0.85rem' }}>R$ {Number(c.gastos_mes || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                   <td style={{ color: '#8b5cf6', fontWeight: 600, padding: '5px 3px', fontSize: '0.85rem' }}>R$ {Number(c.fatura_atual || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                   <td style={{ padding: '5px 3px', fontSize: '0.85rem' }}>
@@ -292,7 +298,12 @@ function Dashboard({ token }) {
               )}
               {poupancaInvestimentos?.contas?.map?.(c => (
                 <tr key={c.id}>
-                  <td style={{ padding: '5px 3px', fontSize: '0.85rem' }}>{c.name}</td>
+                  <td style={{ padding: '5px 3px', fontSize: '0.85rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <BankLogo name={c.name} size={20} />
+                      <span>{c.name}</span>
+                    </div>
+                  </td>
                   <td style={{ padding: '5px 3px', fontSize: '0.85rem' }}>{c.type === 'poupanca' ? 'Poupança' : 'Investimento'}</td>
                   <td style={{ padding: '5px 3px', fontSize: '0.85rem' }}>{(c.currency || 'BRL').toUpperCase()}</td>
                   <td style={{ color: '#10b981', fontWeight: 600, padding: '5px 3px', fontSize: '0.85rem' }}>

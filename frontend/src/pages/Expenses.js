@@ -7,6 +7,7 @@ import Modal from '../components/Modal';
 import Toast from '../components/Toast';
 import dayjs from 'dayjs';
 import useApiBase from '../hooks/useApiBase';
+import BankLogo from '../components/BankLogo';
 
 const API_URL = `${process.env.REACT_APP_API_URL || '/api'}/expenses`; // ajuste conforme backend
 const ACCOUNTS_URL = `${process.env.REACT_APP_API_URL || '/api'}/accounts`;
@@ -390,7 +391,7 @@ function Expenses({ token }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', background: 'transparent', tableLayout: 'fixed', fontSize: '0.9rem' }}>
             <thead>
               <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
-                <th style={{ padding: 8, textAlign: 'left', width: 98 }}>Conta/Cartão</th>
+                <th style={{ padding: 8, textAlign: 'left', width: 98 }}>Conta</th>
                 <th style={{ padding: 8, textAlign: 'left', width: 128 }}>Descrição</th>
                 <th style={{ padding: 8, textAlign: 'left', width: 80 }}>Valor</th>
                 <th style={{ padding: 8, textAlign: 'left', width: 80 }}>Vencimento</th>
@@ -459,10 +460,26 @@ function Expenses({ token }) {
                   ) : (
                     <>
                       <td style={{ textAlign: 'left' }}>
-                        {exp.type === 'cartao' 
-                          ? (creditCards.find(c => c.id === exp.credit_card_id)?.name || exp.credit_card_id)
-                          : (accounts.find(a => a.id === exp.account_id)?.name || exp.account_id)
-                        }
+                        {(() => {
+                          if (exp.type === 'cartao') {
+                            const card = creditCards.find(c => c.id === exp.credit_card_id);
+                            const label = card?.name || exp.credit_card_id;
+                            return (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <BankLogo name={`${label} ${card?.bank || ''}`} size={22} />
+                                <span>{label}</span>
+                              </div>
+                            );
+                          }
+                          const acc = accounts.find(a => a.id === exp.account_id);
+                          const label = acc?.name || exp.account_id;
+                          return (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <BankLogo name={`${label} ${acc?.bank || ''}`} size={22} />
+                              <span>{label}</span>
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td style={{ textAlign: 'left' }}>{exp.description}</td>
                       <td style={{ textAlign: 'left', color: 'var(--color-despesa)', fontWeight: 600 }}>R$ {Number(exp.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import useApiBase from '../hooks/useApiBase';
+import BankLogo from '../components/BankLogo';
 
 function formatDateBR(dateStr) {
   if (!dateStr) return '';
@@ -295,8 +296,32 @@ function Transfers({ token }) {
                 ) : (
                   <>
                     <td style={{ textAlign: 'left' }}>{formatDateBR(t.date)}</td>
-                    <td style={{ textAlign: 'left' }}>{t.from_account_id ? (accounts.find(a => a.id === t.from_account_id)?.name || t.from_account_id) : 'Conta de Terceiros'}</td>
-                    <td style={{ textAlign: 'left' }}>{t.to_account_id ? (accounts.find(a => a.id === t.to_account_id)?.name || t.to_account_id) : 'Conta de Terceiros'}</td>
+                    <td style={{ textAlign: 'left' }}>
+                      {(() => {
+                        if (!t.from_account_id) return 'Conta de Terceiros';
+                        const acc = accounts.find(a => a.id === t.from_account_id);
+                        const label = acc?.name || t.from_account_id;
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <BankLogo name={`${label} ${acc?.bank || ''}`} size={22} />
+                            <span>{label}</span>
+                          </div>
+                        );
+                      })()}
+                    </td>
+                    <td style={{ textAlign: 'left' }}>
+                      {(() => {
+                        if (!t.to_account_id) return 'Conta de Terceiros';
+                        const acc = accounts.find(a => a.id === t.to_account_id);
+                        const label = acc?.name || t.to_account_id;
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <BankLogo name={`${label} ${acc?.bank || ''}`} size={22} />
+                            <span>{label}</span>
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td style={{ textAlign: 'left' }}>R$ {Number(t.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                     <td style={{ textAlign: 'left' }}>{t.description}</td>
                     <td>

@@ -6,6 +6,7 @@ import Input from '../components/Input';
 import Modal from '../components/Modal';
 import Toast from '../components/Toast';
 import useApiBase from '../hooks/useApiBase';
+import BankLogo from '../components/BankLogo';
 
 // Bases possíveis para a API (prioridade: env -> localhost:3003 -> relativo /api)
 const API_BASES = [process.env.REACT_APP_API_URL, 'http://localhost:3003', '/api'].filter(Boolean);
@@ -268,7 +269,18 @@ function Incomes({ token }) {
                     </>
                   ) : (
                     <>
-                      <td style={{ textAlign: 'left' }}>{accounts.find(a => a.id === inc.account_id)?.name || inc.account_id}</td>
+                      <td style={{ textAlign: 'left' }}>
+                        {(() => {
+                          const acc = accounts.find(a => a.id === inc.account_id);
+                          const label = acc?.name || inc.account_id;
+                          return (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <BankLogo name={`${label} ${acc?.bank || ''}`} size={22} />
+                              <span>{label}</span>
+                            </div>
+                          );
+                        })()}
+                      </td>
                       <td style={{ textAlign: 'left' }}>{inc.description}</td>
                       <td style={{ textAlign: 'left', color: 'var(--color-receita)', fontWeight: 600 }}>R$ {Number(inc.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                       <td style={{ textAlign: 'left' }}>{formatDateBR(inc.date)}</td>

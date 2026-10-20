@@ -6,6 +6,7 @@ import Input from '../components/Input';
 import Toast from '../components/Toast';
 import Modal from '../components/Modal';
 import useApiBase from '../hooks/useApiBase';
+import BankLogo from '../components/BankLogo';
 
 // Bases possíveis para a API (prioridade: env -> localhost:3003 -> relativo /api)
 // API base is standardized via useApiBase(); legacy API_BASES removed.
@@ -304,7 +305,12 @@ function Accounts({ token }) {
                     </>
                   ) : (
                     <>
-                      <td style={{ textAlign: 'left' }}>{acc.name}</td>
+                      <td style={{ textAlign: 'left' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <BankLogo name={`${acc.name} ${acc.bank || ''}`} size={22} />
+                          <span>{acc.name}</span>
+                        </div>
+                      </td>
                       <td style={{ textAlign: 'left' }}>{acc.bank}</td>
                       <td style={{ textAlign: 'left' }}>{acc.type}</td>
                       <td style={{ textAlign: 'left', color: 'var(--color-primary)', fontWeight: 600 }}>

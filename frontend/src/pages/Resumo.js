@@ -5,6 +5,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, R
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 import useApiBase from '../hooks/useApiBase';
+import BankLogo from '../components/BankLogo';
 
 // Configurar dayjs para português brasileiro
 dayjs.locale('pt-br');
@@ -168,7 +169,10 @@ function Resumo({ token }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {data.saldoPorConta.map((conta, index) => (
               <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 14, color: '#374151' }}>{conta.nome}</span>
+                <span style={{ fontSize: 14, color: '#374151', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <BankLogo name={conta.nome} size={20} />
+                  <span>{conta.nome}</span>
+                </span>
                 <span style={{ fontSize: 14, fontWeight: 600, color: '#1f2937' }}>
                   {formatCurrency(conta.saldo)}
                 </span>
@@ -313,7 +317,10 @@ function Resumo({ token }) {
             {gastosPorCartaoFiltrados.map((cartao, index) => (
               <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937' }}>{cartao.nome}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <BankLogo name={cartao.nome} size={20} />
+                    <span>{cartao.nome}</span>
+                  </div>
                   <div style={{ fontSize: 12, color: '#6b7280' }}>Vencimento em {formatDate(cartao.vencimento)}</div>
                 </div>
                 <span style={{ fontSize: 14, fontWeight: 600, color: '#059669' }}>

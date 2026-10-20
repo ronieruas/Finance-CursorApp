@@ -6,6 +6,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import Input from '../components/Input';
+import BankLogo from '../components/BankLogo';
 import dayjs from 'dayjs';
 import useApiBase from '../hooks/useApiBase';
 
@@ -136,6 +137,7 @@ function Analytics({ token }) {
           <div>
             <label style={{ fontWeight: 500, marginRight: 8 }}>Período:</label>
             <select value={period} onChange={handlePeriodSelect} className="input-glass">
+              <option value="currentMonth">Mês atual</option>
               <option value="last3months">Últimos 3 meses</option>
               <option value="last6months">Últimos 6 meses</option>
               <option value="last12months">Últimos 12 meses</option>
@@ -273,7 +275,10 @@ function Analytics({ token }) {
           <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
             {data.analiseCartoes.map((cartao, index) => (
               <div key={cartao.id} style={{ padding: 16, background: 'rgba(139, 92, 246, 0.1)', borderRadius: 8 }}>
-                <h4 style={{ margin: '0 0 8 0', color: colors.cartao }}>{cartao.nome}</h4>
+                <h4 style={{ margin: '0 0 8 0', color: colors.cartao, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <BankLogo name={`${cartao.nome} ${cartao.banco || ''}`} size={22} />
+                  <span>{cartao.nome}</span>
+                </h4>
                 <p style={{ margin: '4 0', fontSize: 14 }}>{cartao.banco}</p>
                 <div style={{ margin: '8 0' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>

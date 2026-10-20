@@ -11,6 +11,7 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 import useApiBase from '../hooks/useApiBase';
+import BankLogo from '../components/BankLogo';
 
 const API_URL_OLD = `${process.env.REACT_APP_API_URL || '/api'}/creditCards`; // (deprecated) mantido para referência, não usado
 
@@ -676,7 +677,12 @@ function CreditCards({ token }) {
                           </td>
                           <td style={{ textAlign: 'left' }}>{card.due_day}</td>
                           <td style={{ textAlign: 'left' }}>{card.closing_day}</td>
-                          <td style={{ textAlign: 'left' }}>{card.name}</td>
+                          <td style={{ textAlign: 'left', paddingRight: 16 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <BankLogo name={`${card.name} ${card.bank || ''}`} size={22} />
+                              <span style={{ whiteSpace: 'nowrap' }}>{card.name}</span>
+                            </div>
+                          </td>
                           <td style={{ textAlign: 'left' }}>
                             {getBillStatus(card, faturaAtual, billMonth)}
                           </td>
