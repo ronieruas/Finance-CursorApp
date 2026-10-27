@@ -25,6 +25,7 @@ export const CreditCardsScreen: React.FC = () => {
   const [formCard, setFormCard] = useState<CreditCard | null>(null)
   const [formDesc, setFormDesc] = useState('')
   const [formAmount, setFormAmount] = useState('')
+  const [formCategory, setFormCategory] = useState('')
   const [formDate, setFormDate] = useState(()=>{
     const d = new Date();
     const dd = String(d.getDate()).padStart(2,'0');
@@ -310,6 +311,7 @@ export const CreditCardsScreen: React.FC = () => {
                   setFormCard(card)
                   setFormDesc('')
                   setFormAmount('')
+                  setFormCategory('')
                   setFormDate('')
                   setFormInstallments('1')
                   setShowForm(true)
@@ -388,46 +390,53 @@ export const CreditCardsScreen: React.FC = () => {
 
       <Modal visible={showForm} animationType="slide" transparent>
         <View style={styles.modalBackdrop}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalContainer}>
-            <View style={styles.modalCard}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 12}
+            style={[styles.modalContainer, { flex: 1, justifyContent: 'center' }]}
+          >
+            <View style={[styles.modalCard, { maxHeight: '92%' }]}>
               <TouchableOpacity accessibilityLabel="Fechar" hitSlop={{top:10,left:10,bottom:10,right:10}} onPress={()=>setShowForm(false)} style={styles.modalCloseX}><Text style={{fontSize:20, fontWeight:'700'}}>×</Text></TouchableOpacity>
-              <Text style={styles.modalTitle}>Nova despesa no cartão</Text>
-              <Text style={styles.modalLabel}>Cartão</Text>
-              <Text style={styles.modalValue}>{formCard?.name} (venc {formCard?.due_day}/ fechamento {formCard?.closing_day})</Text>
-              <View style={styles.modalGroup}><Text style={styles.modalLabel}>Descrição</Text><TextInput style={styles.modalInput} value={formDesc} onChangeText={setFormDesc} placeholder="Ex: Supermercado" placeholderTextColor="#999" /></View>
-              <View style={styles.modalGroup}><Text style={styles.modalLabel}>Valor</Text><TextInput style={styles.modalInput} value={formAmount} onChangeText={setFormAmount} keyboardType="numeric" placeholder="0,00" placeholderTextColor="#999" /></View>
-              <View style={styles.modalGroup}><DateInput label="Data da compra" value={formDate} onChange={setFormDate} /></View>
-              <View style={styles.modalGroup}><Text style={styles.modalLabel}>Parcelas</Text><TextInput style={styles.modalInput} value={formInstallments} onChangeText={setFormInstallments} keyboardType="numeric" placeholder="1" placeholderTextColor="#999" /></View>
-              <View style={styles.modalActions}>
-                <TouchableOpacity style={[styles.modalBtn,{backgroundColor:'#6B7280'}]} onPress={()=>setShowForm(false)}><Text style={styles.modalBtnText}>Cancelar</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.modalBtn,{backgroundColor:'#2563EB'}]} onPress={async ()=>{
-                  try {
-                    if (!formCard) { Alert.alert('Cartões','Seleção de cartão ausente'); return }
-                    const amount = parseFloat(formAmount.replace(',','.'))
-                    if (!isFinite(amount) || amount<=0) { Alert.alert('Cartões','Informe um valor válido'); return }
-                    if (!formDate) { Alert.alert('Cartões','Informe a data da compra'); return }
-                    const dateOk = /^\d{2}\/\d{2}\/\d{4}$/.test(formDate)
-                    if (!dateOk) { Alert.alert('Cartões','Use o formato DD/MM/AAAA'); return }
-                    const parcelas = Math.max(1, parseInt(formInstallments || '1',10))
-                    await apiService.createCardExpense({
-                      card: formCard,
-                      description: formDesc || 'Despesa do cartão',
-                      amount,
-                      purchase_date: formDate,
-                      category: 'shopping',
-                      status: 'pendente',
-                      installment_total: parcelas,
-                    })
-                    Alert.alert('Cartões','Despesa lançada na fatura correta')
-                    setShowForm(false)
-                    setHighlightCardId((formCard.id as any))
-                    setTimeout(()=> setHighlightCardId(null), 2000)
-                    await load()
-                  } catch(e:any) {
-                    Alert.alert('Erro', e?.message || 'Falha ao lançar despesa')
-                  }
-                }}><Text style={styles.modalBtnText}>Salvar</Text></TouchableOpacity>
-              </View>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{maxHeight:520}} contentContainerStyle={{paddingBottom:24}}>
+                <Text style={styles.modalTitle}>Nova despesa no cartão</Text>
+                <Text style={styles.modalLabel}>Cartão</Text>
+                <Text style={styles.modalValue}>{formCard?.name} (venc {formCard?.due_day}/ fechamento {formCard?.closing_day})</Text>
+                <View style={styles.modalGroup}><Text style={styles.modalLabel}>Descrição</Text><TextInput style={styles.modalInput} value={formDesc} onChangeText={setFormDesc} placeholder="Ex: Supermercado" placeholderTextColor="#999" /></View>
+                <View style={styles.modalGroup}><Text style={styles.modalLabel}>Valor</Text><TextInput style={styles.modalInput} value={formAmount} onChangeText={setFormAmount} keyboardType={Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'default'} placeholder="0,00 ou -0,00" placeholderTextColor="#999" /></View>
+                <View style={styles.modalGroup}><DateInput label="Data da compra" value={formDate} onChange={setFormDate} /></View>
+                <View style={styles.modalGroup}><Text style={styles.modalLabel}>Categoria</Text><TextInput style={styles.modalInput} value={formCategory} onChangeText={setFormCategory} placeholder="Categoria" placeholderTextColor="#999" /></View>
+                <View style={styles.modalGroup}><Text style={styles.modalLabel}>Parcelas</Text><TextInput style={styles.modalInput} value={formInstallments} onChangeText={setFormInstallments} keyboardType="numeric" placeholder="1" placeholderTextColor="#999" /></View>
+                <View style={styles.modalActions}>
+                  <TouchableOpacity style={[styles.modalBtn,{backgroundColor:'#6B7280'}]} onPress={()=>setShowForm(false)}><Text style={styles.modalBtnText}>Cancelar</Text></TouchableOpacity>
+                  <TouchableOpacity style={[styles.modalBtn,{backgroundColor:'#2563EB'}]} onPress={async ()=>{
+                    try {
+                      if (!formCard) { Alert.alert('Cartões','Seleção de cartão ausente'); return }
+                      const amount = parseFloat(formAmount.replace(',','.'))
+                      if (!isFinite(amount) || amount === 0) { Alert.alert('Cartões','Informe um valor válido'); return }
+                      if (!formDate) { Alert.alert('Cartões','Informe a data da compra'); return }
+                      const dateOk = /^\d{2}\/\d{2}\/\d{4}$/.test(formDate)
+                      if (!dateOk) { Alert.alert('Cartões','Use o formato DD/MM/AAAA'); return }
+                      const parcelas = Math.max(1, parseInt(formInstallments || '1',10))
+                      await apiService.createCardExpense({
+                        card: formCard,
+                        description: formDesc || 'Despesa do cartão',
+                        amount,
+                        purchase_date: formDate,
+                        category: formCategory.trim() || 'other',
+                        status: 'pendente',
+                        installment_total: parcelas,
+                      })
+                      Alert.alert('Cartões','Despesa lançada na fatura correta')
+                      setShowForm(false)
+                      setHighlightCardId((formCard.id as any))
+                      setTimeout(()=> setHighlightCardId(null), 2000)
+                      await load()
+                    } catch(e:any) {
+                      Alert.alert('Erro', e?.message || 'Falha ao lançar despesa')
+                    }
+                  }}><Text style={styles.modalBtnText}>Salvar</Text></TouchableOpacity>
+                </View>
+              </ScrollView>
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -589,18 +598,11 @@ export const CreditCardsScreen: React.FC = () => {
               >
               <Text style={styles.modalTitle}>Editar despesa</Text>
               <View style={styles.modalGroup}><Text style={styles.modalLabel}>Descrição</Text><TextInput style={styles.modalInput} value={editExpenseDesc} onChangeText={setEditExpenseDesc} placeholder="Descrição" placeholderTextColor="#999" /></View>
-              <View style={styles.modalGroup}><Text style={styles.modalLabel}>Valor</Text><TextInput style={styles.modalInput} value={editExpenseAmount} onChangeText={setEditExpenseAmount} keyboardType="numeric" placeholder="0,00" placeholderTextColor="#999" /></View>
+              <View style={styles.modalGroup}><Text style={styles.modalLabel}>Valor</Text><TextInput style={styles.modalInput} value={editExpenseAmount} onChangeText={setEditExpenseAmount} keyboardType={Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'default'} placeholder="0,00 ou -0,00" placeholderTextColor="#999" /></View>
               <View style={styles.modalGroup}><DateInput label="Data" value={editExpenseDate} onChange={setEditExpenseDate} /></View>
               <View style={styles.modalGroup}>
                 <Text style={styles.modalLabel}>Categoria</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
-                  {expenseCategories.map(cat => (
-                    <TouchableOpacity key={cat} style={[styles.filterChip, editExpenseCategory===cat && styles.filterChipActive]} onPress={()=> setEditExpenseCategory(cat)}>
-                      <Text style={[styles.filterChipText, editExpenseCategory===cat && styles.filterChipTextActive]}>{cat.toUpperCase()}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-                <TextInput style={[styles.modalInput,{marginTop:8}]} value={editExpenseCategory} onChangeText={setEditExpenseCategory} placeholder="Categoria" placeholderTextColor="#999" />
+                <TextInput style={styles.modalInput} value={editExpenseCategory} onChangeText={setEditExpenseCategory} placeholder="Categoria" placeholderTextColor="#999" />
               </View>
               <View style={{flexDirection:'row', gap:8, marginTop:8}}>
                 {(['pendente','paga','atrasada'] as const).map(st=> (
@@ -618,7 +620,7 @@ export const CreditCardsScreen: React.FC = () => {
                     if (!editingExpense?.id) return
                     const amount = parseFloat(editExpenseAmount.replace(',','.'))
                     if (!editExpenseDesc.trim()) { Alert.alert('Despesas','Informe a descrição'); return }
-                    if (!isFinite(amount) || amount <= 0) { Alert.alert('Despesas','Informe um valor válido'); return }
+                    if (!isFinite(amount) || amount === 0) { Alert.alert('Despesas','Informe um valor válido'); return }
                     if (!/^\d{2}\/\d{2}\/\d{4}$/.test(editExpenseDate)) { Alert.alert('Despesas','Use a data no formato DD/MM/AAAA'); return }
                     await apiService.updateExpense(editingExpense.id, {
                       description: editExpenseDesc.trim(),

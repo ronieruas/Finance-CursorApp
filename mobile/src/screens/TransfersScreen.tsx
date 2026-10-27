@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Modal, Alert, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Modal, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { apiService } from '../services/api'
 import { useNavigation } from '@react-navigation/native'
@@ -18,11 +18,18 @@ export const TransfersScreen: React.FC = () => {
   const [desc, setDesc] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
   const [newFromId, setNewFromId] = useState<number | 'terceiros' | null>(null)
   const [newToId, setNewToId] = useState<number | 'terceiros' | null>(null)
   const [newDate, setNewDate] = useState('')
   const [newValue, setNewValue] = useState('')
   const [newDesc, setNewDesc] = useState('')
+  const [editingTransfer, setEditingTransfer] = useState<any | null>(null)
+  const [editFromId, setEditFromId] = useState<number | 'terceiros' | null>(null)
+  const [editToId, setEditToId] = useState<number | 'terceiros' | null>(null)
+  const [editDate, setEditDate] = useState('')
+  const [editValue, setEditValue] = useState('')
+  const [editDesc, setEditDesc] = useState('')
 
   const load = async () => {
     try {
@@ -60,6 +67,35 @@ export const TransfersScreen: React.FC = () => {
 
   const formatValue = (value: any) =>
     `R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
+  const openEdit = (item: any) => {
+    setEditingTransfer(item)
+    setEditFromId(item.from_account_id ?? 'terceiros')
+    setEditToId(item.to_account_id ?? 'terceiros')
+    setEditDate(formatDate(item.date))
+    setEditValue(String(item.value ?? '').replace('.', ','))
+    setEditDesc(item.description || '')
+    setShowEdit(true)
+  }
+
+  const handleDelete = (item: any) => {
+    Alert.alert('Excluir transferência', 'Deseja realmente excluir esta transferência?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await apiService.deleteTransfer(item.id)
+            Alert.alert('Transferências', 'Transferência excluída com sucesso!')
+            await load()
+          } catch (e: any) {
+            Alert.alert('Erro', e?.message || 'Erro ao excluir transferência.')
+          }
+        },
+      },
+    ])
+  }
 
   if (loading) return (
     <SafeAreaView style={styles.container}><View style={styles.loading}><ActivityIndicator size="large" /><Text>Carregando transferências...</Text></View></SafeAreaView>
@@ -116,50 +152,109 @@ export const TransfersScreen: React.FC = () => {
             <Text style={styles.cardAccount}>
               {accountLabel(item.from_account_id)} → {accountLabel(item.to_account_id)}
             </Text>
+            <View style={styles.cardActions}>
+              <TouchableOpacity style={[styles.actionSmallBtn, { backgroundColor: '#374151' }]} onPress={() => openEdit(item)}>
+                <Text style={styles.actionSmallBtnText}>Editar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.actionSmallBtn, { backgroundColor: '#EF4444' }]} onPress={() => handleDelete(item)}>
+                <Text style={styles.actionSmallBtnText}>Excluir</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       />
 
       <Modal visible={showAdd} animationType="slide" transparent>
         <View style={styles.modalBackdrop}>
-          <KeyboardAvoidingView behavior={Platform.OS==='ios' ? 'padding' : undefined} style={styles.modalContainer}>
+          <KeyboardAvoidingView behavior={Platform.OS==='ios' ? 'padding' : 'height'} style={styles.modalContainer}>
             <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Nova transferência</Text>
-              <Text style={styles.modalLabel}>Origem</Text>
-              <View style={{flexDirection:'row', flexWrap:'wrap', gap:8}}>
-                <TouchableOpacity style={[styles.chip, newFromId==='terceiros' && styles.chipActive]} onPress={()=>setNewFromId('terceiros')}><Text style={[styles.chipText, newFromId==='terceiros' && styles.chipTextActive]}>Terceiros</Text></TouchableOpacity>
-                {accounts.map(a=> (
-                  <TouchableOpacity key={`nf-${a.id}`} style={[styles.chip, newFromId===a.id && styles.chipActive]} onPress={()=>setNewFromId(a.id)}><Text style={[styles.chipText, newFromId===a.id && styles.chipTextActive]}>{a.name}</Text></TouchableOpacity>
-                ))}
-              </View>
-              <Text style={[styles.modalLabel,{marginTop:8}]}>Destino</Text>
-              <View style={{flexDirection:'row', flexWrap:'wrap', gap:8}}>
-                <TouchableOpacity style={[styles.chip, newToId==='terceiros' && styles.chipActive]} onPress={()=>setNewToId('terceiros')}><Text style={[styles.chipText, newToId==='terceiros' && styles.chipTextActive]}>Terceiros</Text></TouchableOpacity>
-                {accounts.map(a=> (
-                  <TouchableOpacity key={`nt-${a.id}`} style={[styles.chip, newToId===a.id && styles.chipActive]} onPress={()=>setNewToId(a.id)}><Text style={[styles.chipText, newToId===a.id && styles.chipTextActive]}>{a.name}</Text></TouchableOpacity>
-                ))}
-              </View>
-              <View style={styles.modalGroup}><DateInput label="Data" value={newDate} onChange={setNewDate} /></View>
-              <View style={styles.modalGroup}><Text style={styles.modalLabel}>Valor</Text><TextInput style={styles.modalInput} placeholder="0,00" placeholderTextColor="#999" keyboardType="numeric" value={newValue} onChangeText={setNewValue} /></View>
-              <View style={styles.modalGroup}><Text style={styles.modalLabel}>Descrição</Text><TextInput style={styles.modalInput} placeholder="Ex: transferência" placeholderTextColor="#999" value={newDesc} onChangeText={setNewDesc} /></View>
-              <View style={styles.modalActions}>
-                <TouchableOpacity style={[styles.modalBtn,{backgroundColor:'#6B7280'}]} onPress={()=>setShowAdd(false)}><Text style={styles.modalBtnText}>Cancelar</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.modalBtn,{backgroundColor:'#2563EB'}]} onPress={async()=>{
-                  try {
-                    const v = parseFloat(newValue.replace(',','.'))
-                    if (!isFinite(v) || v<=0) { Alert.alert('Transferências','Informe um valor válido'); return }
-                    if (!newDate || !/^\d{2}\/\d{2}\/\d{4}$/.test(newDate)) { Alert.alert('Transferências','Informe a data no formato DD/MM/AAAA'); return }
-                    if (!newFromId && !newToId) { Alert.alert('Transferências','Selecione origem ou destino'); return }
-                    const payload:any = { value: v, description: newDesc, date: iso(newDate) }
-                    if (newFromId && newFromId !== 'terceiros') payload.from_account_id = newFromId
-                    if (newToId && newToId !== 'terceiros') payload.to_account_id = newToId
-                    const res = await apiService.createTransfer(payload)
-                    Alert.alert('Transferências','Transferência registrada')
-                    setShowAdd(false)
-                    await load()
-                  } catch(e:any) { Alert.alert('Erro', e?.message || 'Falha ao registrar transferência') }
-                }}><Text style={styles.modalBtnText}>Salvar</Text></TouchableOpacity>
-              </View>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{paddingBottom:8}}>
+                <Text style={styles.modalTitle}>Nova transferência</Text>
+                <Text style={styles.modalLabel}>Origem</Text>
+                <View style={{flexDirection:'row', flexWrap:'wrap', gap:8}}>
+                  <TouchableOpacity style={[styles.chip, newFromId==='terceiros' && styles.chipActive]} onPress={()=>setNewFromId('terceiros')}><Text style={[styles.chipText, newFromId==='terceiros' && styles.chipTextActive]}>Terceiros</Text></TouchableOpacity>
+                  {accounts.map(a=> (
+                    <TouchableOpacity key={`nf-${a.id}`} style={[styles.chip, newFromId===a.id && styles.chipActive]} onPress={()=>setNewFromId(a.id)}><Text style={[styles.chipText, newFromId===a.id && styles.chipTextActive]}>{a.name}</Text></TouchableOpacity>
+                  ))}
+                </View>
+                <Text style={[styles.modalLabel,{marginTop:8}]}>Destino</Text>
+                <View style={{flexDirection:'row', flexWrap:'wrap', gap:8}}>
+                  <TouchableOpacity style={[styles.chip, newToId==='terceiros' && styles.chipActive]} onPress={()=>setNewToId('terceiros')}><Text style={[styles.chipText, newToId==='terceiros' && styles.chipTextActive]}>Terceiros</Text></TouchableOpacity>
+                  {accounts.map(a=> (
+                    <TouchableOpacity key={`nt-${a.id}`} style={[styles.chip, newToId===a.id && styles.chipActive]} onPress={()=>setNewToId(a.id)}><Text style={[styles.chipText, newToId===a.id && styles.chipTextActive]}>{a.name}</Text></TouchableOpacity>
+                  ))}
+                </View>
+                <View style={styles.modalGroup}><DateInput label="Data" value={newDate} onChange={setNewDate} /></View>
+                <View style={styles.modalGroup}><Text style={styles.modalLabel}>Valor</Text><TextInput style={styles.modalInput} placeholder="0,00" placeholderTextColor="#999" keyboardType="numeric" value={newValue} onChangeText={setNewValue} /></View>
+                <View style={styles.modalGroup}><Text style={styles.modalLabel}>Descrição</Text><TextInput style={styles.modalInput} placeholder="Ex: transferência" placeholderTextColor="#999" value={newDesc} onChangeText={setNewDesc} /></View>
+                <View style={styles.modalActions}>
+                  <TouchableOpacity style={[styles.modalBtn,{backgroundColor:'#6B7280'}]} onPress={()=>setShowAdd(false)}><Text style={styles.modalBtnText}>Cancelar</Text></TouchableOpacity>
+                  <TouchableOpacity style={[styles.modalBtn,{backgroundColor:'#2563EB'}]} onPress={async()=>{
+                    try {
+                      const v = parseFloat(newValue.replace(',','.'))
+                      if (!isFinite(v) || v<=0) { Alert.alert('Transferências','Informe um valor válido'); return }
+                      if (!newDate || !/^\d{2}\/\d{2}\/\d{4}$/.test(newDate)) { Alert.alert('Transferências','Informe a data no formato DD/MM/AAAA'); return }
+                      if (!newFromId && !newToId) { Alert.alert('Transferências','Selecione origem ou destino'); return }
+                      const payload:any = { value: v, description: newDesc, date: iso(newDate) }
+                      if (newFromId && newFromId !== 'terceiros') payload.from_account_id = newFromId
+                      if (newToId && newToId !== 'terceiros') payload.to_account_id = newToId
+                      await apiService.createTransfer(payload)
+                      Alert.alert('Transferências','Transferência registrada')
+                      setShowAdd(false)
+                      await load()
+                    } catch(e:any) { Alert.alert('Erro', e?.message || 'Falha ao registrar transferência') }
+                  }}><Text style={styles.modalBtnText}>Salvar</Text></TouchableOpacity>
+                </View>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      <Modal visible={showEdit} animationType="slide" transparent>
+        <View style={styles.modalBackdrop}>
+          <KeyboardAvoidingView behavior={Platform.OS==='ios' ? 'padding' : 'height'} style={styles.modalContainer}>
+            <View style={styles.modalCard}>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{paddingBottom:8}}>
+                <Text style={styles.modalTitle}>Editar transferência</Text>
+                <Text style={styles.modalLabel}>Origem</Text>
+                <View style={{flexDirection:'row', flexWrap:'wrap', gap:8}}>
+                  <TouchableOpacity style={[styles.chip, editFromId==='terceiros' && styles.chipActive]} onPress={()=>setEditFromId('terceiros')}><Text style={[styles.chipText, editFromId==='terceiros' && styles.chipTextActive]}>Terceiros</Text></TouchableOpacity>
+                  {accounts.map(a=> (
+                    <TouchableOpacity key={`ef-${a.id}`} style={[styles.chip, editFromId===a.id && styles.chipActive]} onPress={()=>setEditFromId(a.id)}><Text style={[styles.chipText, editFromId===a.id && styles.chipTextActive]}>{a.name}</Text></TouchableOpacity>
+                  ))}
+                </View>
+                <Text style={[styles.modalLabel,{marginTop:8}]}>Destino</Text>
+                <View style={{flexDirection:'row', flexWrap:'wrap', gap:8}}>
+                  <TouchableOpacity style={[styles.chip, editToId==='terceiros' && styles.chipActive]} onPress={()=>setEditToId('terceiros')}><Text style={[styles.chipText, editToId==='terceiros' && styles.chipTextActive]}>Terceiros</Text></TouchableOpacity>
+                  {accounts.map(a=> (
+                    <TouchableOpacity key={`et-${a.id}`} style={[styles.chip, editToId===a.id && styles.chipActive]} onPress={()=>setEditToId(a.id)}><Text style={[styles.chipText, editToId===a.id && styles.chipTextActive]}>{a.name}</Text></TouchableOpacity>
+                  ))}
+                </View>
+                <View style={styles.modalGroup}><DateInput label="Data" value={editDate} onChange={setEditDate} /></View>
+                <View style={styles.modalGroup}><Text style={styles.modalLabel}>Valor</Text><TextInput style={styles.modalInput} placeholder="0,00" placeholderTextColor="#999" keyboardType="numeric" value={editValue} onChangeText={setEditValue} /></View>
+                <View style={styles.modalGroup}><Text style={styles.modalLabel}>Descrição</Text><TextInput style={styles.modalInput} placeholder="Ex: transferência" placeholderTextColor="#999" value={editDesc} onChangeText={setEditDesc} /></View>
+                <View style={styles.modalActions}>
+                  <TouchableOpacity style={[styles.modalBtn,{backgroundColor:'#6B7280'}]} onPress={()=>setShowEdit(false)}><Text style={styles.modalBtnText}>Cancelar</Text></TouchableOpacity>
+                  <TouchableOpacity style={[styles.modalBtn,{backgroundColor:'#2563EB'}]} onPress={async()=>{
+                    try {
+                      if (!editingTransfer?.id) return
+                      const v = parseFloat(editValue.replace(',','.'))
+                      if (!isFinite(v) || v<=0) { Alert.alert('Transferências','Informe um valor válido'); return }
+                      if (!editDate || !/^\d{2}\/\d{2}\/\d{4}$/.test(editDate)) { Alert.alert('Transferências','Informe a data no formato DD/MM/AAAA'); return }
+                      if (!editFromId && !editToId) { Alert.alert('Transferências','Selecione origem ou destino'); return }
+                      const payload:any = { value: v, description: editDesc, date: iso(editDate), is_third_party: editFromId === 'terceiros' || editToId === 'terceiros' }
+                      payload.from_account_id = editFromId === 'terceiros' ? null : editFromId
+                      payload.to_account_id = editToId === 'terceiros' ? null : editToId
+                      await apiService.updateTransfer(editingTransfer.id, payload)
+                      Alert.alert('Transferências', 'Transferência editada com sucesso!')
+                      setShowEdit(false)
+                      setEditingTransfer(null)
+                      await load()
+                    } catch(e:any) { Alert.alert('Erro', e?.message || 'Erro ao editar transferência.') }
+                  }}><Text style={styles.modalBtnText}>Salvar</Text></TouchableOpacity>
+                </View>
+              </ScrollView>
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -177,6 +272,7 @@ const styles = StyleSheet.create({
   cardTop:{flexDirection:'row', justifyContent:'space-between', alignItems:'center', gap:12},
   cardDate:{color:'#6B7280', fontSize:12, marginTop:6},
   cardAccount:{color:'#374151', fontSize:13, marginTop:2},
+  cardActions:{flexDirection:'row', gap:8, marginTop:10, flexWrap:'wrap'},
   label:{color:'#111', fontWeight:'600', flex:1},
   value:{fontWeight:'700', color:'#333'},
   emptyText:{textAlign:'center', color:'#6B7280', marginTop:24},
@@ -193,12 +289,14 @@ const styles = StyleSheet.create({
   applyBtnText:{color:'#fff', fontWeight:'700'},
   modalBackdrop:{flex:1, backgroundColor:'#0006', alignItems:'center', justifyContent:'center'},
   modalContainer:{width:'100%', paddingHorizontal:16},
-  modalCard:{backgroundColor:'#fff', borderRadius:12, padding:16},
+  modalCard:{backgroundColor:'#fff', borderRadius:12, padding:16, maxHeight:'85%'},
   modalTitle:{fontSize:18, fontWeight:'700', marginBottom:8},
   modalLabel:{fontSize:12, color:'#555'},
   modalGroup:{marginTop:8},
   modalInput:{borderWidth:1, borderColor:'#ddd', borderRadius:8, padding:10, fontSize:14, backgroundColor:'#f9f9f9', color:'#111'},
   modalActions:{flexDirection:'row', justifyContent:'flex-end', gap:8, marginTop:12},
   modalBtn:{paddingVertical:10, paddingHorizontal:14, borderRadius:8},
-  modalBtnText:{color:'#fff', fontWeight:'700'}
+  modalBtnText:{color:'#fff', fontWeight:'700'},
+  actionSmallBtn:{paddingHorizontal:10, paddingVertical:8, borderRadius:8},
+  actionSmallBtnText:{color:'#fff', fontWeight:'700'}
 })

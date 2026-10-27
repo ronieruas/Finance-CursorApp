@@ -106,13 +106,13 @@ export const DateInput: React.FC<Props> = ({ value, onChange, placeholder = 'DD/
         <View style={styles.backdrop}>
           <View style={styles.modal}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity accessibilityLabel="Mês anterior" onPress={()=>{
+              <TouchableOpacity accessibilityLabel="Mês anterior" style={styles.navBtn} onPress={()=>{
                 let m = month - 1; let y = year
                 if (m < 0) { m = 11; y -= 1 }
                 setMonth(m); setYear(y)
               }}><Text style={styles.navText}>‹</Text></TouchableOpacity>
               <Text style={styles.monthText}>{String(month+1).padStart(2,'0')}/{year}</Text>
-              <TouchableOpacity accessibilityLabel="Próximo mês" onPress={()=>{
+              <TouchableOpacity accessibilityLabel="Próximo mês" style={styles.navBtn} onPress={()=>{
                 let m = month + 1; let y = year
                 if (m > 11) { m = 0; y += 1 }
                 setMonth(m); setYear(y)
@@ -155,7 +155,8 @@ const styles = StyleSheet.create({
   modal: { width: '90%', backgroundColor: '#fff', borderRadius: 12, padding: 12 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   monthText: { fontSize: 16, fontWeight: '700', color: '#111' },
-  navText: { fontSize: 20, color: '#111' },
+  navBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  navText: { fontSize: 30, lineHeight: 30, color: '#111', fontWeight: '700' },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   day: { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 8, marginVertical: 2 },
   daySelected: { backgroundColor: '#2563EB' },

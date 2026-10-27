@@ -445,6 +445,14 @@ class ApiService {
     return this.request<any>('/transfers', { method: 'POST', body: JSON.stringify(payload) });
   }
 
+  async updateTransfer(id: number, payload: { from_account_id?: number | null; to_account_id?: number | null; value: number; description?: string; date: string; is_third_party?: boolean }): Promise<any> {
+    return this.request<any>(`/transfers/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+  }
+
+  async deleteTransfer(id: number): Promise<void> {
+    return this.request<void>(`/transfers/${id}`, { method: 'DELETE' });
+  }
+
   async updateExpense(id: number, expense: Partial<Expense>): Promise<Expense> {
     return this.request<Expense>(`/expenses/${id}`, {
       method: 'PUT',

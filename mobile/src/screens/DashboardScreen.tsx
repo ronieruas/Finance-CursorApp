@@ -173,7 +173,7 @@ export const DashboardScreen: React.FC = () => {
               
               <View style={styles.menuGrid}>
                 <TouchableOpacity style={styles.menuItem} onPress={handleContas}>
-                  <Text style={styles.menuIcon}>💳</Text>
+                  <Text style={styles.menuIcon}>🏦</Text>
                   <Text style={styles.menuText}>Contas</Text>
                 </TouchableOpacity>
 
@@ -188,7 +188,7 @@ export const DashboardScreen: React.FC = () => {
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.menuItem} onPress={handleCartoes}>
-                  <Text style={styles.menuIcon}>🏦</Text>
+                  <Text style={styles.menuIcon}>💳</Text>
                   <Text style={styles.menuText}>Cartões</Text>
                 </TouchableOpacity>
 
