@@ -7,6 +7,93 @@ import { useNavigation } from '@react-navigation/native'
 import { BackButton } from '../components/BackButton'
 import { BankLogo } from '../components/BankLogo'
 
+const parseBrDate = (value: string) => {
+  const match = String(value || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  if (match) {
+    return new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]), 12, 0, 0, 0)
+  }
+  const date = new Date(value)
+  return isNaN(date.getTime()) ? new Date() : date
+}
+
+const addMonths = (date: Date, months: number) => {
+  const next = new Date(date)
+  next.setMonth(next.getMonth() + months)
+  return next
+}
+
+const getMonthBounds = (date: Date) => {
+  const start = new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0)
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999)
+  return { start, end }
+}
+
+const getBillPeriodForDueMonth = (closingDay: number, dueDay: number, year: number, month: number) => {
+  const vencimento = new Date(year, month, dueDay, 23, 59, 59, 999)
+  let start: Date
+  let end: Date
+  if (closingDay > dueDay) {
+    start = new Date(year, month - 2, closingDay, 0, 0, 0, 0)
+    end = new Date(year, month - 1, Math.max(closingDay - 1, 1), 23, 59, 59, 999)
+  } else {
+    start = new Date(year, month - 1, closingDay, 0, 0, 0, 0)
+    end = new Date(year, month, Math.max(closingDay - 1, 1), 23, 59, 59, 999)
+  }
+  return { start, end, vencimento }
+}
+
+const getFechamentoDate = (closingDay: number, dueDay: number, year: number, month: number) => {
+  return closingDay > dueDay
+    ? new Date(year, month - 1, closingDay, 23, 59, 59, 999)
+    : new Date(year, month, closingDay, 23, 59, 59, 999)
+}
+
+const getOpenAndClosedPeriods = (card: CreditCard, refDate: Date) => {
+  const periods = [-1, 0, 1, 2].map((offset) => {
+    const dueBase = new Date(refDate.getFullYear(), refDate.getMonth() + offset, 1)
+    const period = getBillPeriodForDueMonth(Number(card.closing_day), Number(card.due_day), dueBase.getFullYear(), dueBase.getMonth())
+    return {
+      ...period,
+      dueYear: dueBase.getFullYear(),
+      dueMonth: dueBase.getMonth(),
+    }
+  }).sort((a, b) => a.start.getTime() - b.start.getTime())
+
+  const refTime = refDate.getTime()
+  const open = periods.find((period) => refTime >= period.start.getTime() && refTime <= period.end.getTime()) || periods[periods.length - 1]
+  const closedCandidates = periods.filter((period) => period.end.getTime() < open.start.getTime())
+  const closed = closedCandidates.length > 0 ? closedCandidates[closedCandidates.length - 1] : null
+
+  return { open, closed }
+}
+
+const expenseBelongsToPeriod = (expense: any, period: { start: Date; end: Date }) => {
+  const due = new Date(`${expense?.due_date}T12:00:00`)
+  return !isNaN(due.getTime()) && due.getTime() >= period.start.getTime() && due.getTime() <= period.end.getTime()
+}
+
+const sumExpensesInPeriod = (expenses: any[], period: { start: Date; end: Date } | null) => {
+  if (!period) return 0
+  return expenses
+    .filter((expense) => expenseBelongsToPeriod(expense, period))
+    .reduce((sum, expense) => sum + Number(expense?.value || 0), 0)
+}
+
+const getClosedBillStatus = (expenses: any[], closedPeriod: { start: Date; end: Date; vencimento: Date; dueYear: number; dueMonth: number } | null, card: CreditCard, refDate: Date) => {
+  if (!closedPeriod) return 'paga'
+  const total = sumExpensesInPeriod(expenses, closedPeriod)
+  const paid = expenses
+    .filter((expense) => expenseBelongsToPeriod(expense, closedPeriod) && expense?.status === 'paga')
+    .reduce((sum, expense) => sum + Number(expense?.value || 0), 0)
+  const pending = total - paid
+  if (total === 0 || pending <= 0.01) return 'paga'
+
+  const fechamento = getFechamentoDate(Number(card.closing_day), Number(card.due_day), closedPeriod.dueYear, closedPeriod.dueMonth)
+  if (refDate.getTime() > closedPeriod.vencimento.getTime()) return 'atrasada'
+  if (refDate.getTime() >= fechamento.getTime() && refDate.getTime() <= closedPeriod.vencimento.getTime()) return 'fechada'
+  return 'pendente'
+}
+
 export const CreditCardsScreen: React.FC = () => {
   const navigation = useNavigation();
   const [cards, setCards] = useState<Array<{ card_id: number; card_name: string; gastos_mes: number; fatura_atual: number; fatura_fechada_valor: number; fatura_fechada_status: string }>>([])
@@ -38,6 +125,7 @@ export const CreditCardsScreen: React.FC = () => {
   const [payAccounts, setPayAccounts] = useState<any[]>([])
   const [payAccountId, setPayAccountId] = useState<number | null>(null)
   const [cardsMeta, setCardsMeta] = useState<CreditCard[]>([])
+  const [cardExpenses, setCardExpenses] = useState<Record<number, any[]>>({})
   const [showCardForm, setShowCardForm] = useState(false)
   const [editingCard, setEditingCard] = useState<any | null>(null)
   const [cardName, setCardName] = useState('')
@@ -89,45 +177,48 @@ export const CreditCardsScreen: React.FC = () => {
   const load = async () => {
     try {
       setLoading(true)
-      const toISO = (s:string)=>{ const m=s.match(/^([0-9]{2})\/(\d{2})\/(\d{4})$/); if(m) return `${m[3]}-${m[2]}-${m[1]}`; return s }
-      const base = toISO(billMonth)
-      const d = new Date(base)
-      const monthOffset = showNextMonth ? 1 : 0
-      d.setMonth(d.getMonth() + monthOffset)
-      const start = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`
-      const lastDay = String(new Date(d.getFullYear(), d.getMonth()+1, 0).getDate()).padStart(2,'0')
-      const endIso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${lastDay}`
+      const refDate = addMonths(parseBrDate(billMonth), showNextMonth ? 1 : 0)
+      const { start, end } = getMonthBounds(refDate)
       const meta = await apiService.getCreditCards()
       setCardsMeta(meta)
-      let list: Array<{ card_id: number; card_name: string; gastos_mes: number; fatura_atual: number; fatura_fechada_valor: number; fatura_fechada_status: string }> = []
-      try {
-        list = await apiService.getCardSummary({ start, end: endIso })
-      } catch (e) {
-        list = []
-      }
-      console.log('[Mobile] GastosPorCartao (from dashboard)', list)
-      const byId = new Map<number, { card_id: number; card_name: string; gastos_mes: number; fatura_atual: number; fatura_fechada_valor: number; fatura_fechada_status: string }>()
-      list.forEach(it => byId.set(Number(it.card_id), it))
-      const merged: typeof list = meta.map(card => {
-        const existing = byId.get(Number((card as any).id))
-        if (existing) return existing
+      const expensePairs = await Promise.all(
+        meta.map(async (card) => {
+          const expenses = await apiService.getExpenses({ type:'cartao', credit_card_id: Number(card.id) })
+          return [Number(card.id), expenses] as const
+        })
+      )
+      const expensesMap = expensePairs.reduce<Record<number, any[]>>((acc, [cardId, expenses]) => {
+        acc[cardId] = Array.isArray(expenses) ? expenses : []
+        return acc
+      }, {})
+      setCardExpenses((prev) => ({ ...prev, ...expensesMap }))
+
+      const merged: Array<{ card_id: number; card_name: string; gastos_mes: number; fatura_atual: number; fatura_fechada_valor: number; fatura_fechada_status: string }> = meta.map((card) => {
+        const expenses = expensesMap[Number(card.id)] || []
+        const { open, closed } = getOpenAndClosedPeriods(card, refDate)
+        const gastosMes = expenses
+          .filter((expense) => {
+            const due = new Date(`${expense?.due_date}T12:00:00`)
+            return !isNaN(due.getTime()) && due.getTime() >= start.getTime() && due.getTime() <= end.getTime()
+          })
+          .reduce((sum, expense) => sum + Number(expense?.value || 0), 0)
+
         return {
-          card_id: Number((card as any).id),
+          card_id: Number(card.id),
           card_name: card.name,
-          gastos_mes: 0,
-          fatura_atual: 0,
-          fatura_fechada_valor: 0,
-          fatura_fechada_status: 'paga',
+          gastos_mes: Number(gastosMes) || 0,
+          fatura_atual: Number(sumExpensesInPeriod(expenses, open)) || 0,
+          fatura_fechada_valor: Number(sumExpensesInPeriod(expenses, closed)) || 0,
+          fatura_fechada_status: getClosedBillStatus(expenses, closed, card, refDate),
         }
       })
-      console.log('[Mobile] Cartões merged (inclui vazios)', merged)
       setCards(merged)
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [billMonth, showNextMonth])
   useEffect(() => {
     if (showExpenses && expenseCard) loadCardExpenses()
   }, [showExpenses, expenseCard, expStatus])
@@ -272,7 +363,7 @@ export const CreditCardsScreen: React.FC = () => {
         <Text style={styles.modalLabel}>Fatura do mês</Text>
         <View style={{flexDirection:'row', alignItems:'center', gap:12}}>
           <View style={{flex:1}}>
-            <DateInput value={billMonth} onChange={(v)=>{ setBillMonth(v); load() }} />
+            <DateInput value={billMonth} onChange={setBillMonth} />
           </View>
           <View style={{flexDirection:'row', alignItems:'center', gap:8}}>
             <Switch value={showNextMonth} onValueChange={setShowNextMonth} />

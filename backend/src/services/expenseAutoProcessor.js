@@ -1,5 +1,28 @@
 const { Op } = require('sequelize');
 
+// Helpers de data: DATEONLY chega como 'YYYY-MM-DD' (string), DATE como Date.
+// Normalizar para string evita deslocamento de fuso horário nas comparações.
+const toISODateOnly = (value) => {
+  if (!value) return null;
+  if (typeof value === 'string') return value.slice(0, 10);
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+const toMonthKey = (value) => {
+  const iso = toISODateOnly(value);
+  return iso ? iso.slice(0, 7) : null;
+};
+
+const toLocalDate = (value) => {
+  const iso = toISODateOnly(value);
+  if (!iso) return null;
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+
 async function processExpensesAutomatic({ Expense, Account, FinancialAuditLog, sequelize, generateNextRecurringExpenses, now = new Date() }) {
   const dialect = sequelize.getDialect();
   let advisoryLocked = false;
@@ -26,7 +49,13 @@ async function processExpensesAutomatic({ Expense, Account, FinancialAuditLog, s
         status: 'pendente',
         account_id: { [Op.ne]: null },
         paid_at: { [Op.ne]: null },
-        [Op.and]: [sequelize.where(sequelize.cast(sequelize.col('paid_at'), 'date'), '<=', sequelize.literal('CURRENT_DATE'))],
+        [Op.and]: [
+          sequelize.where(sequelize.cast(sequelize.col('paid_at'), 'date'), '<=', sequelize.literal('CURRENT_DATE')),
+          // Não baixar (pagar) uma despesa antes do vencimento: evita que uma
+          // ocorrência de mês futuro seja debitada no mês anterior por carregar
+          // um paid_at herdado/indevido, o que gerava duplicidade no extrato.
+          sequelize.where(sequelize.cast(sequelize.col('due_date'), 'date'), '<=', sequelize.literal('CURRENT_DATE')),
+        ],
       },
     });
 
@@ -40,7 +69,21 @@ async function processExpensesAutomatic({ Expense, Account, FinancialAuditLog, s
         });
         if (!lockedExpense || lockedExpense.status !== 'pendente' || !lockedExpense.account_id) return;
 
-        await lockedExpense.update({ status: 'paga' }, { transaction: t });
+        // O paid_at agendado pode pertencer a um mês diferente do vencimento
+        // (resquício de uma data de pagamento indevida, ex.: ocorrência de mês
+        // futuro baixada no mês anterior). Normaliza para o vencimento para que a
+        // despesa não seja lançada no extrato de outro período — evita duplicidade.
+        const paidAtMonth = toMonthKey(lockedExpense.paid_at);
+        const dueDateMonth = toMonthKey(lockedExpense.due_date);
+        const paidAtAdjusted = Boolean(paidAtMonth && dueDateMonth && paidAtMonth !== dueDateMonth);
+        const normalizedPaidAt = paidAtAdjusted ? toLocalDate(lockedExpense.due_date) : null;
+
+        await lockedExpense.update(
+          paidAtAdjusted
+            ? { status: 'paga', paid_at: normalizedPaidAt }
+            : { status: 'paga' },
+          { transaction: t }
+        );
 
         const account = await Account.findOne({
           where: { id: lockedExpense.account_id, user_id: lockedExpense.user_id },
@@ -64,6 +107,7 @@ async function processExpensesAutomatic({ Expense, Account, FinancialAuditLog, s
                   account_id: lockedExpense.account_id,
                   value: String(lockedExpense.value),
                   due_date: lockedExpense.due_date,
+                  paid_at_adjusted: paidAtAdjusted,
                 }),
               },
               { transaction: t }
