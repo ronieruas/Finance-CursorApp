@@ -147,30 +147,24 @@ exports.getBill = async (req, res) => {
     const atualVencimento = formatDateOnly(periods.atual.vencimento);
     const proximaVencimento = formatDateOnly(periods.proxima.vencimento);
 
-    console.log('[getBill] Filtro atual (período ou vencimento):', { atualStart, atualEnd, atualVencimento });
+    console.log('[getBill] Filtro atual (período):', { atualStart, atualEnd });
     const atual = await Expense.findAll({
       where: {
         user_id: req.user.id,
         credit_card_id: card.id,
         status: { [Op.ne]: 'paga' },
-        [Op.or]: [
-          { due_date: { [Op.between]: [atualStart, atualEnd] } },
-          { due_date: atualVencimento },
-        ],
+        due_date: { [Op.between]: [atualStart, atualEnd] },
       },
     });
     console.log('[getBill] Despesas fatura atual:', atual?.length || 0);
 
-    console.log('[getBill] Filtro próxima (período ou vencimento):', { proximaStart, proximaEnd, proximaVencimento });
+    console.log('[getBill] Filtro próxima (período):', { proximaStart, proximaEnd });
     const proxima = await Expense.findAll({
       where: {
         user_id: req.user.id,
         credit_card_id: card.id,
         status: { [Op.ne]: 'paga' },
-        [Op.or]: [
-          { due_date: { [Op.between]: [proximaStart, proximaEnd] } },
-          { due_date: proximaVencimento },
-        ],
+        due_date: { [Op.between]: [proximaStart, proximaEnd] },
       },
     });
     console.log('[getBill] Despesas próxima fatura:', proxima?.length || 0);
@@ -229,8 +223,7 @@ exports.pay = async (req, res) => {
       periodoFatura = periods.atual;
       const startStr = formatDateOnly(periodoFatura.start);
       const endStr = formatDateOnly(periodoFatura.end);
-      const vencStr = formatDateOnly(periodoFatura.vencimento);
-      console.log('[PAGAMENTO] Filtro por período ou vencimento:', { startStr, endStr, vencStr, bill_month });
+      console.log('[PAGAMENTO] Filtro por período:', { startStr, endStr, bill_month });
 
       const todasDespesas = await Expense.findAll({ where: { user_id: userId, credit_card_id: card.id } });
       console.log('[PAGAMENTO] Total de despesas do cartão (sem filtro):', todasDespesas.length);
@@ -240,10 +233,7 @@ exports.pay = async (req, res) => {
           user_id: userId,
           credit_card_id: card.id,
           status: { [Op.ne]: 'paga' },
-          [Op.or]: [
-            { due_date: { [Op.between]: [startStr, endStr] } },
-            { due_date: vencStr },
-          ],
+          due_date: { [Op.between]: [startStr, endStr] },
         },
       });
       console.log('[PAGAMENTO] Despesas na fatura encontradas:', despesasFatura.length);
